@@ -26,6 +26,12 @@ if ( $max_prompt_chars <= 0 ) {
 if ( $max_prompt_chars > 100000 ) {
     $max_prompt_chars = 100000;
 }
+
+$medical_disclaimer_text = get_option( 'humata_medical_disclaimer_text', '' );
+if ( ! is_string( $medical_disclaimer_text ) ) {
+    $medical_disclaimer_text = '';
+}
+$medical_disclaimer_text = trim( $medical_disclaimer_text );
 ?>
 <!DOCTYPE html>
 <html <?php language_attributes(); ?> class="<?php echo esc_attr( $theme_class ); ?>">
@@ -117,10 +123,20 @@ if ( $max_prompt_chars > 100000 ) {
                 </div>
                 <p class="humata-disclaimer">
                     <?php esc_html_e( 'AI responses may not always be accurate. Please verify important information.', 'humata-chatbot' ); ?>
+                    <?php if ( '' !== $medical_disclaimer_text ) : ?>
+                        <a class="humata-medical-disclaimer-link" href="#humata-medical-disclaimer"><?php esc_html_e( 'Medical disclaimer', 'humata-chatbot' ); ?></a>
+                    <?php endif; ?>
                 </p>
             </footer>
         </div>
     </div>
+    <?php if ( '' !== $medical_disclaimer_text ) : ?>
+        <footer id="humata-medical-disclaimer">
+            <div class="humata-medical-disclaimer-inner">
+                <?php echo wp_kses_post( wpautop( esc_html( $medical_disclaimer_text ) ) ); ?>
+            </div>
+        </footer>
+    <?php endif; ?>
     <?php wp_footer(); ?>
 </body>
 </html>

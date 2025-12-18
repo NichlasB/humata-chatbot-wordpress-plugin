@@ -817,6 +817,40 @@
     opacity: 0.8;
 }
 
+.humata-medical-disclaimer-link {
+    margin-left: 8px;
+    color: var(--humata-text-muted);
+    text-decoration: underline;
+}
+
+.humata-medical-disclaimer-link:hover {
+    color: var(--humata-text-secondary);
+}
+
+#humata-medical-disclaimer {
+    width: 100%;
+    border-top: 1px solid var(--humata-border-color);
+    background-color: var(--humata-bg-primary);
+}
+
+.humata-medical-disclaimer-inner {
+    max-width: 760px;
+    margin: 0 auto;
+    padding: 16px 24px 24px 24px;
+    box-sizing: border-box;
+    font-size: 12px;
+    line-height: 1.6;
+    color: var(--humata-text-muted);
+}
+
+.humata-medical-disclaimer-inner p {
+    margin: 0 0 12px 0;
+}
+
+.humata-medical-disclaimer-inner p:last-child {
+    margin-bottom: 0;
+}
+
 /* Responsive Styles */
 @media (max-width: 768px) {
     #humata-chat-header {
@@ -848,6 +882,10 @@
 
     #humata-chat-input-container {
         padding: 0 16px 16px 16px;
+    }
+
+    .humata-medical-disclaimer-inner {
+        padding: 12px 16px 18px 16px;
     }
 
     .humata-input-wrapper {

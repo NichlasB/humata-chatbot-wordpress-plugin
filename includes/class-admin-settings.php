@@ -734,6 +734,16 @@ class Humata_Chatbot_Admin_Settings {
 
         register_setting(
             'humata_chatbot_settings',
+            'humata_medical_disclaimer_text',
+            array(
+                'type'              => 'string',
+                'sanitize_callback' => 'sanitize_textarea_field',
+                'default'           => '',
+            )
+        );
+
+        register_setting(
+            'humata_chatbot_settings',
             'humata_second_llm_provider',
             array(
                 'type'              => 'string',
@@ -962,6 +972,21 @@ class Humata_Chatbot_Admin_Settings {
             'humata-chatbot',
             'humata_security_section'
         );
+
+        add_settings_section(
+            'humata_disclaimer_section',
+            __( 'Disclaimers', 'humata-chatbot' ),
+            array( $this, 'render_disclaimer_section' ),
+            'humata-chatbot'
+        );
+
+        add_settings_field(
+            'humata_medical_disclaimer_text',
+            __( 'Medical Disclaimer', 'humata-chatbot' ),
+            array( $this, 'render_medical_disclaimer_text_field' ),
+            'humata-chatbot',
+            'humata_disclaimer_section'
+        );
     }
 
     /**
@@ -1189,6 +1214,10 @@ class Humata_Chatbot_Admin_Settings {
      */
     public function render_security_section() {
         echo '<p>' . esc_html__( 'Configure security settings to protect against abuse.', 'humata-chatbot' ) . '</p>';
+    }
+
+    public function render_disclaimer_section() {
+        echo '<p>' . esc_html__( 'Configure disclaimer text shown in the chat interface.', 'humata-chatbot' ) . '</p>';
     }
 
     /**
@@ -1739,6 +1768,24 @@ class Humata_Chatbot_Admin_Settings {
         <span><?php esc_html_e( 'requests per hour per IP address', 'humata-chatbot' ); ?></span>
         <p class="description">
             <?php esc_html_e( 'Limit the number of API requests to prevent abuse. Default is 50.', 'humata-chatbot' ); ?>
+        </p>
+        <?php
+    }
+
+    public function render_medical_disclaimer_text_field() {
+        $value = get_option( 'humata_medical_disclaimer_text', '' );
+        if ( ! is_string( $value ) ) {
+            $value = '';
+        }
+        ?>
+        <textarea
+            id="humata_medical_disclaimer_text"
+            name="humata_medical_disclaimer_text"
+            rows="6"
+            class="large-text"
+        ><?php echo esc_textarea( $value ); ?></textarea>
+        <p class="description">
+            <?php esc_html_e( 'Shown at the bottom of the dedicated chat page. Leave blank to disable. Use blank lines to separate paragraphs.', 'humata-chatbot' ); ?>
         </p>
         <?php
     }

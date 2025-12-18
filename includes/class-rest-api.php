@@ -251,7 +251,7 @@ class Humata_Chatbot_REST_API {
         }
 
         // Get request parameters
-        $message = $request->get_param( 'message' );
+        $message = (string) $request->get_param( 'message' );
 
         $max_prompt_chars = absint( get_option( 'humata_max_prompt_chars', 3000 ) );
         if ( $max_prompt_chars <= 0 ) {
@@ -261,7 +261,11 @@ class Humata_Chatbot_REST_API {
             $max_prompt_chars = 100000;
         }
 
-        if ( wp_strlen( (string) $message ) > $max_prompt_chars ) {
+        $message_len = function_exists( 'wp_strlen' )
+            ? wp_strlen( $message )
+            : ( function_exists( 'mb_strlen' ) ? mb_strlen( $message, '8bit' ) : strlen( $message ) );
+
+        if ( $message_len > $max_prompt_chars ) {
             return new WP_Error(
                 'prompt_too_long',
                 sprintf( __( 'Message is too long. Maximum is %d characters.', 'humata-chatbot' ), $max_prompt_chars ),
