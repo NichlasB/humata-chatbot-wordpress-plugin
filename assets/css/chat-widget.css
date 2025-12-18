@@ -1,0 +1,921 @@
+/**
+ * Humata Chat Widget Styles
+ *
+ * @package Humata_Chatbot
+ * @since 1.0.0
+ */
+
+/* CSS Variables - Light Mode (Default) */
+:root,
+.humata-theme-light {
+    --humata-bg-primary: #ffffff;
+    --humata-bg-secondary: #f9fafb; /* gray-50 */
+    --humata-bg-tertiary: #f3f4f6; /* gray-100 */
+    --humata-text-primary: #111827; /* gray-900 */
+    --humata-text-secondary: #4b5563; /* gray-600 */
+    --humata-text-muted: #9ca3af; /* gray-400 */
+    
+    --humata-accent-color: #10a37f;
+    --humata-accent-hover: #0d8a6a;
+    
+    --humata-user-bubble: #f3f4f6;
+    --humata-user-text: #111827;
+    
+    --humata-bot-bubble: transparent;
+    --humata-bot-text: #111827;
+    
+    --humata-border-color: #e5e7eb; /* gray-200 */
+    
+    --humata-input-bg: #ffffff;
+    --humata-input-border: #e5e7eb;
+    --humata-input-focus: #10a37f;
+    --humata-input-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.1), 0 2px 4px -1px rgba(0, 0, 0, 0.06);
+    
+    --humata-error-bg: #fef2f2;
+    --humata-error-text: #dc2626;
+    --humata-error-border: #fecaca;
+    
+    --humata-shadow: 0 1px 3px 0 rgba(0, 0, 0, 0.1), 0 1px 2px 0 rgba(0, 0, 0, 0.06);
+    --humata-shadow-lg: 0 10px 15px -3px rgba(0, 0, 0, 0.1), 0 4px 6px -2px rgba(0, 0, 0, 0.05);
+    
+    --humata-code-bg: #f3f4f6;
+    --humata-code-text: #1f2937;
+    
+    --humata-scrollbar-track: transparent;
+    --humata-scrollbar-thumb: #d1d5db;
+    --humata-scrollbar-thumb-hover: #9ca3af;
+
+    --humata-font-family: ui-sans-serif, system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif;
+}
+
+/* CSS Variables - Dark Mode */
+.humata-theme-dark {
+    --humata-bg-primary: #18181b; /* zinc-900 */
+    --humata-bg-secondary: #27272a; /* zinc-800 */
+    --humata-bg-tertiary: #3f3f46; /* zinc-700 */
+    --humata-text-primary: #E8E8E3; /* zinc-100 */
+    --humata-text-secondary: #a1a1aa; /* zinc-400 */
+    --humata-text-muted: #71717a; /* zinc-500 */
+    
+    --humata-accent-color: #10a37f;
+    --humata-accent-hover: #1ab98f;
+    
+    --humata-user-bubble: #27272a;
+    --humata-user-text: #E8E8E3;
+    
+    --humata-bot-bubble: transparent;
+    --humata-bot-text: #E8E8E3;
+    
+    --humata-border-color: #27272a;
+    
+    --humata-input-bg: #27272a;
+    --humata-input-border: #3f3f46;
+    --humata-input-focus: #10a37f;
+    --humata-input-shadow: 0 4px 20px rgba(0, 0, 0, 0.4);
+    
+    --humata-error-bg: #3f1d1d;
+    --humata-error-text: #f87171;
+    --humata-error-border: #7f1d1d;
+    
+    --humata-shadow: 0 2px 10px rgba(0, 0, 0, 0.3);
+    --humata-shadow-lg: 0 10px 30px rgba(0, 0, 0, 0.5);
+    
+    --humata-code-bg: #09090b; /* zinc-950 */
+    --humata-code-text: #e4e4e7; /* zinc-200 */
+    
+    --humata-scrollbar-track: transparent;
+    --humata-scrollbar-thumb: #3f3f46;
+    --humata-scrollbar-thumb-hover: #52525b;
+}
+
+/* Base Reset for Full-Page Mode */
+.humata-chat-body {
+    margin: 0;
+    padding: 0;
+    font-family: var(--humata-font-family);
+    font-size: 16px;
+    line-height: 1.6;
+    background-color: var(--humata-bg-primary);
+    color: var(--humata-text-primary);
+    -webkit-font-smoothing: antialiased;
+    -moz-osx-font-smoothing: grayscale;
+}
+
+/* Chat Wrapper */
+#humata-chat-wrapper {
+    width: 100%;
+    height: 100vh;
+    display: flex;
+    flex-direction: column;
+    background-color: var(--humata-bg-primary);
+}
+
+/* Chat Container */
+#humata-chat-container {
+    display: flex;
+    flex-direction: column;
+    width: 100%;
+    height: 100%;
+    max-width: 760px;
+    margin: 0 auto;
+    position: relative;
+}
+
+/* Full-page specific styles */
+#humata-chat-container.humata-chat-fullpage {
+    height: 100%;
+}
+
+/* Embedded (shortcode) specific styles */
+#humata-chat-container.humata-chat-embedded {
+    border: 1px solid var(--humata-border-color);
+    border-radius: 12px;
+    overflow: hidden;
+    box-shadow: var(--humata-shadow);
+}
+
+/* Chat Header */
+#humata-chat-header {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    padding: 16px 24px;
+    background-color: transparent;
+    flex-shrink: 0;
+    z-index: 10;
+}
+
+.humata-header-left {
+    display: flex;
+    align-items: center;
+    gap: 12px;
+}
+
+.humata-logo {
+    color: var(--humata-text-primary);
+}
+
+.humata-chat-title {
+    font-size: 16px;
+    font-weight: 600;
+    color: var(--humata-text-primary);
+}
+
+.humata-header-right {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+}
+
+#humata-theme-toggle,
+#humata-clear-chat {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    width: 36px;
+    height: 36px;
+    padding: 0;
+    background: transparent;
+    border: none;
+    border-radius: 8px;
+    color: var(--humata-text-secondary);
+    cursor: pointer;
+    transition: all 0.2s ease;
+}
+
+#humata-theme-toggle:hover,
+#humata-clear-chat:hover {
+    background-color: var(--humata-bg-tertiary);
+    color: var(--humata-text-primary);
+}
+
+/* Theme toggle icons */
+.humata-theme-light #humata-theme-toggle .humata-icon-sun,
+.humata-theme-dark #humata-theme-toggle .humata-icon-moon {
+    display: none;
+}
+
+.humata-theme-light #humata-theme-toggle .humata-icon-moon,
+.humata-theme-dark #humata-theme-toggle .humata-icon-sun {
+    display: block;
+}
+
+/* Chat Messages Container */
+#humata-chat-messages {
+    flex: 1;
+    overflow-y: auto;
+    padding: 40px 24px 80px 24px;
+    display: flex;
+    flex-direction: column;
+    gap: 32px;
+    scroll-behavior: smooth;
+    /* Create space for fixed input */
+    margin-bottom: 0;
+}
+
+/* Custom Scrollbar */
+#humata-chat-messages::-webkit-scrollbar {
+    width: 6px;
+}
+
+#humata-chat-messages::-webkit-scrollbar-track {
+    background: var(--humata-scrollbar-track);
+}
+
+#humata-chat-messages::-webkit-scrollbar-thumb {
+    background: var(--humata-scrollbar-thumb);
+    border-radius: 3px;
+}
+
+#humata-chat-messages::-webkit-scrollbar-thumb:hover {
+    background: var(--humata-scrollbar-thumb-hover);
+}
+
+/* Firefox scrollbar */
+#humata-chat-messages {
+    scrollbar-width: thin;
+    scrollbar-color: var(--humata-scrollbar-thumb) var(--humata-scrollbar-track);
+}
+
+/* Message Base Styles */
+.humata-message {
+    display: flex;
+    gap: 20px;
+    max-width: 100%;
+    animation: humataFadeIn 0.4s cubic-bezier(0.16, 1, 0.3, 1);
+}
+
+@keyframes humataFadeIn {
+    from {
+        opacity: 0;
+        transform: translateY(10px);
+    }
+    to {
+        opacity: 1;
+        transform: translateY(0);
+    }
+}
+
+/* Message Avatar */
+.humata-message-avatar {
+    flex-shrink: 0;
+    width: 32px;
+    height: 32px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    border-radius: 6px;
+    background-color: transparent;
+    color: var(--humata-text-primary);
+    border: 1px solid var(--humata-border-color);
+}
+
+.humata-message-user .humata-message-avatar {
+    background-color: var(--humata-bg-secondary);
+    color: var(--humata-text-secondary);
+    border: none;
+}
+
+.humata-message-bot .humata-message-avatar {
+    background-color: var(--humata-accent-color);
+    color: #ffffff;
+    border: none;
+}
+
+/* Message Content */
+.humata-message-content {
+    flex: 1;
+    padding: 0;
+    border-radius: 12px;
+    line-height: 1.625;
+    word-wrap: break-word;
+    overflow-wrap: break-word;
+    max-width: 100%;
+    font-size: 17px;
+}
+
+ .humata-message .humata-message-content.humata-message-content-has-copy {
+     position: relative;
+     padding-right: 44px;
+ }
+
+ .humata-message .humata-message-content.humata-message-content-has-copy.humata-message-content-has-regenerate {
+     padding-right: 76px;
+ }
+
+ .humata-message .humata-message-content.humata-message-content-has-copy.humata-message-content-has-regenerate.humata-message-content-has-edit {
+     padding-right: 108px;
+ }
+
+ .humata-message .humata-message-content.humata-message-content-has-copy.humata-message-content-has-edit {
+     padding-right: 76px;
+ }
+
+ .humata-copy-button,
+ .humata-regenerate-button,
+ .humata-edit-button {
+     position: absolute;
+     top: 8px;
+     width: 28px;
+     height: 28px;
+     padding: 0;
+     display: flex;
+     align-items: center;
+     justify-content: center;
+     border-radius: 8px;
+     border: 1px solid var(--humata-border-color);
+     background-color: var(--humata-bg-secondary);
+     color: var(--humata-text-secondary);
+     cursor: pointer;
+     opacity: 0;
+     pointer-events: none;
+     transition: opacity 0.15s ease, background-color 0.15s ease, color 0.15s ease, border-color 0.15s ease;
+     z-index: 5;
+ }
+
+ .humata-copy-button {
+     right: 8px;
+ }
+
+ .humata-regenerate-button {
+     right: 40px;
+ }
+
+ .humata-edit-button {
+     right: 40px;
+ }
+
+ .humata-message .humata-message-content.humata-message-content-has-copy.humata-message-content-has-regenerate.humata-message-content-has-edit .humata-edit-button {
+     right: 72px;
+ }
+
+ .humata-edit-button:hover {
+     background-color: var(--humata-bg-primary);
+     color: var(--humata-text-primary);
+ }
+
+ .humata-copy-button:hover {
+     background-color: var(--humata-bg-primary);
+     color: var(--humata-text-primary);
+ }
+
+ .humata-regenerate-button:hover {
+     background-color: var(--humata-bg-primary);
+     color: var(--humata-text-primary);
+ }
+
+ .humata-message:hover .humata-copy-button {
+     opacity: 1;
+     pointer-events: auto;
+ }
+
+ .humata-message:hover .humata-regenerate-button {
+     opacity: 1;
+     pointer-events: auto;
+ }
+
+ .humata-message:hover .humata-edit-button {
+     opacity: 1;
+     pointer-events: auto;
+ }
+
+ .humata-message:focus-within .humata-copy-button {
+     opacity: 1;
+     pointer-events: auto;
+ }
+
+ .humata-message:focus-within .humata-regenerate-button {
+     opacity: 1;
+     pointer-events: auto;
+ }
+
+ .humata-message:focus-within .humata-edit-button {
+     opacity: 1;
+     pointer-events: auto;
+ }
+
+ .humata-copy-button.humata-copy-button-success {
+     color: var(--humata-accent-color);
+     border-color: var(--humata-accent-color);
+ }
+
+ @media (hover: none) {
+     .humata-copy-button {
+         opacity: 1;
+         pointer-events: auto;
+     }
+
+     .humata-regenerate-button {
+         opacity: 1;
+         pointer-events: auto;
+     }
+
+     .humata-edit-button {
+         opacity: 1;
+         pointer-events: auto;
+     }
+ }
+
+ .humata-message .humata-message-content.humata-message-content-has-copy.humata-message-content-editing {
+     padding-right: 18px;
+ }
+
+ .humata-message .humata-message-content.humata-message-content-has-copy.humata-message-content-has-edit.humata-message-content-editing {
+     padding-right: 18px;
+ }
+
+ .humata-edit-textarea {
+     width: 100%;
+     min-height: 24px;
+     max-height: 200px;
+     padding: 0;
+     border: none;
+     outline: none;
+     resize: none;
+     background: transparent;
+     color: inherit;
+     font-family: inherit;
+     font-size: inherit;
+     line-height: inherit;
+ }
+
+ .humata-edit-actions {
+     display: flex;
+     justify-content: flex-end;
+     gap: 8px;
+     margin-top: 10px;
+ }
+
+ .humata-edit-cancel,
+ .humata-edit-save {
+     display: flex;
+     align-items: center;
+     justify-content: center;
+     width: 28px;
+     height: 28px;
+     padding: 0;
+     border-radius: 8px;
+     border: 1px solid var(--humata-border-color);
+     background-color: var(--humata-bg-secondary);
+     color: var(--humata-text-secondary);
+     cursor: pointer;
+     transition: background-color 0.15s ease, color 0.15s ease, border-color 0.15s ease;
+ }
+
+ .humata-edit-cancel:hover,
+ .humata-edit-save:hover {
+     background-color: var(--humata-bg-primary);
+     color: var(--humata-text-primary);
+ }
+
+ .humata-edit-save {
+     border-color: var(--humata-accent-color);
+     color: var(--humata-accent-color);
+ }
+
+/* User Message Specifics */
+.humata-message-user .humata-message-content {
+    background-color: var(--humata-user-bubble);
+    color: var(--humata-user-text);
+    padding: 12px 18px;
+    border-radius: 12px;
+    max-width: 85%;
+}
+
+/* Bot Message Specifics */
+.humata-message-bot .humata-message-content {
+    background-color: var(--humata-bot-bubble);
+    color: var(--humata-bot-text);
+    padding: 4px 0 0 0; /* Align with avatar */
+}
+
+/* Error Message */
+.humata-message-error .humata-message-content {
+    background-color: var(--humata-error-bg);
+    color: var(--humata-error-text);
+    border: 1px solid var(--humata-error-border);
+    padding: 12px 16px;
+}
+
+/* Message Content Typography */
+.humata-message-content p {
+    margin: 0 0 16px 0;
+}
+
+.humata-message-content p:last-child {
+    margin-bottom: 0;
+}
+
+.humata-message-content h1,
+.humata-message-content h2,
+.humata-message-content h3,
+.humata-message-content h4,
+.humata-message-content h5,
+.humata-message-content h6 {
+    margin: 20px 0 12px 0;
+    font-weight: 650;
+    line-height: 1.25;
+    color: var(--humata-text-primary);
+}
+
+.humata-message-content h1:first-child,
+.humata-message-content h2:first-child,
+.humata-message-content h3:first-child,
+.humata-message-content h4:first-child,
+.humata-message-content h5:first-child,
+.humata-message-content h6:first-child {
+    margin-top: 0;
+}
+
+.humata-message-content h1 { font-size: 1.4em; }
+.humata-message-content h2 { font-size: 1.28em; }
+.humata-message-content h3 { font-size: 1.18em; }
+.humata-message-content h4 { font-size: 1.08em; }
+.humata-message-content h5 { font-size: 1.02em; }
+.humata-message-content h6 { font-size: 0.96em; color: var(--humata-text-secondary); }
+
+.humata-message-content strong {
+    font-weight: 600;
+}
+
+.humata-message-content em {
+    font-style: italic;
+}
+
+.humata-message-content a {
+    color: var(--humata-accent-color);
+    text-decoration: none;
+    font-weight: 500;
+}
+
+.humata-message-content a:hover {
+    text-decoration: underline;
+}
+
+.humata-message-content ul, 
+.humata-message-content ol {
+    margin: 8px 0 16px 0;
+    padding-left: 24px;
+}
+
+.humata-message-content li {
+    margin-bottom: 8px;
+}
+
+.humata-message-content blockquote {
+    margin: 12px 0 16px 0;
+    padding: 10px 14px;
+    border-left: 3px solid var(--humata-border-color);
+    background-color: var(--humata-bg-secondary);
+    color: var(--humata-text-secondary);
+    border-radius: 10px;
+}
+
+.humata-message-content blockquote p:last-child {
+    margin-bottom: 0;
+}
+
+.humata-message-content hr {
+    border: none;
+    border-top: 1px solid var(--humata-border-color);
+    margin: 18px 0;
+}
+
+/* Code Styles */
+.humata-message-content code {
+    font-family: 'SF Mono', Monaco, 'Cascadia Code', 'Consolas', monospace;
+    font-size: 0.875em;
+    padding: 2px 5px;
+    background-color: var(--humata-code-bg);
+    color: var(--humata-code-text);
+    border-radius: 4px;
+}
+
+.humata-message-content pre {
+    margin: 16px 0;
+    padding: 16px;
+    background-color: var(--humata-code-bg);
+    border-radius: 8px;
+    overflow-x: auto;
+    border: 1px solid var(--humata-border-color);
+}
+
+.humata-message-content pre code {
+    padding: 0;
+    background: transparent;
+    font-size: 0.85em;
+    line-height: 1.5;
+    color: var(--humata-code-text);
+}
+
+/* Typing Indicator */
+.humata-typing-indicator {
+    display: flex;
+    align-items: center;
+    gap: 4px;
+    padding: 4px 0;
+}
+
+.humata-typing-indicator span {
+    width: 6px;
+    height: 6px;
+    background-color: var(--humata-text-muted);
+    border-radius: 50%;
+    animation: humataTypingBounce 1.4s infinite ease-in-out both;
+}
+
+.humata-typing-indicator span:nth-child(1) {
+    animation-delay: -0.32s;
+}
+
+.humata-typing-indicator span:nth-child(2) {
+    animation-delay: -0.16s;
+}
+
+.humata-typing-indicator span:nth-child(3) {
+    animation-delay: 0s;
+}
+
+@keyframes humataTypingBounce {
+    0%, 80%, 100% {
+        transform: scale(0);
+    }
+    40% {
+        transform: scale(1);
+    }
+}
+
+/* Loading status text (used when Straico review is enabled) */
+.humata-loading-status {
+    margin-top: 6px;
+    font-size: 12px;
+    line-height: 1.4;
+    color: var(--humata-text-muted);
+    opacity: 0.9;
+    min-height: 1.4em; /* Prevent layout jump while cycling text */
+}
+
+.humata-loading-status-text {
+    display: inline-block;
+    transition: opacity 0.18s ease;
+}
+
+/* Input Container - Floating Style */
+#humata-chat-input-container {
+    padding: 0 24px 24px 24px;
+    background-color: transparent;
+    border-top: none;
+    flex-shrink: 0;
+    position: relative;
+    width: 100%;
+    box-sizing: border-box;
+    margin-top: auto;
+}
+
+/* Gradient Fade overlay for scroll */
+#humata-chat-input-container::before {
+    content: '';
+    position: absolute;
+    top: -60px;
+    left: 0;
+    right: 0;
+    height: 60px;
+    background: linear-gradient(to bottom, transparent, var(--humata-bg-primary));
+    pointer-events: none;
+    z-index: 5;
+}
+
+.humata-input-wrapper {
+    display: flex;
+    align-items: flex-end;
+    gap: 12px;
+    padding: 14px 16px;
+    background-color: var(--humata-input-bg);
+    border: 1px solid var(--humata-input-border);
+    border-radius: 26px; /* Pill shape or highly rounded */
+    box-shadow: var(--humata-input-shadow);
+    transition: all 0.2s ease;
+    position: relative;
+    z-index: 10;
+}
+
+.humata-input-wrapper:focus-within {
+    border-color: var(--humata-input-focus);
+    box-shadow: 0 0 0 2px rgba(16, 163, 127, 0.1), var(--humata-input-shadow);
+}
+
+ .humata-input-meta {
+     display: flex;
+     justify-content: flex-end;
+     padding: 6px 10px 0 10px;
+     font-size: 12px;
+     line-height: 1.3;
+ }
+
+ .humata-input-counter {
+     color: var(--humata-text-muted);
+     user-select: none;
+ }
+
+ .humata-input-counter.humata-input-counter-over {
+     color: var(--humata-error-text);
+ }
+
+#humata-chat-input {
+    flex: 1;
+    min-height: 24px;
+    max-height: 200px;
+    padding: 4px 0;
+    border: none;
+    outline: none;
+    background: transparent;
+    color: var(--humata-text-primary);
+    font-family: inherit;
+    font-size: 16px;
+    line-height: 1.5;
+    resize: none;
+}
+
+#humata-chat-input::placeholder {
+    color: var(--humata-text-muted);
+}
+
+#humata-send-button {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    width: 32px;
+    height: 32px;
+    padding: 0;
+    background-color: var(--humata-accent-color);
+    border: none;
+    border-radius: 10px;
+    color: #ffffff;
+    cursor: pointer;
+    transition: all 0.2s ease;
+    flex-shrink: 0;
+    margin-bottom: 1px; /* Visual alignment with multiline text */
+}
+
+#humata-send-button:hover:not(:disabled) {
+    background-color: var(--humata-accent-hover);
+    transform: translateY(-1px);
+}
+
+#humata-send-button:disabled {
+    background-color: var(--humata-bg-tertiary);
+    color: var(--humata-text-muted);
+    cursor: not-allowed;
+    opacity: 1;
+}
+
+#humata-send-button:active:not(:disabled) {
+    transform: translateY(0);
+}
+
+#humata-scroll-toggle {
+    position: absolute;
+    top: -50px;
+    left: 50%;
+    transform: translateX(-50%);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    width: 32px;
+    height: 32px;
+    padding: 0;
+    border-radius: 999px;
+    border: 1px solid var(--humata-border-color);
+    background-color: var(--humata-bg-secondary);
+    color: var(--humata-text-secondary);
+    cursor: pointer;
+    box-shadow: var(--humata-shadow);
+    z-index: 20;
+    transition: all 0.2s ease;
+}
+
+#humata-scroll-toggle:hover {
+    background-color: var(--humata-bg-tertiary);
+    color: var(--humata-text-primary);
+    transform: translateX(-50%) translateY(-2px);
+}
+
+#humata-scroll-toggle svg {
+    transition: transform 0.2s ease;
+}
+
+#humata-scroll-toggle.humata-scroll-toggle-top svg {
+    transform: rotate(180deg);
+}
+
+/* Disclaimer */
+.humata-disclaimer {
+    margin: 12px 0 0 0;
+    font-size: 11px;
+    color: var(--humata-text-muted);
+    text-align: center;
+    opacity: 0.8;
+}
+
+/* Responsive Styles */
+@media (max-width: 768px) {
+    #humata-chat-header {
+        padding: 12px 16px;
+    }
+
+    #humata-chat-messages {
+        padding: 40px 16px 80px 16px;
+        gap: 24px;
+    }
+
+    .humata-message {
+        gap: 12px;
+    }
+
+    .humata-message-avatar {
+        width: 28px;
+        height: 28px;
+    }
+
+    .humata-message-avatar svg {
+        width: 16px;
+        height: 16px;
+    }
+
+    .humata-message-content {
+        font-size: 15px;
+    }
+
+    #humata-chat-input-container {
+        padding: 0 16px 16px 16px;
+    }
+
+    .humata-input-wrapper {
+        padding: 10px 14px;
+    }
+
+    #humata-chat-input {
+        font-size: 16px; /* Prevent zoom on iOS */
+    }
+}
+
+/* Accessibility */
+@media (prefers-reduced-motion: reduce) {
+    .humata-message,
+    .humata-typing-indicator span {
+        animation: none;
+    }
+
+    .humata-loading-status-text {
+        transition: none;
+    }
+
+    #humata-send-button:hover:not(:disabled) {
+        transform: none;
+    }
+}
+
+/* Focus Visible */
+#humata-theme-toggle:focus-visible,
+#humata-clear-chat:focus-visible,
+#humata-send-button:focus-visible,
+#humata-scroll-toggle:focus-visible,
+.humata-copy-button:focus-visible,
+.humata-regenerate-button:focus-visible,
+.humata-edit-button:focus-visible,
+.humata-edit-cancel:focus-visible,
+.humata-edit-save:focus-visible,
+.humata-edit-textarea:focus-visible {
+    outline: 2px solid var(--humata-accent-color);
+    outline-offset: 2px;
+}
+
+#humata-chat-input:focus-visible {
+    outline: none;
+}
+
+/* Print Styles */
+@media print {
+    #humata-chat-header,
+    #humata-chat-input-container {
+        display: none;
+    }
+
+     .humata-copy-button {
+         display: none;
+     }
+
+     .humata-regenerate-button {
+         display: none;
+     }
+
+     .humata-edit-button,
+     .humata-edit-actions {
+         display: none;
+     }
+
+    #humata-chat-messages {
+        overflow: visible;
+        height: auto;
+    }
+}

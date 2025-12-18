@@ -1,0 +1,157 @@
+<?php
+/**
+ * Plugin Name: Humata Chatbot
+ * Plugin URI: https://alynt.com
+ * Description: AI-powered chat interface that connects to your Humata knowledge base
+ * Version: 1.0.0
+ * Author: Alynt
+ * Author URI: https://alynt.com
+ * Text Domain: humata-chatbot
+ * Domain Path: /languages
+ * License: GPL v2 or later
+ * License URI: https://www.gnu.org/licenses/gpl-2.0.html
+ *
+ * @package Humata_Chatbot
+ */
+
+defined( 'ABSPATH' ) || exit;
+
+// Plugin constants
+define( 'HUMATA_CHATBOT_VERSION', '1.0.0' );
+define( 'HUMATA_CHATBOT_PATH', plugin_dir_path( __FILE__ ) );
+define( 'HUMATA_CHATBOT_URL', plugin_dir_url( __FILE__ ) );
+define( 'HUMATA_CHATBOT_BASENAME', plugin_basename( __FILE__ ) );
+
+// Autoload classes
+require_once HUMATA_CHATBOT_PATH . 'includes/class-admin-settings.php';
+require_once HUMATA_CHATBOT_PATH . 'includes/class-rest-api.php';
+require_once HUMATA_CHATBOT_PATH . 'includes/class-template-loader.php';
+
+/**
+ * Initialize the plugin.
+ *
+ * @since 1.0.0
+ * @return void
+ */
+function humata_chatbot_init() {
+    // Load text domain for translations
+    load_plugin_textdomain( 'humata-chatbot', false, dirname( HUMATA_CHATBOT_BASENAME ) . '/languages' );
+
+    // Initialize plugin classes
+    new Humata_Chatbot_Admin_Settings();
+    new Humata_Chatbot_REST_API();
+    new Humata_Chatbot_Template_Loader();
+}
+add_action( 'plugins_loaded', 'humata_chatbot_init' );
+
+/**
+ * Plugin activation hook.
+ *
+ * @since 1.0.0
+ * @return void
+ */
+function humata_chatbot_activate() {
+    // Set default options
+    add_option( 'humata_api_key', '' );
+    add_option( 'humata_document_ids', '' );
+    add_option( 'humata_chat_location', 'dedicated' );
+    add_option( 'humata_chat_page_slug', 'chat' );
+    add_option( 'humata_chat_theme', 'auto' );
+    add_option( 'humata_rate_limit', 50 );
+    add_option( 'humata_second_llm_provider', 'none' );
+    add_option( 'humata_straico_review_enabled', 0 );
+    add_option( 'humata_straico_api_key', '' );
+    add_option( 'humata_straico_model', '' );
+    add_option( 'humata_straico_system_prompt', '' );
+    add_option( 'humata_anthropic_api_key', '' );
+    add_option( 'humata_anthropic_model', 'claude-3-5-sonnet-20241022' );
+    add_option( 'humata_anthropic_extended_thinking', 0 );
+
+    // Add rewrite rules for dedicated page
+    humata_chatbot_add_rewrite_rules();
+    flush_rewrite_rules();
+}
+register_activation_hook( __FILE__, 'humata_chatbot_activate' );
+
+/**
+ * Plugin deactivation hook.
+ *
+ * @since 1.0.0
+ * @return void
+ */
+function humata_chatbot_deactivate() {
+    flush_rewrite_rules();
+}
+register_deactivation_hook( __FILE__, 'humata_chatbot_deactivate' );
+
+/**
+ * Add rewrite rules for the dedicated chat page.
+ *
+ * @since 1.0.0
+ * @return void
+ */
+function humata_chatbot_add_rewrite_rules() {
+    $slug = get_option( 'humata_chat_page_slug', 'chat' );
+    add_rewrite_rule(
+        '^' . preg_quote( $slug, '/' ) . '/?$',
+        'index.php?humata_chat_page=1',
+        'top'
+    );
+}
+add_action( 'init', 'humata_chatbot_add_rewrite_rules' );
+
+/**
+ * Register query vars.
+ *
+ * @since 1.0.0
+ * @param array $vars Existing query vars.
+ * @return array Modified query vars.
+ */
+function humata_chatbot_query_vars( $vars ) {
+    $vars[] = 'humata_chat_page';
+    return $vars;
+}
+add_filter( 'query_vars', 'humata_chatbot_query_vars' );
+
+/**
+ * Display admin notice if API credentials are missing.
+ *
+ * @since 1.0.0
+ * @return void
+ */
+function humata_chatbot_admin_notices() {
+    $api_key      = get_option( 'humata_api_key', '' );
+    $document_ids = get_option( 'humata_document_ids', '' );
+
+    if ( empty( $api_key ) || empty( $document_ids ) ) {
+        $settings_url = admin_url( 'options-general.php?page=humata-chatbot' );
+        ?>
+        <div class="notice notice-warning is-dismissible">
+            <p>
+                <?php
+                printf(
+                    /* translators: %s: Settings page URL */
+                    esc_html__( 'Humata Chatbot requires API credentials. Please configure them in the %s.', 'humata-chatbot' ),
+                    '<a href="' . esc_url( $settings_url ) . '">' . esc_html__( 'settings page', 'humata-chatbot' ) . '</a>'
+                );
+                ?>
+            </p>
+        </div>
+        <?php
+    }
+}
+add_action( 'admin_notices', 'humata_chatbot_admin_notices' );
+
+/**
+ * Add settings link to plugin action links.
+ *
+ * @since 1.0.0
+ * @param array $links Existing plugin action links.
+ * @return array Modified plugin action links.
+ */
+function humata_chatbot_plugin_action_links( $links ) {
+    $settings_link = '<a href="' . esc_url( admin_url( 'options-general.php?page=humata-chatbot' ) ) . '">' . esc_html__( 'Settings', 'humata-chatbot' ) . '</a>';
+    array_unshift( $links, $settings_link );
+    return $links;
+}
+add_filter( 'plugin_action_links_' . HUMATA_CHATBOT_BASENAME, 'humata_chatbot_plugin_action_links' );
