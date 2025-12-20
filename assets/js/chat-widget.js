@@ -901,6 +901,229 @@
         return escapeHtml(decoded);
     }
 
+    let humataPreparedAutoLinks = null;
+
+    function humataIsWordChar(ch) {
+        return !!ch && /[A-Za-z0-9]/.test(ch);
+    }
+
+    function getPreparedAutoLinks() {
+        if (humataPreparedAutoLinks !== null) {
+            return humataPreparedAutoLinks;
+        }
+
+        const raw = Array.isArray(config.autoLinks) ? config.autoLinks : [];
+        const prepared = [];
+
+        for (let i = 0; i < raw.length; i++) {
+            const row = raw[i];
+            if (!row || typeof row !== 'object') {
+                continue;
+            }
+
+            const phrase = String(row.phrase || '').trim();
+            const url = String(row.url || '').trim();
+            if (!phrase || !url) {
+                continue;
+            }
+
+            const safeHrefEscaped = sanitizeLinkHref(url);
+            if (!safeHrefEscaped) {
+                continue;
+            }
+
+            prepared.push({
+                phrase: phrase,
+                phraseLower: phrase.toLowerCase(),
+                href: decodeHtmlEntities(safeHrefEscaped),
+                len: phrase.length,
+                startsWord: humataIsWordChar(phrase.charAt(0)),
+                endsWord: humataIsWordChar(phrase.charAt(phrase.length - 1))
+            });
+
+            if (prepared.length >= 200) {
+                break;
+            }
+        }
+
+        prepared.sort(function(a, b) {
+            return b.len - a.len;
+        });
+
+        humataPreparedAutoLinks = prepared;
+        return humataPreparedAutoLinks;
+    }
+
+    function humataFindAutoLinkMatches(text, rules) {
+        if (!text) {
+            return [];
+        }
+
+        const haystack = String(text);
+        const lower = haystack.toLowerCase();
+        const matches = [];
+
+        function overlaps(start, end) {
+            for (let i = 0; i < matches.length; i++) {
+                const m = matches[i];
+                if (start < m.end && m.start < end) {
+                    return true;
+                }
+            }
+            return false;
+        }
+
+        for (let r = 0; r < rules.length; r++) {
+            const rule = rules[r];
+            if (!rule || !rule.phraseLower) {
+                continue;
+            }
+
+            let idx = 0;
+            while (true) {
+                idx = lower.indexOf(rule.phraseLower, idx);
+                if (idx === -1) {
+                    break;
+                }
+
+                const start = idx;
+                const end = idx + rule.phraseLower.length;
+
+                // Boundary checks: avoid matching inside other words (e.g., "Liver" inside "Deliver").
+                if (rule.startsWord) {
+                    const before = start > 0 ? haystack.charAt(start - 1) : '';
+                    if (before && humataIsWordChar(before)) {
+                        idx = idx + 1;
+                        continue;
+                    }
+                }
+                if (rule.endsWord) {
+                    const after = end < haystack.length ? haystack.charAt(end) : '';
+                    if (after && humataIsWordChar(after)) {
+                        idx = idx + 1;
+                        continue;
+                    }
+                }
+
+                if (!overlaps(start, end)) {
+                    matches.push({
+                        start: start,
+                        end: end,
+                        href: rule.href
+                    });
+                }
+
+                idx = end;
+            }
+        }
+
+        return matches;
+    }
+
+    function humataApplyAutoLinksToInlineHtml(html) {
+        if (!html) {
+            return html;
+        }
+
+        const rules = getPreparedAutoLinks();
+        if (!rules || !rules.length) {
+            return html;
+        }
+
+        if (typeof document === 'undefined' || !document.createElement || !document.createTreeWalker || typeof NodeFilter === 'undefined') {
+            return html;
+        }
+
+        const container = document.createElement('div');
+        try {
+            container.innerHTML = String(html);
+        } catch (e) {
+            return html;
+        }
+
+        let walker;
+        try {
+            walker = document.createTreeWalker(container, NodeFilter.SHOW_TEXT, {
+                acceptNode: function(node) {
+                    const value = node && node.nodeValue ? String(node.nodeValue) : '';
+                    if (!value || !value.trim()) {
+                        return NodeFilter.FILTER_REJECT;
+                    }
+
+                    // Skip text inside existing links (avoid nested anchors) and code/pre blocks.
+                    let p = node.parentNode;
+                    while (p && p !== container) {
+                        const name = p.nodeName;
+                        if (name === 'A' || name === 'CODE' || name === 'PRE') {
+                            return NodeFilter.FILTER_REJECT;
+                        }
+                        p = p.parentNode;
+                    }
+
+                    return NodeFilter.FILTER_ACCEPT;
+                }
+            });
+        } catch (e) {
+            return html;
+        }
+
+        const nodes = [];
+        let node;
+        while ((node = walker.nextNode())) {
+            nodes.push(node);
+        }
+
+        for (let i = 0; i < nodes.length; i++) {
+            const textNode = nodes[i];
+            const text = textNode && textNode.nodeValue ? String(textNode.nodeValue) : '';
+            if (!text) {
+                continue;
+            }
+
+            const matches = humataFindAutoLinkMatches(text, rules);
+            if (!matches.length) {
+                continue;
+            }
+
+            matches.sort(function(a, b) {
+                return a.start - b.start;
+            });
+
+            const frag = document.createDocumentFragment();
+            let lastIndex = 0;
+
+            for (let m = 0; m < matches.length; m++) {
+                const match = matches[m];
+                if (!match || match.start < lastIndex) {
+                    continue;
+                }
+
+                if (match.start > lastIndex) {
+                    frag.appendChild(document.createTextNode(text.slice(lastIndex, match.start)));
+                }
+
+                const a = document.createElement('a');
+                a.setAttribute('href', match.href);
+                a.setAttribute('target', '_blank');
+                a.setAttribute('rel', 'noopener noreferrer');
+                a.textContent = text.slice(match.start, match.end);
+                frag.appendChild(a);
+
+                lastIndex = match.end;
+            }
+
+            if (lastIndex < text.length) {
+                frag.appendChild(document.createTextNode(text.slice(lastIndex)));
+            }
+
+            if (textNode.parentNode) {
+                textNode.parentNode.replaceChild(frag, textNode);
+            }
+        }
+
+        return container.innerHTML;
+    }
+
     function isBlankLine(line) {
         return !line || /^\s*$/.test(line);
     }
@@ -976,6 +1199,9 @@
 
         // Italic: *text* (avoid consuming **bold**)
         out = out.replace(/(^|[^*])\*([^*\n]+)\*(?!\*)/g, '$1<em>$2</em>');
+
+        // Auto-link configured phrases while avoiding existing anchors and code tokens.
+        out = humataApplyAutoLinksToInlineHtml(out);
 
         // Restore code spans.
         out = out.replace(/%%HUMATA_CODESPAN_(\d+)%%/g, function(match, idx) {

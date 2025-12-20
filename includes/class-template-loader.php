@@ -164,6 +164,7 @@ class Humata_Chatbot_Template_Loader {
                 'nonce'    => wp_create_nonce( 'humata_chat' ),
                 'wpNonce'  => wp_create_nonce( 'wp_rest' ),
                 'theme'    => get_option( 'humata_chat_theme', 'auto' ),
+                'autoLinks' => $this->get_auto_links_for_frontend(),
                 'maxPromptChars' => $max_prompt_chars,
                 'secondLlmProvider' => $second_llm_provider,
                 'i18n'     => array(
@@ -185,6 +186,44 @@ class Humata_Chatbot_Template_Loader {
                 ),
             )
         );
+    }
+
+    /**
+     * Get auto-link rules for frontend consumption.
+     *
+     * @since 1.0.0
+     * @return array
+     */
+    private function get_auto_links_for_frontend() {
+        $value = get_option( 'humata_auto_links', array() );
+        if ( ! is_array( $value ) ) {
+            $value = array();
+        }
+
+        $rules = array();
+        foreach ( $value as $row ) {
+            if ( ! is_array( $row ) ) {
+                continue;
+            }
+
+            $phrase = isset( $row['phrase'] ) ? trim( (string) $row['phrase'] ) : '';
+            $url    = isset( $row['url'] ) ? trim( (string) $row['url'] ) : '';
+
+            if ( '' === $phrase || '' === $url ) {
+                continue;
+            }
+
+            $rules[] = array(
+                'phrase' => sanitize_text_field( $phrase ),
+                'url'    => esc_url_raw( $url ),
+            );
+
+            if ( count( $rules ) >= 200 ) {
+                break;
+            }
+        }
+
+        return array_values( $rules );
     }
 
     /**

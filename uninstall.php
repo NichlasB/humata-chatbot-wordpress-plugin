@@ -35,6 +35,7 @@ delete_option( 'humata_anthropic_api_key' );
 delete_option( 'humata_anthropic_model' );
 delete_option( 'humata_anthropic_extended_thinking' );
 delete_option( 'humata_floating_help' );
+delete_option( 'humata_auto_links' );
 
 // Delete rate limit and conversation transients
 global $wpdb;

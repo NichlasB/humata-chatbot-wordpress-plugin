@@ -10,6 +10,17 @@
 
 defined( 'ABSPATH' ) || exit;
 
+// Admin settings tabs (WooCommerce-style navigation).
+require_once __DIR__ . '/admin-tabs/class-humata-settings-tabs.php';
+require_once __DIR__ . '/admin-tabs/tabs/class-tab-base.php';
+require_once __DIR__ . '/admin-tabs/tabs/class-tab-general.php';
+require_once __DIR__ . '/admin-tabs/tabs/class-tab-providers.php';
+require_once __DIR__ . '/admin-tabs/tabs/class-tab-display.php';
+require_once __DIR__ . '/admin-tabs/tabs/class-tab-security.php';
+require_once __DIR__ . '/admin-tabs/tabs/class-tab-floating-help.php';
+require_once __DIR__ . '/admin-tabs/tabs/class-tab-auto-links.php';
+require_once __DIR__ . '/admin-tabs/tabs/class-tab-usage.php';
+
 /**
  * Class Humata_Chatbot_Admin_Settings
  *
@@ -25,6 +36,22 @@ class Humata_Chatbot_Admin_Settings {
     const HUMATA_API_BASE = 'https://app.humata.ai/api/v1';
 
     /**
+     * Settings tabs controller.
+     *
+     * @since 1.0.0
+     * @var Humata_Chatbot_Settings_Tabs|null
+     */
+    private $tabs_controller = null;
+
+    /**
+     * Tab module instances keyed by tab key.
+     *
+     * @since 1.0.0
+     * @var array|null
+     */
+    private $tab_modules = null;
+
+    /**
      * Constructor.
      *
      * @since 1.0.0
@@ -33,6 +60,13 @@ class Humata_Chatbot_Admin_Settings {
         add_action( 'admin_menu', array( $this, 'add_settings_page' ) );
         add_action( 'admin_init', array( $this, 'register_settings' ) );
         add_action( 'admin_enqueue_scripts', array( $this, 'enqueue_admin_assets' ) );
+        add_filter( 'wp_redirect', array( $this, 'preserve_tab_on_settings_redirect' ), 10, 2 );
+        // Ensure tabbed settings only update options for the active tab (prevents other tabs being wiped).
+        add_filter( 'allowed_options', array( $this, 'filter_allowed_options_for_active_tab' ) );
+        // Back-compat for older WP versions that still use the legacy filter name.
+        add_filter( 'whitelist_options', array( $this, 'filter_allowed_options_for_active_tab' ) );
+        // Hard-stop guard: even if WordPress attempts to update all options in the group, prevent cross-tab wipes.
+        add_filter( 'pre_update_option', array( $this, 'prevent_cross_tab_option_wipe' ), 9999, 3 );
         add_action( 'wp_ajax_humata_test_api', array( $this, 'ajax_test_api' ) );
         add_action( 'wp_ajax_humata_test_ask', array( $this, 'ajax_test_ask' ) );
         add_action( 'wp_ajax_humata_fetch_titles', array( $this, 'ajax_fetch_titles' ) );
@@ -260,8 +294,14 @@ class Humata_Chatbot_Admin_Settings {
                 }
 
                 function humataInitTokensFromHidden() {
-                    var ids = humataExtractIds($("#humata_document_ids").val());
-                    $("#humata-document-ids-tokens").empty();
+                    var $hidden = $("#humata_document_ids");
+                    var $tokens = $("#humata-document-ids-tokens");
+                    if (!$hidden.length || !$tokens.length) {
+                        return;
+                    }
+
+                    var ids = humataExtractIds($hidden.val());
+                    $tokens.empty();
                     $.each(ids, function(_, id) {
                         humataAddToken(id);
                     });
@@ -959,6 +999,25 @@ class Humata_Chatbot_Admin_Settings {
                         "</tr>";
                 }
 
+                function humataBuildAutoLinkRow(idx) {
+                    return "" +
+                        "<tr class=\\"humata-repeater-row\\">" +
+                            "<td class=\\"humata-repeater-handle-cell\\">" +
+                                "<span class=\\"dashicons dashicons-move humata-repeater-handle\\" aria-hidden=\\"true\\"></span>" +
+                                "<span class=\\"screen-reader-text\\">Drag to reorder</span>" +
+                            "</td>" +
+                            "<td style=\\"width: 38%\\">" +
+                                "<input type=\\"text\\" class=\\"regular-text\\" name=\\"humata_auto_links[" + idx + "][phrase]\\" value=\\"\\" placeholder=\\"Phrase (exact match)\\">" +
+                            "</td>" +
+                            "<td>" +
+                                "<input type=\\"url\\" class=\\"regular-text\\" name=\\"humata_auto_links[" + idx + "][url]\\" value=\\"\\" placeholder=\\"https://example.com/\\">" +
+                            "</td>" +
+                            "<td style=\\"width: 90px\\">" +
+                                "<button type=\\"button\\" class=\\"button link-delete humata-repeater-remove\\">Remove</button>" +
+                            "</td>" +
+                        "</tr>";
+                }
+
                 function humataBuildFaqRow(idx) {
                     return "" +
                         "<tr class=\\"humata-repeater-row\\">" +
@@ -1007,6 +1066,8 @@ class Humata_Chatbot_Admin_Settings {
                     var html = "";
                     if (type === "external_links") {
                         html = humataBuildExternalLinkRow(nextIdx);
+                    } else if (type === "auto_links") {
+                        html = humataBuildAutoLinkRow(nextIdx);
                     } else if (type === "faq_items") {
                         html = humataBuildFaqRow(nextIdx);
                     }
@@ -1035,6 +1096,294 @@ class Humata_Chatbot_Admin_Settings {
                 });
             });
         ' );
+    }
+
+    /**
+     * Get settings tabs controller.
+     *
+     * @since 1.0.0
+     * @return Humata_Chatbot_Settings_Tabs
+     */
+    private function get_tabs_controller() {
+        if ( null === $this->tabs_controller ) {
+            $this->tabs_controller = new Humata_Chatbot_Settings_Tabs();
+        }
+
+        return $this->tabs_controller;
+    }
+
+    /**
+     * Get tab module instances keyed by tab key.
+     *
+     * @since 1.0.0
+     * @return array
+     */
+    private function get_tab_modules() {
+        if ( null !== $this->tab_modules ) {
+            return $this->tab_modules;
+        }
+
+        $this->tab_modules = array(
+            'general'       => new Humata_Chatbot_Settings_Tab_General( $this ),
+            'providers'     => new Humata_Chatbot_Settings_Tab_Providers( $this ),
+            'display'       => new Humata_Chatbot_Settings_Tab_Display( $this ),
+            'security'      => new Humata_Chatbot_Settings_Tab_Security( $this ),
+            'floating_help' => new Humata_Chatbot_Settings_Tab_Floating_Help( $this ),
+            'auto_links'    => new Humata_Chatbot_Settings_Tab_Auto_Links( $this ),
+            'usage'         => new Humata_Chatbot_Settings_Tab_Usage( $this ),
+        );
+
+        return $this->tab_modules;
+    }
+
+    /**
+     * Preserve the active settings tab on Settings API redirects.
+     *
+     * WordPress redirects back to the settings page after saving via `options.php`.
+     * We ensure `tab=` is preserved even if the referer is stripped/modified.
+     *
+     * @since 1.0.0
+     * @param string $location Redirect location.
+     * @param int    $status   HTTP status code.
+     * @return string
+     */
+    public function preserve_tab_on_settings_redirect( $location, $status ) {
+        if ( ! is_admin() ) {
+            return $location;
+        }
+
+        if ( empty( $_POST['option_page'] ) ) {
+            return $location;
+        }
+
+        $option_page = sanitize_key( (string) wp_unslash( $_POST['option_page'] ) );
+        if ( 'humata_chatbot_settings' !== $option_page ) {
+            return $location;
+        }
+
+        if ( empty( $_POST['humata_active_tab'] ) ) {
+            return $location;
+        }
+
+        $tab = sanitize_key( (string) wp_unslash( $_POST['humata_active_tab'] ) );
+        if ( '' === $tab ) {
+            return $location;
+        }
+
+        $location_str = (string) $location;
+        if ( false === strpos( $location_str, 'options-general.php' ) || false === strpos( $location_str, 'page=humata-chatbot' ) ) {
+            return $location;
+        }
+
+        $tabs = $this->get_tabs_controller();
+        if ( ! $tabs->is_valid_tab( $tab ) ) {
+            $tab = $tabs->get_default_tab();
+        }
+
+        if ( '' === $tab ) {
+            return $location;
+        }
+
+        return add_query_arg( 'tab', $tab, $location_str );
+    }
+
+    /**
+     * Filter which options are updated on submit when using tabbed Settings API forms.
+     *
+     * WordPress updates every option registered to a given Settings API group when posting to `options.php`.
+     * Since this plugin uses tabs (each tab shows only a subset of fields), we must restrict updates to
+     * the options that belong to the submitted tab. Otherwise, fields not present in the form can be
+     * saved as empty, wiping settings from other tabs.
+     *
+     * @since 1.0.0
+     * @param array $allowed_options Map of option_page => option names.
+     * @return array
+     */
+    public function filter_allowed_options_for_active_tab( $allowed_options ) {
+        if ( ! is_admin() || ! is_array( $allowed_options ) ) {
+            return $allowed_options;
+        }
+
+        if ( empty( $_POST['option_page'] ) ) {
+            return $allowed_options;
+        }
+
+        $option_page = sanitize_key( (string) wp_unslash( $_POST['option_page'] ) );
+        if ( 'humata_chatbot_settings' !== $option_page ) {
+            return $allowed_options;
+        }
+
+        if ( empty( $_POST['humata_active_tab'] ) ) {
+            return $allowed_options;
+        }
+
+        $tab = sanitize_key( (string) wp_unslash( $_POST['humata_active_tab'] ) );
+        if ( '' === $tab ) {
+            return $allowed_options;
+        }
+
+        $tab_to_options = array(
+            'general'       => array(
+                'humata_api_key',
+                'humata_document_ids',
+                'humata_system_prompt',
+            ),
+            'providers'     => array(
+                'humata_second_llm_provider',
+                'humata_straico_api_key',
+                'humata_straico_model',
+                'humata_anthropic_api_key',
+                'humata_anthropic_model',
+                'humata_anthropic_extended_thinking',
+                'humata_straico_system_prompt',
+            ),
+            'display'       => array(
+                'humata_chat_location',
+                'humata_chat_page_slug',
+                'humata_chat_theme',
+                'humata_medical_disclaimer_text',
+                'humata_footer_copyright_text',
+            ),
+            'security'      => array(
+                'humata_max_prompt_chars',
+                'humata_rate_limit',
+            ),
+            'floating_help' => array(
+                'humata_floating_help',
+            ),
+            'auto_links'    => array(
+                'humata_auto_links',
+            ),
+        );
+
+        if ( isset( $tab_to_options[ $tab ] ) && is_array( $tab_to_options[ $tab ] ) ) {
+            $allowed_options['humata_chatbot_settings'] = $tab_to_options[ $tab ];
+        }
+
+        return $allowed_options;
+    }
+
+    /**
+     * Prevent options from other tabs being wiped when saving a single tab.
+     *
+     * Some WordPress setups still end up calling update_option() for every option in a settings group,
+     * even when only one tab's fields are present in the submitted form. This guard preserves the old
+     * value for plugin options that do not belong to the active tab being saved.
+     *
+     * @since 1.0.0
+     * @param mixed  $value     The new, unsanitized option value.
+     * @param string $option    Option name.
+     * @param mixed  $old_value The old option value.
+     * @return mixed
+     */
+    public function prevent_cross_tab_option_wipe( $value, $option, $old_value ) {
+        if ( ! is_admin() ) {
+            return $value;
+        }
+
+        if ( empty( $_POST['option_page'] ) ) {
+            return $value;
+        }
+
+        $option_page = sanitize_key( (string) wp_unslash( $_POST['option_page'] ) );
+        if ( 'humata_chatbot_settings' !== $option_page ) {
+            return $value;
+        }
+
+        // Determine active tab: prefer explicit hidden field, fallback to referer querystring.
+        $tab = '';
+        if ( ! empty( $_POST['humata_active_tab'] ) ) {
+            $tab = sanitize_key( (string) wp_unslash( $_POST['humata_active_tab'] ) );
+        } elseif ( ! empty( $_POST['_wp_http_referer'] ) ) {
+            $ref = (string) wp_unslash( $_POST['_wp_http_referer'] );
+            $parts = wp_parse_url( $ref );
+            if ( is_array( $parts ) && ! empty( $parts['query'] ) ) {
+                $query_vars = array();
+                wp_parse_str( (string) $parts['query'], $query_vars );
+                if ( isset( $query_vars['tab'] ) ) {
+                    $tab = sanitize_key( (string) $query_vars['tab'] );
+                }
+            }
+        }
+
+        if ( '' === $tab ) {
+            return $value;
+        }
+
+        // Only apply to this plugin's option names.
+        $plugin_options = array(
+            'humata_api_key',
+            'humata_document_ids',
+            'humata_document_titles',
+            'humata_folder_id',
+            'humata_chat_location',
+            'humata_chat_page_slug',
+            'humata_chat_theme',
+            'humata_system_prompt',
+            'humata_rate_limit',
+            'humata_max_prompt_chars',
+            'humata_medical_disclaimer_text',
+            'humata_footer_copyright_text',
+            'humata_second_llm_provider',
+            'humata_straico_review_enabled',
+            'humata_straico_api_key',
+            'humata_straico_model',
+            'humata_straico_system_prompt',
+            'humata_anthropic_api_key',
+            'humata_anthropic_model',
+            'humata_anthropic_extended_thinking',
+            'humata_floating_help',
+            'humata_auto_links',
+        );
+
+        if ( ! in_array( (string) $option, $plugin_options, true ) ) {
+            return $value;
+        }
+
+        $tab_to_options = array(
+            'general'       => array(
+                'humata_api_key',
+                'humata_document_ids',
+                'humata_system_prompt',
+            ),
+            'providers'     => array(
+                'humata_second_llm_provider',
+                'humata_straico_api_key',
+                'humata_straico_model',
+                'humata_anthropic_api_key',
+                'humata_anthropic_model',
+                'humata_anthropic_extended_thinking',
+                'humata_straico_system_prompt',
+            ),
+            'display'       => array(
+                'humata_chat_location',
+                'humata_chat_page_slug',
+                'humata_chat_theme',
+                'humata_medical_disclaimer_text',
+                'humata_footer_copyright_text',
+            ),
+            'security'      => array(
+                'humata_max_prompt_chars',
+                'humata_rate_limit',
+            ),
+            'floating_help' => array(
+                'humata_floating_help',
+            ),
+            'auto_links'    => array(
+                'humata_auto_links',
+            ),
+        );
+
+        if ( ! isset( $tab_to_options[ $tab ] ) || ! is_array( $tab_to_options[ $tab ] ) ) {
+            return $value;
+        }
+
+        // If this option isn't part of the active tab, preserve it.
+        if ( ! in_array( (string) $option, $tab_to_options[ $tab ], true ) ) {
+            return $old_value;
+        }
+
+        return $value;
     }
 
     /**
@@ -1235,243 +1584,22 @@ class Humata_Chatbot_Admin_Settings {
             )
         );
 
-        // API Settings Section
-        add_settings_section(
-            'humata_api_section',
-            __( 'API Configuration', 'humata-chatbot' ),
-            array( $this, 'render_api_section' ),
-            'humata-chatbot'
+        register_setting(
+            'humata_chatbot_settings',
+            'humata_auto_links',
+            array(
+                'type'              => 'array',
+                'sanitize_callback' => array( $this, 'sanitize_auto_links' ),
+                'default'           => array(),
+            )
         );
 
-        add_settings_field(
-            'humata_api_key',
-            __( 'API Key', 'humata-chatbot' ),
-            array( $this, 'render_api_key_field' ),
-            'humata-chatbot',
-            'humata_api_section'
-        );
-
-        add_settings_field(
-            'humata_document_ids',
-            __( 'Document IDs', 'humata-chatbot' ),
-            array( $this, 'render_document_ids_field' ),
-            'humata-chatbot',
-            'humata_api_section'
-        );
-
-        add_settings_section(
-            'humata_prompt_section',
-            __( 'System Prompt', 'humata-chatbot' ),
-            array( $this, 'render_prompt_section' ),
-            'humata-chatbot'
-        );
-
-        add_settings_field(
-            'humata_system_prompt',
-            __( 'System Prompt', 'humata-chatbot' ),
-            array( $this, 'render_system_prompt_field' ),
-            'humata-chatbot',
-            'humata_prompt_section'
-        );
-
-        // Second LLM Processing Settings Section
-        add_settings_section(
-            'humata_straico_section',
-            __( 'Second LLM Processing', 'humata-chatbot' ),
-            array( $this, 'render_straico_section' ),
-            'humata-chatbot'
-        );
-
-        add_settings_field(
-            'humata_second_llm_provider',
-            __( 'Second-stage Provider', 'humata-chatbot' ),
-            array( $this, 'render_second_llm_provider_field' ),
-            'humata-chatbot',
-            'humata_straico_section'
-        );
-
-        add_settings_field(
-            'humata_straico_api_key',
-            __( 'Straico API Key', 'humata-chatbot' ),
-            array( $this, 'render_straico_api_key_field' ),
-            'humata-chatbot',
-            'humata_straico_section'
-        );
-
-        add_settings_field(
-            'humata_straico_model',
-            __( 'Straico Model', 'humata-chatbot' ),
-            array( $this, 'render_straico_model_field' ),
-            'humata-chatbot',
-            'humata_straico_section'
-        );
-
-        add_settings_field(
-            'humata_anthropic_api_key',
-            __( 'Anthropic API Key', 'humata-chatbot' ),
-            array( $this, 'render_anthropic_api_key_field' ),
-            'humata-chatbot',
-            'humata_straico_section'
-        );
-
-        add_settings_field(
-            'humata_anthropic_model',
-            __( 'Claude Model Selection', 'humata-chatbot' ),
-            array( $this, 'render_anthropic_model_field' ),
-            'humata-chatbot',
-            'humata_straico_section'
-        );
-
-        add_settings_field(
-            'humata_anthropic_extended_thinking',
-            __( 'Extended Thinking', 'humata-chatbot' ),
-            array( $this, 'render_anthropic_extended_thinking_field' ),
-            'humata-chatbot',
-            'humata_straico_section'
-        );
-
-        add_settings_field(
-            'humata_straico_system_prompt',
-            __( 'System Prompt', 'humata-chatbot' ),
-            array( $this, 'render_straico_system_prompt_field' ),
-            'humata-chatbot',
-            'humata_straico_section'
-        );
-
-        // Display Settings Section
-        add_settings_section(
-            'humata_display_section',
-            __( 'Display Settings', 'humata-chatbot' ),
-            array( $this, 'render_display_section' ),
-            'humata-chatbot'
-        );
-
-        add_settings_field(
-            'humata_chat_location',
-            __( 'Display Location', 'humata-chatbot' ),
-            array( $this, 'render_location_field' ),
-            'humata-chatbot',
-            'humata_display_section'
-        );
-
-        add_settings_field(
-            'humata_chat_theme',
-            __( 'Interface Theme', 'humata-chatbot' ),
-            array( $this, 'render_theme_field' ),
-            'humata-chatbot',
-            'humata_display_section'
-        );
-
-        // Security Settings Section
-        add_settings_section(
-            'humata_security_section',
-            __( 'Security Settings', 'humata-chatbot' ),
-            array( $this, 'render_security_section' ),
-            'humata-chatbot'
-        );
-
-        add_settings_field(
-            'humata_max_prompt_chars',
-            __( 'Max Prompt Characters', 'humata-chatbot' ),
-            array( $this, 'render_max_prompt_chars_field' ),
-            'humata-chatbot',
-            'humata_security_section'
-        );
-
-        add_settings_field(
-            'humata_rate_limit',
-            __( 'Rate Limit', 'humata-chatbot' ),
-            array( $this, 'render_rate_limit_field' ),
-            'humata-chatbot',
-            'humata_security_section'
-        );
-
-        add_settings_section(
-            'humata_disclaimer_section',
-            __( 'Disclaimers', 'humata-chatbot' ),
-            array( $this, 'render_disclaimer_section' ),
-            'humata-chatbot'
-        );
-
-        add_settings_field(
-            'humata_medical_disclaimer_text',
-            __( 'Medical Disclaimer', 'humata-chatbot' ),
-            array( $this, 'render_medical_disclaimer_text_field' ),
-            'humata-chatbot',
-            'humata_disclaimer_section'
-        );
-
-        add_settings_field(
-            'humata_footer_copyright_text',
-            __( 'Footer Copyright Text', 'humata-chatbot' ),
-            array( $this, 'render_footer_copyright_text_field' ),
-            'humata-chatbot',
-            'humata_disclaimer_section'
-        );
-
-        // Floating Help Menu Section
-        add_settings_section(
-            'humata_floating_help_section',
-            __( 'Floating Help Menu', 'humata-chatbot' ),
-            array( $this, 'render_floating_help_section' ),
-            'humata-chatbot'
-        );
-
-        add_settings_field(
-            'humata_floating_help_enabled',
-            __( 'Enable', 'humata-chatbot' ),
-            array( $this, 'render_floating_help_enabled_field' ),
-            'humata-chatbot',
-            'humata_floating_help_section'
-        );
-
-        add_settings_field(
-            'humata_floating_help_external_links',
-            __( 'External Links', 'humata-chatbot' ),
-            array( $this, 'render_floating_help_external_links_field' ),
-            'humata-chatbot',
-            'humata_floating_help_section'
-        );
-
-        add_settings_field(
-            'humata_floating_help_modals',
-            __( 'Modal Triggers', 'humata-chatbot' ),
-            array( $this, 'render_floating_help_modals_field' ),
-            'humata-chatbot',
-            'humata_floating_help_section'
-        );
-
-        add_settings_field(
-            'humata_floating_help_social',
-            __( 'Social Links', 'humata-chatbot' ),
-            array( $this, 'render_floating_help_social_field' ),
-            'humata-chatbot',
-            'humata_floating_help_section'
-        );
-
-        add_settings_field(
-            'humata_floating_help_footer_text',
-            __( 'Footer Text', 'humata-chatbot' ),
-            array( $this, 'render_floating_help_footer_text_field' ),
-            'humata-chatbot',
-            'humata_floating_help_section'
-        );
-
-        add_settings_field(
-            'humata_floating_help_faq_items',
-            __( 'FAQ Items', 'humata-chatbot' ),
-            array( $this, 'render_floating_help_faq_items_field' ),
-            'humata-chatbot',
-            'humata_floating_help_section'
-        );
-
-        add_settings_field(
-            'humata_floating_help_contact_html',
-            __( 'Contact Modal Content', 'humata-chatbot' ),
-            array( $this, 'render_floating_help_contact_html_field' ),
-            'humata-chatbot',
-            'humata_floating_help_section'
-        );
+        // Register per-tab sections/fields.
+        foreach ( $this->get_tab_modules() as $module ) {
+            if ( is_object( $module ) && method_exists( $module, 'register' ) ) {
+                $module->register();
+            }
+        }
     }
 
     /**
@@ -1752,6 +1880,150 @@ class Humata_Chatbot_Admin_Settings {
         $clean['contact_html'] = '' === $contact_html ? '' : wp_kses_post( $contact_html );
 
         return $clean;
+    }
+
+    /**
+     * Sanitize auto-link phrase→URL mappings.
+     *
+     * Stored as an ordered array of rows: [ [ 'phrase' => string, 'url' => string ], ... ].
+     *
+     * @since 1.0.0
+     * @param mixed $value
+     * @return array
+     */
+    public function sanitize_auto_links( $value ) {
+        if ( ! is_array( $value ) ) {
+            return array();
+        }
+
+        $rows = array();
+        foreach ( $value as $row ) {
+            if ( ! is_array( $row ) ) {
+                continue;
+            }
+
+            $phrase = isset( $row['phrase'] ) ? trim( sanitize_text_field( (string) $row['phrase'] ) ) : '';
+            $url    = isset( $row['url'] ) ? trim( esc_url_raw( (string) $row['url'] ) ) : '';
+
+            if ( '' === $phrase || '' === $url ) {
+                continue;
+            }
+
+            $rows[] = array(
+                'phrase' => $phrase,
+                'url'    => $url,
+            );
+
+            if ( count( $rows ) >= 200 ) {
+                break;
+            }
+        }
+
+        return array_values( $rows );
+    }
+
+    /**
+     * Get auto-link rules (phrase → URL), sanitized and normalized.
+     *
+     * @since 1.0.0
+     * @return array
+     */
+    private function get_auto_links_settings() {
+        $value = get_option( 'humata_auto_links', array() );
+        if ( ! is_array( $value ) ) {
+            $value = array();
+        }
+
+        // Reuse the sanitizer defensively to guarantee a stable shape.
+        return $this->sanitize_auto_links( $value );
+    }
+
+    /**
+     * Auto-Links section description.
+     *
+     * @since 1.0.0
+     * @return void
+     */
+    public function render_auto_links_section() {
+        echo '<p>' . esc_html__( 'Define phrase → URL rules. When a phrase appears in bot messages, it will be automatically linked.', 'humata-chatbot' ) . '</p>';
+    }
+
+    /**
+     * Render the auto-links repeater UI.
+     *
+     * @since 1.0.0
+     * @return void
+     */
+    public function render_auto_links_field() {
+        $rules = $this->get_auto_links_settings();
+
+        // Show at least one empty row for UX.
+        if ( empty( $rules ) ) {
+            $rules = array(
+                array( 'phrase' => '', 'url' => '' ),
+            );
+        }
+
+        $next_index = count( $rules );
+        ?>
+        <div class="humata-floating-help-repeater" data-humata-repeater="auto_links" data-next-index="<?php echo esc_attr( (string) $next_index ); ?>">
+            <p class="description" style="margin-top: 0;">
+                <?php esc_html_e( 'Drag and drop rows to reorder. Matching is case-insensitive and prefers longer phrases when rules overlap.', 'humata-chatbot' ); ?>
+            </p>
+            <table class="widefat striped" style="max-width: 900px;">
+                <thead>
+                    <tr>
+                        <th style="width: 36px;"><span class="screen-reader-text"><?php esc_html_e( 'Order', 'humata-chatbot' ); ?></span></th>
+                        <th><?php esc_html_e( 'Phrase', 'humata-chatbot' ); ?></th>
+                        <th><?php esc_html_e( 'URL (opens in a new tab)', 'humata-chatbot' ); ?></th>
+                        <th><?php esc_html_e( 'Actions', 'humata-chatbot' ); ?></th>
+                    </tr>
+                </thead>
+                <tbody>
+                    <?php foreach ( $rules as $i => $row ) : ?>
+                        <?php
+                        $row = is_array( $row ) ? $row : array();
+                        $phrase = isset( $row['phrase'] ) ? (string) $row['phrase'] : '';
+                        $url    = isset( $row['url'] ) ? (string) $row['url'] : '';
+                        ?>
+                        <tr class="humata-repeater-row">
+                            <td class="humata-repeater-handle-cell">
+                                <span class="dashicons dashicons-move humata-repeater-handle" aria-hidden="true"></span>
+                                <span class="screen-reader-text"><?php esc_html_e( 'Drag to reorder', 'humata-chatbot' ); ?></span>
+                            </td>
+                            <td style="width: 38%;">
+                                <input
+                                    type="text"
+                                    class="regular-text"
+                                    name="humata_auto_links[<?php echo esc_attr( (string) $i ); ?>][phrase]"
+                                    value="<?php echo esc_attr( $phrase ); ?>"
+                                    placeholder="<?php esc_attr_e( 'Phrase (exact match)', 'humata-chatbot' ); ?>"
+                                />
+                            </td>
+                            <td>
+                                <input
+                                    type="url"
+                                    class="regular-text"
+                                    name="humata_auto_links[<?php echo esc_attr( (string) $i ); ?>][url]"
+                                    value="<?php echo esc_attr( $url ); ?>"
+                                    placeholder="<?php esc_attr_e( 'https://example.com/', 'humata-chatbot' ); ?>"
+                                />
+                            </td>
+                            <td style="width: 90px;">
+                                <button type="button" class="button link-delete humata-repeater-remove"><?php esc_html_e( 'Remove', 'humata-chatbot' ); ?></button>
+                            </td>
+                        </tr>
+                    <?php endforeach; ?>
+                </tbody>
+            </table>
+            <p style="margin-top: 10px;">
+                <button type="button" class="button button-secondary humata-repeater-add"><?php esc_html_e( 'Add Rule', 'humata-chatbot' ); ?></button>
+            </p>
+            <p class="description">
+                <?php esc_html_e( 'Auto-links are applied to bot messages only. Existing Markdown links and code blocks/spans are not modified.', 'humata-chatbot' ); ?>
+            </p>
+        </div>
+        <?php
     }
 
     /**
@@ -2124,6 +2396,29 @@ class Humata_Chatbot_Admin_Settings {
     }
 
     /**
+     * Render the settings form for a given Settings API page ID.
+     *
+     * @since 1.0.0
+     * @param string $page_id    Settings API page ID used by `do_settings_sections()`.
+     * @param string $active_tab Active tab key.
+     * @return void
+     */
+    public function render_tab_form( $page_id, $active_tab ) {
+        $page_id    = sanitize_key( (string) $page_id );
+        $active_tab = sanitize_key( (string) $active_tab );
+        ?>
+        <form action="options.php" method="post">
+            <?php
+            settings_fields( 'humata_chatbot_settings' );
+            echo '<input type="hidden" name="humata_active_tab" value="' . esc_attr( $active_tab ) . '" />';
+            do_settings_sections( $page_id );
+            submit_button( __( 'Save Settings', 'humata-chatbot' ) );
+            ?>
+        </form>
+        <?php
+    }
+
+    /**
      * Render the settings page.
      *
      * @since 1.0.0
@@ -2139,49 +2434,25 @@ class Humata_Chatbot_Admin_Settings {
             // Flush rewrite rules when settings are updated
             flush_rewrite_rules();
         }
+
+        $tabs       = $this->get_tabs_controller();
+        $active_tab = $tabs->get_active_tab();
+        $modules    = $this->get_tab_modules();
+
+        if ( ! isset( $modules[ $active_tab ] ) ) {
+            $default    = $tabs->get_default_tab();
+            $active_tab = isset( $modules[ $default ] ) ? $default : $active_tab;
+        }
         ?>
         <div class="wrap humata-settings-wrap">
             <h1><?php echo esc_html( get_admin_page_title() ); ?></h1>
             <?php settings_errors( 'humata_chatbot_messages' ); ?>
-            <form action="options.php" method="post">
-                <?php
-                settings_fields( 'humata_chatbot_settings' );
-                do_settings_sections( 'humata-chatbot' );
-                submit_button( __( 'Save Settings', 'humata-chatbot' ) );
-                ?>
-            </form>
-
-            <hr>
-            <h2><?php esc_html_e( 'Usage Information', 'humata-chatbot' ); ?></h2>
-            <table class="form-table">
-                <tr>
-                    <th scope="row"><?php esc_html_e( 'Shortcode', 'humata-chatbot' ); ?></th>
-                    <td>
-                        <code>[humata_chat]</code>
-                        <p class="description">
-                            <?php esc_html_e( 'Use this shortcode to embed the chat interface on any page or post.', 'humata-chatbot' ); ?>
-                        </p>
-                    </td>
-                </tr>
-                <tr>
-                    <th scope="row"><?php esc_html_e( 'Chat Page URL', 'humata-chatbot' ); ?></th>
-                    <td>
-                        <?php
-                        $location = get_option( 'humata_chat_location', 'dedicated' );
-                        if ( 'dedicated' === $location ) {
-                            $slug = get_option( 'humata_chat_page_slug', 'chat' );
-                            $url  = home_url( '/' . $slug . '/' );
-                            echo '<a href="' . esc_url( $url ) . '" target="_blank">' . esc_html( $url ) . '</a>';
-                        } elseif ( 'homepage' === $location ) {
-                            echo '<a href="' . esc_url( home_url( '/' ) ) . '" target="_blank">' . esc_html( home_url( '/' ) ) . '</a>';
-                            echo '<p class="description">' . esc_html__( 'Chat is displayed on the homepage.', 'humata-chatbot' ) . '</p>';
-                        } else {
-                            echo '<em>' . esc_html__( 'Use the shortcode to display the chat.', 'humata-chatbot' ) . '</em>';
-                        }
-                        ?>
-                    </td>
-                </tr>
-            </table>
+            <?php $tabs->render_tabs_nav( $active_tab ); ?>
+            <?php
+            if ( isset( $modules[ $active_tab ] ) && is_object( $modules[ $active_tab ] ) && method_exists( $modules[ $active_tab ], 'render' ) ) {
+                $modules[ $active_tab ]->render();
+            }
+            ?>
         </div>
         <?php
     }
