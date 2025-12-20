@@ -67,6 +67,13 @@ function humata_chatbot_activate() {
     add_option( 'humata_anthropic_model', 'claude-3-5-sonnet-20241022' );
     add_option( 'humata_anthropic_extended_thinking', 0 );
 
+    // Floating help menu (disabled by default, with seeded FAQ + Contact content).
+    if ( class_exists( 'Humata_Chatbot_Admin_Settings' ) ) {
+        add_option( 'humata_floating_help', Humata_Chatbot_Admin_Settings::get_default_floating_help_option() );
+    } else {
+        add_option( 'humata_floating_help', array( 'enabled' => 0 ) );
+    }
+
     // Add rewrite rules for dedicated page
     humata_chatbot_add_rewrite_rules();
     flush_rewrite_rules();

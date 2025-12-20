@@ -24,6 +24,7 @@
     let conversationId = null;
     let activeEdit = null;
     let maxPromptChars = 3000;
+    let isEmbedded = false;
 
     /**
      * Initialize the chat widget.
@@ -37,6 +38,7 @@
             inputCounter: document.getElementById('humata-chat-input-counter'),
             sendButton: document.getElementById('humata-send-button'),
             scrollToggle: document.getElementById('humata-scroll-toggle'),
+            exportPdfButton: document.getElementById('humata-export-pdf'),
             clearButton: document.getElementById('humata-clear-chat'),
             themeToggle: document.getElementById('humata-theme-toggle'),
             welcomeMessage: document.getElementById('humata-welcome-message')
@@ -45,6 +47,9 @@
         if (!elements.container || !elements.messages || !elements.input) {
             return;
         }
+
+        // Detect embedded mode
+        isEmbedded = elements.container.classList.contains('humata-chat-embedded');
 
         maxPromptChars = getMaxPromptChars();
         if (elements.input && maxPromptChars > 0) {
@@ -154,15 +159,25 @@
             elements.scrollToggle.addEventListener('click', handleScrollToggle);
         }
 
-        // Messages scroll
-        if (elements.messages) {
+        // Scroll event for scroll toggle state
+        if (isEmbedded && elements.messages) {
             elements.messages.addEventListener('scroll', updateScrollToggleState, { passive: true });
+        } else {
+            window.addEventListener('scroll', updateScrollToggleState, { passive: true });
+        }
+
+        // Messages click handler
+        if (elements.messages) {
             elements.messages.addEventListener('click', handleMessagesClick);
         }
 
         // Clear button
         if (elements.clearButton) {
             elements.clearButton.addEventListener('click', handleClear);
+        }
+
+        if (elements.exportPdfButton) {
+            elements.exportPdfButton.addEventListener('click', handleExportPdf);
         }
 
         // Theme toggle
@@ -531,17 +546,25 @@
      * Update scroll toggle state based on current scroll position.
      */
     function updateScrollToggleState() {
-        if (!elements.messages || !elements.scrollToggle) {
+        if (!elements.scrollToggle) {
             return;
         }
 
-        const scrollHeight = elements.messages.scrollHeight;
-        const clientHeight = elements.messages.clientHeight;
-        const scrollTop = elements.messages.scrollTop;
+        let scrollHeight, clientHeight, scrollTop;
+
+        if (isEmbedded && elements.messages) {
+            scrollHeight = elements.messages.scrollHeight;
+            clientHeight = elements.messages.clientHeight;
+            scrollTop = elements.messages.scrollTop;
+        } else {
+            scrollHeight = document.documentElement.scrollHeight;
+            clientHeight = window.innerHeight;
+            scrollTop = window.scrollY || document.documentElement.scrollTop;
+        }
 
         const maxScrollable = scrollHeight - clientHeight;
 
-        if (maxScrollable <= 0) {
+        if (maxScrollable <= 50) {
             elements.scrollToggle.style.display = 'none';
             return;
         }
@@ -566,17 +589,25 @@
      * Handle scroll toggle click.
      */
     function handleScrollToggle() {
-        if (!elements.messages || !elements.scrollToggle) {
+        if (!elements.scrollToggle) {
             return;
         }
 
         const shouldScrollToTop = elements.scrollToggle.classList.contains('humata-scroll-toggle-top');
-        const targetTop = shouldScrollToTop ? 0 : elements.messages.scrollHeight;
 
-        elements.messages.scrollTo({
-            top: targetTop,
-            behavior: 'smooth'
-        });
+        if (isEmbedded && elements.messages) {
+            const targetTop = shouldScrollToTop ? 0 : elements.messages.scrollHeight;
+            elements.messages.scrollTo({
+                top: targetTop,
+                behavior: 'smooth'
+            });
+        } else {
+            const targetTop = shouldScrollToTop ? 0 : document.documentElement.scrollHeight;
+            window.scrollTo({
+                top: targetTop,
+                behavior: 'smooth'
+            });
+        }
     }
 
     /**
@@ -1119,6 +1150,22 @@
         return div.innerHTML;
     }
 
+    function getOrCreateMessageActionsContainer(contentEl) {
+        if (!contentEl) {
+            return null;
+        }
+
+        let actionsEl = contentEl.querySelector('.humata-message-actions');
+        if (actionsEl) {
+            return actionsEl;
+        }
+
+        actionsEl = document.createElement('div');
+        actionsEl.className = 'humata-message-actions';
+        contentEl.appendChild(actionsEl);
+        return actionsEl;
+    }
+
     function ensureCopyButton(contentEl) {
         if (!contentEl || contentEl.querySelector('.humata-copy-button')) {
             return;
@@ -1132,7 +1179,13 @@
         button.innerHTML = getCopyIconSvg();
         button.setAttribute('title', 'Copy');
         button.setAttribute('aria-label', 'Copy message');
-        contentEl.appendChild(button);
+
+        const actionsEl = getOrCreateMessageActionsContainer(contentEl);
+        if (!actionsEl) {
+            return;
+        }
+
+        actionsEl.appendChild(button);
     }
 
     function ensureRegenerateButton(contentEl) {
@@ -1148,7 +1201,13 @@
         button.innerHTML = getRegenerateIconSvg();
         button.setAttribute('title', config.i18n?.regenerate || 'Regenerate');
         button.setAttribute('aria-label', config.i18n?.regenerate || 'Regenerate');
-        contentEl.appendChild(button);
+
+        const actionsEl = getOrCreateMessageActionsContainer(contentEl);
+        if (!actionsEl) {
+            return;
+        }
+
+        actionsEl.appendChild(button);
     }
 
     function ensureEditButton(contentEl) {
@@ -1164,7 +1223,13 @@
         button.innerHTML = getEditIconSvg();
         button.setAttribute('title', config.i18n?.editMessage || 'Edit message');
         button.setAttribute('aria-label', config.i18n?.editMessage || 'Edit message');
-        contentEl.appendChild(button);
+
+        const actionsEl = getOrCreateMessageActionsContainer(contentEl);
+        if (!actionsEl) {
+            return;
+        }
+
+        actionsEl.appendChild(button);
     }
 
     function getMessagePlainText(contentEl) {
@@ -1186,6 +1251,9 @@
         cloned.querySelectorAll('.humata-edit-actions').forEach(function(el) {
             el.remove();
         });
+        cloned.querySelectorAll('.humata-message-actions').forEach(function(el) {
+            el.remove();
+        });
         return ((cloned.innerText || cloned.textContent || '') + '').trim();
     }
 
@@ -1201,6 +1269,9 @@
             btn.remove();
         });
         cloned.querySelectorAll('.humata-edit-actions').forEach(function(el) {
+            el.remove();
+        });
+        cloned.querySelectorAll('.humata-message-actions').forEach(function(el) {
             el.remove();
         });
         return cloned.innerHTML;
@@ -1616,10 +1687,15 @@
      * Scroll chat to bottom.
      */
     function scrollToBottom() {
-        if (elements.messages) {
+        if (isEmbedded && elements.messages) {
             elements.messages.scrollTop = elements.messages.scrollHeight;
-            updateScrollToggleState();
+        } else {
+            window.scrollTo({
+                top: document.documentElement.scrollHeight,
+                behavior: 'smooth'
+            });
         }
+        updateScrollToggleState();
     }
 
     /**
@@ -1681,6 +1757,160 @@
         } finally {
             isLoading = false;
             elements.input.focus();
+        }
+    }
+
+    function handleExportPdf() {
+        const exportButton = elements.exportPdfButton;
+        if (exportButton) {
+            exportButton.disabled = true;
+        }
+
+        try {
+            const jsPDF = (window.jspdf && window.jspdf.jsPDF) ? window.jspdf.jsPDF : (window.jsPDF || null);
+            if (!jsPDF) {
+                return;
+            }
+
+            const doc = new jsPDF({ unit: 'pt', format: 'a4' });
+
+            const pageWidth = doc.internal.pageSize.getWidth ? doc.internal.pageSize.getWidth() : doc.internal.pageSize.width;
+            const pageHeight = doc.internal.pageSize.getHeight ? doc.internal.pageSize.getHeight() : doc.internal.pageSize.height;
+
+            const marginX = 40;
+            const marginY = 40;
+            const maxWidth = pageWidth - (marginX * 2);
+            const lineHeight = 14;
+
+            let y = marginY;
+
+            const now = new Date();
+
+            function buildFilename() {
+                const yyyy = String(now.getFullYear());
+                const mm = String(now.getMonth() + 1).padStart(2, '0');
+                const dd = String(now.getDate()).padStart(2, '0');
+                let name = 'chat-export-' + yyyy + '-' + mm + '-' + dd;
+
+                if (conversationId) {
+                    const safeId = String(conversationId).replace(/[^\w-]+/g, '').slice(0, 40);
+                    if (safeId) {
+                        name += '-' + safeId;
+                    }
+                }
+
+                return name + '.pdf';
+            }
+
+            function normalizePdfText(text) {
+                return String(text || '')
+                    .replace(/\u00A0/g, ' ')
+                    .replace(/[\u200B\u200C\u200D\uFEFF]/g, '')
+                    .replace(/\u2022/g, '-')
+                    .replace(/[\u2018\u2019]/g, "'")
+                    .replace(/[\u201C\u201D]/g, '"')
+                    .replace(/[\u2013\u2014]/g, '-')
+                    .replace(/\u2026/g, '...')
+                    .replace(/\r\n?/g, '\n')
+                    .trim();
+            }
+
+            function docTextSafe(text, x, yPos) {
+                try {
+                    doc.text(text, x, yPos);
+                } catch (e) {
+                    doc.text(String(text || '').replace(/[^\x09\x0A\x0D\x20-\x7E]/g, '?'), x, yPos);
+                }
+            }
+
+            const titleEl = document.querySelector('.humata-chat-title');
+            const title = ((titleEl ? titleEl.textContent : '') || 'Chat Export').trim();
+
+            doc.setFont('helvetica', 'bold');
+            doc.setFontSize(16);
+            docTextSafe(title || 'Chat Export', marginX, y);
+            y += 22;
+
+            doc.setFont('helvetica', 'normal');
+            doc.setFontSize(10);
+            docTextSafe(now.toLocaleString(), marginX, y);
+            y += 24;
+
+            const messageEls = elements.messages ? elements.messages.querySelectorAll('.humata-message:not(#humata-welcome-message):not(.humata-message-loading)') : [];
+            const messages = [];
+
+            messageEls.forEach(function(el) {
+                const contentEl = el.querySelector('.humata-message-content');
+                if (!contentEl) {
+                    return;
+                }
+
+                const isUser = el.classList.contains('humata-message-user');
+                const isError = el.classList.contains('humata-message-error');
+
+                let text = '';
+                if (isUser) {
+                    text = getMessagePlainText(contentEl);
+                } else {
+                    const html = getMessageHtmlForStorage(contentEl);
+                    text = htmlFragmentToPlainText(html);
+                }
+
+                text = normalizePdfText(text);
+                if (!text) {
+                    return;
+                }
+
+                messages.push({
+                    role: isUser ? 'You' : 'Assistant',
+                    text: text,
+                    isError: isError
+                });
+            });
+
+            if (!messages.length) {
+                doc.setFont('helvetica', 'normal');
+                doc.setFontSize(12);
+                docTextSafe('No messages.', marginX, y);
+                doc.save(buildFilename());
+                return;
+            }
+
+            messages.forEach(function(msg) {
+                doc.setFont('helvetica', 'bold');
+                doc.setFontSize(12);
+
+                const label = msg.role + (msg.isError ? ' (error)' : '') + ':';
+                if (y + lineHeight > pageHeight - marginY) {
+                    doc.addPage();
+                    y = marginY;
+                }
+                docTextSafe(label, marginX, y);
+                y += lineHeight;
+
+                doc.setFont('helvetica', 'normal');
+                doc.setFontSize(11);
+
+                const lines = doc.splitTextToSize(msg.text, maxWidth);
+                for (let i = 0; i < lines.length; i++) {
+                    if (y + lineHeight > pageHeight - marginY) {
+                        doc.addPage();
+                        y = marginY;
+                    }
+                    docTextSafe(lines[i], marginX, y);
+                    y += lineHeight;
+                }
+
+                y += lineHeight;
+            });
+
+            doc.save(buildFilename());
+        } catch (e) {
+            console.error(e);
+        } finally {
+            if (exportButton) {
+                exportButton.disabled = false;
+            }
         }
     }
 

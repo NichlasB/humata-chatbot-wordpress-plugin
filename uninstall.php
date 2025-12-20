@@ -25,6 +25,7 @@ delete_option( 'humata_system_prompt' );
 delete_option( 'humata_rate_limit' );
 delete_option( 'humata_max_prompt_chars' );
 delete_option( 'humata_medical_disclaimer_text' );
+delete_option( 'humata_footer_copyright_text' );
 delete_option( 'humata_second_llm_provider' );
 delete_option( 'humata_straico_review_enabled' );
 delete_option( 'humata_straico_api_key' );
@@ -33,6 +34,7 @@ delete_option( 'humata_straico_system_prompt' );
 delete_option( 'humata_anthropic_api_key' );
 delete_option( 'humata_anthropic_model' );
 delete_option( 'humata_anthropic_extended_thinking' );
+delete_option( 'humata_floating_help' );
 
 // Delete rate limit and conversation transients
 global $wpdb;

@@ -68,6 +68,7 @@ class Humata_Chatbot_Admin_Settings {
         }
 
         wp_enqueue_script( 'jquery' );
+        wp_enqueue_script( 'jquery-ui-sortable' );
 
         $titles_for_js = get_option( 'humata_document_titles', array() );
         if ( ! is_array( $titles_for_js ) ) {
@@ -349,6 +350,218 @@ class Humata_Chatbot_Admin_Settings {
                     if (added) {
                         $(this).val("");
                     }
+                });
+
+                // Document IDs: Import / Export
+                function humataSetIoStatus(message, kind) {
+                    var $status = $("#humata-document-ids-io-status");
+                    if (!$status.length) {
+                        return;
+                    }
+
+                    $status.removeClass("humata-io-status-success humata-io-status-error humata-io-status-info");
+                    if (kind === "success") {
+                        $status.addClass("humata-io-status-success");
+                    } else if (kind === "error") {
+                        $status.addClass("humata-io-status-error");
+                    } else if (kind === "info") {
+                        $status.addClass("humata-io-status-info");
+                    }
+
+                    $status.text(message || "");
+                }
+
+                function humataExportIdsToText() {
+                    var ids = humataGetTokenIds();
+                    if (!ids || !ids.length) {
+                        return "";
+                    }
+                    return ids.join("\\n");
+                }
+
+                function humataDownloadFile(filename, content, mimeType) {
+                    try {
+                        var mime = mimeType || "text/plain;charset=utf-8";
+                        var blob = new Blob([content || ""], { type: mime });
+                        var url = URL.createObjectURL(blob);
+                        var a = document.createElement("a");
+                        a.href = url;
+                        a.download = filename || "humata-document-ids.txt";
+                        document.body.appendChild(a);
+                        a.click();
+                        setTimeout(function() {
+                            try { document.body.removeChild(a); } catch (e) {}
+                            try { URL.revokeObjectURL(url); } catch (e) {}
+                        }, 0);
+                    } catch (e) {
+                        humataSetIoStatus("Download failed.", "error");
+                    }
+                }
+
+                function humataCopyToClipboard(text) {
+                    if (navigator.clipboard && navigator.clipboard.writeText) {
+                        return navigator.clipboard.writeText(text);
+                    }
+
+                    return new Promise(function(resolve, reject) {
+                        try {
+                            var $temp = $("<textarea></textarea>")
+                                .css({ position: "absolute", left: "-9999px", top: "0" })
+                                .val(text || "");
+
+                            $("body").append($temp);
+                            $temp[0].focus();
+                            $temp[0].select();
+
+                            var ok = false;
+                            try {
+                                ok = document.execCommand("copy");
+                            } catch (e) {
+                                ok = false;
+                            }
+
+                            $temp.remove();
+
+                            if (ok) {
+                                resolve();
+                            } else {
+                                reject(new Error("copy_failed"));
+                            }
+                        } catch (e) {
+                            reject(e);
+                        }
+                    });
+                }
+
+                function humataGetImportMode() {
+                    var $checked = $("input[name=\\"humata_document_ids_import_mode\\"]:checked");
+                    var mode = $checked.length ? String($checked.val() || "") : "";
+                    mode = $.trim(mode);
+                    return mode === "replace" ? "replace" : "merge";
+                }
+
+                function humataApplyImportedText(text, mode) {
+                    var importText = String(text || "");
+                    var importMode = mode === "replace" ? "replace" : "merge";
+
+                    var existingCount = humataGetTokenIds().length;
+                    var ids = humataExtractIds(importText);
+
+                    if (!ids.length) {
+                        humataSetIoStatus("No valid UUIDs found to import.", "error");
+                        return false;
+                    }
+
+                    var beforeCount = existingCount;
+                    if (importMode === "replace") {
+                        $("#humata-document-ids-tokens").empty();
+                        humataDocsPage = 0;
+                        beforeCount = 0;
+                    }
+
+                    $.each(ids, function(_, id) {
+                        humataAddToken(id);
+                    });
+
+                    humataSortTokens();
+                    humataSyncHiddenAndCount();
+                    humataSyncDocumentsTable();
+
+                    var afterCount = humataGetTokenIds().length;
+                    if (importMode === "merge") {
+                        var addedCount = Math.max(0, afterCount - beforeCount);
+                        var dupCount = Math.max(0, ids.length - addedCount);
+                        humataSetIoStatus("Imported " + addedCount + " IDs (" + dupCount + " duplicates ignored). Click Save Settings to persist.", "success");
+                    } else {
+                        humataSetIoStatus("Replaced " + existingCount + " IDs with " + afterCount + " imported IDs. Click Save Settings to persist.", "success");
+                    }
+
+                    return true;
+                }
+
+                $(document).on("click", "#humata-document-ids-export-copy", function() {
+                    var text = humataExportIdsToText();
+                    var count = humataGetTokenIds().length;
+                    if (!text) {
+                        humataSetIoStatus("No document IDs to export.", "error");
+                        return;
+                    }
+
+                    humataCopyToClipboard(text).then(function() {
+                        humataSetIoStatus("Copied " + count + " IDs to clipboard.", "success");
+                    }).catch(function() {
+                        humataSetIoStatus("Copy failed. Try Download TXT instead.", "error");
+                    });
+                });
+
+                $(document).on("click", "#humata-document-ids-export-download", function() {
+                    var ids = humataGetTokenIds();
+                    if (!ids.length) {
+                        humataSetIoStatus("No document IDs to export.", "error");
+                        return;
+                    }
+                    var content = ids.join("\\n") + "\\n";
+                    humataDownloadFile("humata-document-ids.txt", content, "text/plain;charset=utf-8");
+                    humataSetIoStatus("Downloaded TXT for " + ids.length + " IDs.", "info");
+                });
+
+                $(document).on("click", "#humata-document-ids-export-download-json", function() {
+                    var ids = humataGetTokenIds();
+                    if (!ids.length) {
+                        humataSetIoStatus("No document IDs to export.", "error");
+                        return;
+                    }
+                    var json = JSON.stringify({ document_ids: ids }, null, 2);
+                    humataDownloadFile("humata-document-ids.json", json + "\\n", "application/json;charset=utf-8");
+                    humataSetIoStatus("Downloaded JSON for " + ids.length + " IDs.", "info");
+                });
+
+                $(document).on("change", "#humata-document-ids-import-file", function() {
+                    var input = this;
+                    var file = input && input.files && input.files[0] ? input.files[0] : null;
+                    if (!file) {
+                        return;
+                    }
+
+                    var reader = new FileReader();
+                    reader.onload = function(e) {
+                        var text = (e && e.target && e.target.result) ? String(e.target.result) : "";
+                        $("#humata-document-ids-import-text").val(text);
+                        humataSetIoStatus("Loaded file. Choose Merge/Replace and click Apply Import.", "info");
+                    };
+                    reader.onerror = function() {
+                        humataSetIoStatus("Failed to read file.", "error");
+                    };
+
+                    try {
+                        reader.readAsText(file);
+                    } catch (e) {
+                        humataSetIoStatus("Failed to read file.", "error");
+                    }
+                });
+
+                $(document).on("click", "#humata-document-ids-import-apply", function() {
+                    var text = $("#humata-document-ids-import-text").val();
+                    var mode = humataGetImportMode();
+                    humataApplyImportedText(text, mode);
+                });
+
+                $(document).on("click", "#humata-document-ids-clear-all", function() {
+                    var count = humataGetTokenIds().length;
+                    if (!count) {
+                        humataSetIoStatus("No document IDs to clear.", "info");
+                        return;
+                    }
+
+                    if (!window.confirm("Remove all configured Document IDs?")) {
+                        return;
+                    }
+
+                    $("#humata-document-ids-tokens").empty();
+                    humataDocsPage = 0;
+                    humataSyncHiddenAndCount();
+                    humataSyncDocumentsTable();
+                    humataSetIoStatus("Cleared all Document IDs. Click Save Settings to persist.", "success");
                 });
 
                 $("#humata-test-api").on("click", function() {
@@ -641,6 +854,186 @@ class Humata_Chatbot_Admin_Settings {
             .humata-token-remove:hover {
                 color: #d63638;
             }
+
+            .humata-document-ids-io {
+                max-width: 900px;
+                margin-top: 10px;
+                padding: 10px 12px;
+                border: 1px solid #c3c4c7;
+                border-radius: 4px;
+                background: #fff;
+                box-sizing: border-box;
+            }
+            .humata-document-ids-io-row {
+                display: flex;
+                flex-wrap: wrap;
+                align-items: center;
+                gap: 8px;
+                margin-top: 8px;
+            }
+            .humata-document-ids-io-row:first-child {
+                margin-top: 0;
+            }
+            .humata-document-ids-io-label {
+                min-width: 60px;
+                font-weight: 600;
+                color: #1d2327;
+            }
+            .humata-document-ids-import-mode {
+                display: flex;
+                gap: 12px;
+                margin: 0;
+                padding: 0;
+                border: 0;
+            }
+            .humata-document-ids-import-file-label {
+                color: #646970;
+            }
+            .humata-document-ids-import-file {
+                max-width: 100%;
+            }
+            #humata-document-ids-import-text {
+                margin-top: 8px;
+                max-width: 900px;
+            }
+            .humata-document-ids-io-status {
+                flex: 1 1 100%;
+                margin-top: 6px;
+            }
+            .humata-io-status-success {
+                color: #1d6f42;
+            }
+            .humata-io-status-error {
+                color: #b32d2e;
+            }
+            .humata-io-status-info {
+                color: #646970;
+            }
+
+            .humata-floating-help-repeater .humata-repeater-handle-cell {
+                width: 36px;
+                text-align: center;
+                vertical-align: middle;
+            }
+
+            .humata-floating-help-repeater .humata-repeater-handle {
+                cursor: move;
+                color: #646970;
+            }
+
+            .humata-floating-help-repeater .humata-repeater-handle:hover {
+                color: #2271b1;
+            }
+
+            .humata-floating-help-repeater .humata-repeater-placeholder {
+                height: 44px;
+                background: rgba(34, 113, 177, 0.08);
+                border: 1px dashed rgba(34, 113, 177, 0.45);
+            }
+        ' );
+
+        // Floating Help Menu admin UI helpers (repeaters).
+        wp_add_inline_script( 'jquery', '
+            jQuery(function($) {
+                function humataSafeInt(value, fallback) {
+                    var n = parseInt(value, 10);
+                    return (isFinite(n) && n >= 0) ? n : (fallback || 0);
+                }
+
+                function humataBuildExternalLinkRow(idx) {
+                    return "" +
+                        "<tr class=\\"humata-repeater-row\\">" +
+                            "<td class=\\"humata-repeater-handle-cell\\">" +
+                                "<span class=\\"dashicons dashicons-move humata-repeater-handle\\" aria-hidden=\\"true\\"></span>" +
+                                "<span class=\\"screen-reader-text\\">Drag to reorder</span>" +
+                            "</td>" +
+                            "<td style=\\"width: 28%\\">" +
+                                "<input type=\\"text\\" class=\\"regular-text\\" name=\\"humata_floating_help[external_links][" + idx + "][label]\\" value=\\"\\" placeholder=\\"Label\\">" +
+                            "</td>" +
+                            "<td>" +
+                                "<input type=\\"url\\" class=\\"regular-text\\" name=\\"humata_floating_help[external_links][" + idx + "][url]\\" value=\\"\\" placeholder=\\"https://example.com/\\">" +
+                            "</td>" +
+                            "<td style=\\"width: 90px\\">" +
+                                "<button type=\\"button\\" class=\\"button link-delete humata-repeater-remove\\">Remove</button>" +
+                            "</td>" +
+                        "</tr>";
+                }
+
+                function humataBuildFaqRow(idx) {
+                    return "" +
+                        "<tr class=\\"humata-repeater-row\\">" +
+                            "<td class=\\"humata-repeater-handle-cell\\">" +
+                                "<span class=\\"dashicons dashicons-move humata-repeater-handle\\" aria-hidden=\\"true\\"></span>" +
+                                "<span class=\\"screen-reader-text\\">Drag to reorder</span>" +
+                            "</td>" +
+                            "<td style=\\"width: 34%\\">" +
+                                "<input type=\\"text\\" class=\\"regular-text\\" name=\\"humata_floating_help[faq_items][" + idx + "][question]\\" value=\\"\\" placeholder=\\"Question\\">" +
+                            "</td>" +
+                            "<td>" +
+                                "<textarea class=\\"large-text\\" rows=\\"3\\" name=\\"humata_floating_help[faq_items][" + idx + "][answer]\\" placeholder=\\"Answer\\"></textarea>" +
+                            "</td>" +
+                            "<td style=\\"width: 90px\\">" +
+                                "<button type=\\"button\\" class=\\"button link-delete humata-repeater-remove\\">Remove</button>" +
+                            "</td>" +
+                        "</tr>";
+                }
+
+                function humataInitRepeaterSortable($container) {
+                    if (!$container || !$container.length) return;
+                    var $tbody = $container.find("tbody");
+                    if (!$tbody.length) return;
+                    if (!$tbody.sortable) return;
+                    if ($tbody.data("humataSortableInit")) return;
+
+                    $tbody.sortable({
+                        axis: "y",
+                        items: "> tr",
+                        handle: ".humata-repeater-handle",
+                        placeholder: "humata-repeater-placeholder",
+                        forcePlaceholderSize: true,
+                        tolerance: "pointer"
+                    });
+
+                    try { $tbody.disableSelection(); } catch (e) {}
+                    $tbody.data("humataSortableInit", true);
+                }
+
+                function humataAddRepeaterRow($container) {
+                    if (!$container || !$container.length) return;
+
+                    var type = String($container.data("humataRepeater") || "");
+                    var nextIdx = humataSafeInt($container.attr("data-next-index"), $container.find("tbody tr").length);
+
+                    var html = "";
+                    if (type === "external_links") {
+                        html = humataBuildExternalLinkRow(nextIdx);
+                    } else if (type === "faq_items") {
+                        html = humataBuildFaqRow(nextIdx);
+                    }
+
+                    if (!html) return;
+
+                    var $tbody = $container.find("tbody");
+                    if (!$tbody.length) return;
+
+                    $tbody.append(html);
+                    $container.attr("data-next-index", String(nextIdx + 1));
+                    humataInitRepeaterSortable($container);
+                }
+
+                $(document).on("click", ".humata-floating-help-repeater .humata-repeater-add", function() {
+                    humataAddRepeaterRow($(this).closest(".humata-floating-help-repeater"));
+                });
+
+                $(document).on("click", ".humata-floating-help-repeater .humata-repeater-remove", function() {
+                    $(this).closest("tr").remove();
+                });
+
+                // Initialize sortable for existing repeaters.
+                $(".humata-floating-help-repeater").each(function() {
+                    humataInitRepeaterSortable($(this));
+                });
+            });
         ' );
     }
 
@@ -744,6 +1137,16 @@ class Humata_Chatbot_Admin_Settings {
 
         register_setting(
             'humata_chatbot_settings',
+            'humata_footer_copyright_text',
+            array(
+                'type'              => 'string',
+                'sanitize_callback' => 'sanitize_text_field',
+                'default'           => '',
+            )
+        );
+
+        register_setting(
+            'humata_chatbot_settings',
             'humata_second_llm_provider',
             array(
                 'type'              => 'string',
@@ -819,6 +1222,16 @@ class Humata_Chatbot_Admin_Settings {
                 'type'              => 'integer',
                 'sanitize_callback' => array( $this, 'sanitize_checkbox' ),
                 'default'           => 0,
+            )
+        );
+
+        register_setting(
+            'humata_chatbot_settings',
+            'humata_floating_help',
+            array(
+                'type'              => 'array',
+                'sanitize_callback' => array( $this, 'sanitize_floating_help' ),
+                'default'           => self::get_default_floating_help_option(),
             )
         );
 
@@ -987,6 +1400,78 @@ class Humata_Chatbot_Admin_Settings {
             'humata-chatbot',
             'humata_disclaimer_section'
         );
+
+        add_settings_field(
+            'humata_footer_copyright_text',
+            __( 'Footer Copyright Text', 'humata-chatbot' ),
+            array( $this, 'render_footer_copyright_text_field' ),
+            'humata-chatbot',
+            'humata_disclaimer_section'
+        );
+
+        // Floating Help Menu Section
+        add_settings_section(
+            'humata_floating_help_section',
+            __( 'Floating Help Menu', 'humata-chatbot' ),
+            array( $this, 'render_floating_help_section' ),
+            'humata-chatbot'
+        );
+
+        add_settings_field(
+            'humata_floating_help_enabled',
+            __( 'Enable', 'humata-chatbot' ),
+            array( $this, 'render_floating_help_enabled_field' ),
+            'humata-chatbot',
+            'humata_floating_help_section'
+        );
+
+        add_settings_field(
+            'humata_floating_help_external_links',
+            __( 'External Links', 'humata-chatbot' ),
+            array( $this, 'render_floating_help_external_links_field' ),
+            'humata-chatbot',
+            'humata_floating_help_section'
+        );
+
+        add_settings_field(
+            'humata_floating_help_modals',
+            __( 'Modal Triggers', 'humata-chatbot' ),
+            array( $this, 'render_floating_help_modals_field' ),
+            'humata-chatbot',
+            'humata_floating_help_section'
+        );
+
+        add_settings_field(
+            'humata_floating_help_social',
+            __( 'Social Links', 'humata-chatbot' ),
+            array( $this, 'render_floating_help_social_field' ),
+            'humata-chatbot',
+            'humata_floating_help_section'
+        );
+
+        add_settings_field(
+            'humata_floating_help_footer_text',
+            __( 'Footer Text', 'humata-chatbot' ),
+            array( $this, 'render_floating_help_footer_text_field' ),
+            'humata-chatbot',
+            'humata_floating_help_section'
+        );
+
+        add_settings_field(
+            'humata_floating_help_faq_items',
+            __( 'FAQ Items', 'humata-chatbot' ),
+            array( $this, 'render_floating_help_faq_items_field' ),
+            'humata-chatbot',
+            'humata_floating_help_section'
+        );
+
+        add_settings_field(
+            'humata_floating_help_contact_html',
+            __( 'Contact Modal Content', 'humata-chatbot' ),
+            array( $this, 'render_floating_help_contact_html_field' ),
+            'humata-chatbot',
+            'humata_floating_help_section'
+        );
     }
 
     /**
@@ -1049,6 +1534,535 @@ class Humata_Chatbot_Admin_Settings {
         $value = sanitize_text_field( (string) $value );
         $valid = array( 'none', 'straico', 'anthropic' );
         return in_array( $value, $valid, true ) ? $value : 'none';
+    }
+
+    /**
+     * Get default floating help menu option shape/content.
+     *
+     * @since 1.0.0
+     * @return array
+     */
+    public static function get_default_floating_help_option() {
+        $contact_html = ''
+            . '<h2>Dr. Morse Office Contact Information</h2>'
+            . '<h3>Handcrafted Botanical Formulas</h3>'
+            . '<p><strong>Function:</strong> Sells Dr. Morse&#8217;s &ldquo;Handcrafted Botanical Formulas&rdquo; herbal formula line and &ldquo;Doctor Morse&#8217;s&rdquo; herbal formula line</p>'
+            . '<p><strong>Website:</strong> <a href="https://handcraftedbotanicalformulas.com/" target="_blank" rel="noopener noreferrer">https://handcraftedbotanicalformulas.com/</a></p>'
+            . '<p><strong>Phone:</strong> <a href="tel:+19416231313">+1 (941) 623-1313</a></p>'
+            . '<p><strong>Email:</strong> <a href="mailto:info@handcraftedbotanicals.com">info@handcraftedbotanicals.com</a></p>'
+            . '<p><strong>Contact page:</strong> <a href="https://handcraftedbotanicalformulas.com/contact/" target="_blank" rel="noopener noreferrer">https://handcraftedbotanicalformulas.com/contact/</a></p>'
+            . '<hr>'
+            . '<h3>Morse&#8217;s Health Center</h3>'
+            . '<p><strong>Function:</strong> Provides detoxification consultation services with a qualified Detoxification Specialist, sells Dr. Morse&#8217;s &ldquo;Handcrafted Botanical Formulas&rdquo; herbal formula line and &ldquo;Doctor Morse&#8217;s&rdquo; herbal formula line, sells glandular therapy supplements</p>'
+            . '<p><strong>Website:</strong> <a href="https://morseshealthcenter.com" target="_blank" rel="noopener noreferrer">https://morseshealthcenter.com</a></p>'
+            . '<p><strong>Phone:</strong> <a href="tel:+19412551970">+1 (941) 255-1970</a></p>'
+            . '<p><strong>Email:</strong> <a href="mailto:info@morseshealthcenter.com">info@morseshealthcenter.com</a></p>'
+            . '<hr>'
+            . '<h3>International School of the Healing Arts (&#8220;ISHA&#8221;)</h3>'
+            . '<p><strong>Function:</strong> Sells access to Dr. Morse&#8217;s online courses (including &ldquo;Level One&rdquo;, &ldquo;Level Two&rdquo;, and &ldquo;Lymphatic Iridology&rdquo;) as well as courses by other ISHA professors</p>'
+            . '<p><strong>Website:</strong> <a href="https://internationalschoolofthehealingarts.com/" target="_blank" rel="noopener noreferrer">https://internationalschoolofthehealingarts.com/</a></p>'
+            . '<p><strong>Contact page:</strong> <a href="https://internationalschoolofthehealingarts.com/contact/" target="_blank" rel="noopener noreferrer">https://internationalschoolofthehealingarts.com/contact/</a></p>'
+            . '<hr>'
+            . '<h3>Handcrafted.Health</h3>'
+            . '<p><strong>Function:</strong> Web directory of all of Dr. Morse&#8217;s websites</p>'
+            . '<p><strong>Website:</strong> <a href="https://handcrafted.health/" target="_blank" rel="noopener noreferrer">https://handcrafted.health/</a></p>'
+            . '<hr>'
+            . '<h3>DrMorses.tv</h3>'
+            . '<p><strong>Function:</strong> Dr. Morse&#8217;s own video streaming platform where users can watch all his videos and submit health-related questions</p>'
+            . '<p><strong>Website:</strong> <a href="https://drmorses.tv/" target="_blank" rel="noopener noreferrer">https://drmorses.tv/</a></p>'
+            . '<p><strong>Email:</strong> <a href="mailto:questions@morses.tv">questions@morses.tv</a></p>'
+            . '<p><strong>Contact page:</strong> <a href="https://drmorses.tv/contact/" target="_blank" rel="noopener noreferrer">https://drmorses.tv/contact/</a></p>'
+            . '<p><strong>Ask a question form:</strong> <a href="https://drmorses.tv/ask/" target="_blank" rel="noopener noreferrer">https://drmorses.tv/ask/</a></p>'
+            . '<hr>'
+            . '<h3>GrapeGate</h3>'
+            . '<p><strong>Function:</strong> International practitioner directory for certified Detoxification Specialists where visitors can find a Dr. Morse-trained practitioner to work with</p>'
+            . '<p><strong>Website:</strong> <a href="https://grapegate.com/" target="_blank" rel="noopener noreferrer">https://grapegate.com/</a></p>'
+            . '<p><strong>Directory page:</strong> <a href="https://grapegate.com/list-of-isod-practitioners/" target="_blank" rel="noopener noreferrer">https://grapegate.com/list-of-isod-practitioners/</a></p>'
+            . '<hr>'
+            . '<h3>Best places to contact</h3>'
+            . '<ul>'
+            . '<li><strong>Non-urgent health questions for Dr. Morse:</strong> Use <a href="https://drmorses.tv/ask/" target="_blank" rel="noopener noreferrer">https://drmorses.tv/ask/</a> or email <a href="mailto:questions@morses.tv">questions@morses.tv</a></li>'
+            . '<li><strong>Questions about herbal formulas:</strong> Use <a href="https://handcraftedbotanicalformulas.com/contact/" target="_blank" rel="noopener noreferrer">https://handcraftedbotanicalformulas.com/contact/</a> or email <a href="mailto:info@handcraftedbotanicals.com">info@handcraftedbotanicals.com</a></li>'
+            . '<li><strong>Consultation appointments:</strong> Use <a href="https://morseshealthcenter.com/contact/" target="_blank" rel="noopener noreferrer">https://morseshealthcenter.com/contact/</a> or email <a href="mailto:info@morseshealthcenter.com">info@morseshealthcenter.com</a></li>'
+            . '<li><strong>Questions about ISHA courses:</strong> Use <a href="https://internationalschoolofthehealingarts.com/contact/" target="_blank" rel="noopener noreferrer">https://internationalschoolofthehealingarts.com/contact/</a></li>'
+            . '</ul>'
+            . '<p><strong>Urgent health situations:</strong> Contact your local emergency services.</p>';
+
+        return array(
+            'enabled'        => 0,
+            'button_label'   => 'Help',
+            'external_links' => array(),
+            'show_faq'       => 1,
+            'faq_label'      => 'FAQs',
+            'show_contact'   => 1,
+            'contact_label'  => 'Contact',
+            'social'         => array(
+                'facebook'  => '',
+                'instagram' => '',
+                'youtube'   => '',
+                'x'         => '',
+                'tiktok'    => '',
+            ),
+            'footer_text'   => '',
+            'faq_items'     => array(
+                array(
+                    'question' => 'How do I use the Help menu?',
+                    'answer'   => 'On desktop, hover over the Help button to open the menu. On mobile or touch devices, tap the Help button to open or close it.',
+                ),
+                array(
+                    'question' => 'Where can I find answers to common questions?',
+                    'answer'   => 'Open the Help menu and click the FAQs link to view common questions and answers in a full-screen popup.',
+                ),
+                array(
+                    'question' => 'How do I contact support?',
+                    'answer'   => 'Open the Help menu and click Contact to view the best ways to reach the appropriate team for your question.',
+                ),
+            ),
+            'contact_html'  => $contact_html,
+        );
+    }
+
+    /**
+     * Get floating help settings merged with defaults.
+     *
+     * @since 1.0.0
+     * @return array
+     */
+    private function get_floating_help_settings() {
+        $value = get_option( 'humata_floating_help', array() );
+        if ( ! is_array( $value ) ) {
+            $value = array();
+        }
+
+        $defaults = self::get_default_floating_help_option();
+        $value    = wp_parse_args( $value, $defaults );
+
+        if ( ! isset( $value['social'] ) || ! is_array( $value['social'] ) ) {
+            $value['social'] = array();
+        }
+        $value['social'] = wp_parse_args( $value['social'], $defaults['social'] );
+
+        if ( ! isset( $value['external_links'] ) || ! is_array( $value['external_links'] ) ) {
+            $value['external_links'] = array();
+        }
+
+        if ( ! isset( $value['faq_items'] ) || ! is_array( $value['faq_items'] ) ) {
+            $value['faq_items'] = array();
+        }
+
+        return $value;
+    }
+
+    /**
+     * Sanitize floating help settings.
+     *
+     * @since 1.0.0
+     * @param mixed $value
+     * @return array
+     */
+    public function sanitize_floating_help( $value ) {
+        $defaults = self::get_default_floating_help_option();
+
+        if ( ! is_array( $value ) ) {
+            $value = array();
+        }
+
+        $clean = array();
+
+        $clean['enabled']      = empty( $value['enabled'] ) ? 0 : 1;
+        $clean['show_faq']     = empty( $value['show_faq'] ) ? 0 : 1;
+        $clean['show_contact'] = empty( $value['show_contact'] ) ? 0 : 1;
+
+        $button_label = isset( $value['button_label'] ) ? sanitize_text_field( (string) $value['button_label'] ) : $defaults['button_label'];
+        $clean['button_label'] = '' !== $button_label ? $button_label : $defaults['button_label'];
+
+        $faq_label = isset( $value['faq_label'] ) ? sanitize_text_field( (string) $value['faq_label'] ) : $defaults['faq_label'];
+        $clean['faq_label'] = '' !== $faq_label ? $faq_label : $defaults['faq_label'];
+
+        $contact_label = isset( $value['contact_label'] ) ? sanitize_text_field( (string) $value['contact_label'] ) : $defaults['contact_label'];
+        $clean['contact_label'] = '' !== $contact_label ? $contact_label : $defaults['contact_label'];
+
+        // External links
+        $external_links = array();
+        if ( isset( $value['external_links'] ) && is_array( $value['external_links'] ) ) {
+            foreach ( $value['external_links'] as $row ) {
+                if ( ! is_array( $row ) ) {
+                    continue;
+                }
+
+                $label = isset( $row['label'] ) ? sanitize_text_field( (string) $row['label'] ) : '';
+                $url   = isset( $row['url'] ) ? esc_url_raw( (string) $row['url'] ) : '';
+
+                if ( '' === $label || '' === $url ) {
+                    continue;
+                }
+
+                $external_links[] = array(
+                    'label' => $label,
+                    'url'   => $url,
+                );
+
+                if ( count( $external_links ) >= 50 ) {
+                    break;
+                }
+            }
+        }
+        $clean['external_links'] = array_values( $external_links );
+
+        // Social links
+        $social_in = isset( $value['social'] ) && is_array( $value['social'] ) ? $value['social'] : array();
+        $clean['social'] = array();
+        foreach ( array( 'facebook', 'instagram', 'youtube', 'x', 'tiktok' ) as $key ) {
+            $clean['social'][ $key ] = isset( $social_in[ $key ] ) ? esc_url_raw( (string) $social_in[ $key ] ) : '';
+        }
+
+        // Footer text (allow basic formatting/links).
+        $footer_text = isset( $value['footer_text'] ) ? trim( (string) $value['footer_text'] ) : '';
+        $clean['footer_text'] = '' === $footer_text ? '' : wp_kses_post( $footer_text );
+
+        // FAQ items (plain text answers).
+        $faq_items = array();
+        if ( isset( $value['faq_items'] ) && is_array( $value['faq_items'] ) ) {
+            foreach ( $value['faq_items'] as $row ) {
+                if ( ! is_array( $row ) ) {
+                    continue;
+                }
+
+                $question = isset( $row['question'] ) ? sanitize_text_field( (string) $row['question'] ) : '';
+                $answer   = isset( $row['answer'] ) ? sanitize_textarea_field( (string) $row['answer'] ) : '';
+
+                if ( '' === $question || '' === $answer ) {
+                    continue;
+                }
+
+                $faq_items[] = array(
+                    'question' => $question,
+                    'answer'   => $answer,
+                );
+
+                if ( count( $faq_items ) >= 50 ) {
+                    break;
+                }
+            }
+        }
+        $clean['faq_items'] = array_values( $faq_items );
+
+        // Contact HTML (allow safe HTML).
+        $contact_html = isset( $value['contact_html'] ) ? trim( (string) $value['contact_html'] ) : '';
+        $clean['contact_html'] = '' === $contact_html ? '' : wp_kses_post( $contact_html );
+
+        return $clean;
+    }
+
+    /**
+     * Floating Help Menu section description.
+     *
+     * @since 1.0.0
+     * @return void
+     */
+    public function render_floating_help_section() {
+        echo '<p>' . esc_html__( 'Configure an optional floating Help button that reveals a menu on hover (desktop) or tap (touch devices).', 'humata-chatbot' ) . '</p>';
+    }
+
+    public function render_floating_help_enabled_field() {
+        $settings = $this->get_floating_help_settings();
+        $enabled  = ! empty( $settings['enabled'] ) ? 1 : 0;
+        $label    = isset( $settings['button_label'] ) ? (string) $settings['button_label'] : 'Help';
+        ?>
+        <label>
+            <input
+                type="checkbox"
+                name="humata_floating_help[enabled]"
+                value="1"
+                <?php checked( $enabled, 1 ); ?>
+            />
+            <?php esc_html_e( 'Enable the floating Help button and hover menu.', 'humata-chatbot' ); ?>
+        </label>
+        <p class="description">
+            <?php esc_html_e( 'When disabled, no button, menu, or assets are rendered on the frontend.', 'humata-chatbot' ); ?>
+        </p>
+        <p>
+            <label for="humata_floating_help_button_label"><strong><?php esc_html_e( 'Button label', 'humata-chatbot' ); ?></strong></label><br>
+            <input
+                type="text"
+                id="humata_floating_help_button_label"
+                name="humata_floating_help[button_label]"
+                value="<?php echo esc_attr( $label ); ?>"
+                class="regular-text"
+            />
+        </p>
+        <?php
+    }
+
+    public function render_floating_help_external_links_field() {
+        $settings = $this->get_floating_help_settings();
+        $links    = isset( $settings['external_links'] ) && is_array( $settings['external_links'] ) ? $settings['external_links'] : array();
+
+        // Show at least one empty row for UX.
+        if ( empty( $links ) ) {
+            $links = array(
+                array( 'label' => '', 'url' => '' ),
+            );
+        }
+
+        $next_index = count( $links );
+        ?>
+        <div class="humata-floating-help-repeater" data-humata-repeater="external_links" data-next-index="<?php echo esc_attr( (string) $next_index ); ?>">
+            <p class="description" style="margin-top: 0;">
+                <?php esc_html_e( 'Drag and drop rows to reorder.', 'humata-chatbot' ); ?>
+            </p>
+            <table class="widefat striped" style="max-width: 900px;">
+                <thead>
+                    <tr>
+                        <th style="width: 36px;"><span class="screen-reader-text"><?php esc_html_e( 'Order', 'humata-chatbot' ); ?></span></th>
+                        <th><?php esc_html_e( 'Label', 'humata-chatbot' ); ?></th>
+                        <th><?php esc_html_e( 'URL (opens in a new tab)', 'humata-chatbot' ); ?></th>
+                        <th><?php esc_html_e( 'Actions', 'humata-chatbot' ); ?></th>
+                    </tr>
+                </thead>
+                <tbody>
+                    <?php foreach ( $links as $i => $row ) : ?>
+                        <?php
+                        $row = is_array( $row ) ? $row : array();
+                        $label = isset( $row['label'] ) ? (string) $row['label'] : '';
+                        $url   = isset( $row['url'] ) ? (string) $row['url'] : '';
+                        ?>
+                        <tr class="humata-repeater-row">
+                            <td class="humata-repeater-handle-cell">
+                                <span class="dashicons dashicons-move humata-repeater-handle" aria-hidden="true"></span>
+                                <span class="screen-reader-text"><?php esc_html_e( 'Drag to reorder', 'humata-chatbot' ); ?></span>
+                            </td>
+                            <td style="width: 28%;">
+                                <input
+                                    type="text"
+                                    class="regular-text"
+                                    name="humata_floating_help[external_links][<?php echo esc_attr( (string) $i ); ?>][label]"
+                                    value="<?php echo esc_attr( $label ); ?>"
+                                    placeholder="<?php esc_attr_e( 'Label', 'humata-chatbot' ); ?>"
+                                />
+                            </td>
+                            <td>
+                                <input
+                                    type="url"
+                                    class="regular-text"
+                                    name="humata_floating_help[external_links][<?php echo esc_attr( (string) $i ); ?>][url]"
+                                    value="<?php echo esc_attr( $url ); ?>"
+                                    placeholder="<?php esc_attr_e( 'https://example.com/', 'humata-chatbot' ); ?>"
+                                />
+                            </td>
+                            <td style="width: 90px;">
+                                <button type="button" class="button link-delete humata-repeater-remove"><?php esc_html_e( 'Remove', 'humata-chatbot' ); ?></button>
+                            </td>
+                        </tr>
+                    <?php endforeach; ?>
+                </tbody>
+            </table>
+            <p style="margin-top: 10px;">
+                <button type="button" class="button button-secondary humata-repeater-add"><?php esc_html_e( 'Add Link', 'humata-chatbot' ); ?></button>
+            </p>
+            <p class="description">
+                <?php esc_html_e( 'These links appear in the top section of the menu and open in a new tab.', 'humata-chatbot' ); ?>
+            </p>
+        </div>
+        <?php
+    }
+
+    public function render_floating_help_modals_field() {
+        $settings = $this->get_floating_help_settings();
+
+        $show_faq     = ! empty( $settings['show_faq'] ) ? 1 : 0;
+        $faq_label    = isset( $settings['faq_label'] ) ? (string) $settings['faq_label'] : 'FAQs';
+        $show_contact = ! empty( $settings['show_contact'] ) ? 1 : 0;
+        $contact_label = isset( $settings['contact_label'] ) ? (string) $settings['contact_label'] : 'Contact';
+        ?>
+        <fieldset>
+            <label style="display:block; margin-bottom: 10px;">
+                <input
+                    type="checkbox"
+                    name="humata_floating_help[show_faq]"
+                    value="1"
+                    <?php checked( $show_faq, 1 ); ?>
+                />
+                <?php esc_html_e( 'Show FAQ modal trigger', 'humata-chatbot' ); ?>
+            </label>
+            <p style="margin: 0 0 16px 0;">
+                <label for="humata_floating_help_faq_label"><strong><?php esc_html_e( 'FAQ link label', 'humata-chatbot' ); ?></strong></label><br>
+                <input
+                    type="text"
+                    id="humata_floating_help_faq_label"
+                    name="humata_floating_help[faq_label]"
+                    value="<?php echo esc_attr( $faq_label ); ?>"
+                    class="regular-text"
+                />
+            </p>
+
+            <label style="display:block; margin-bottom: 10px;">
+                <input
+                    type="checkbox"
+                    name="humata_floating_help[show_contact]"
+                    value="1"
+                    <?php checked( $show_contact, 1 ); ?>
+                />
+                <?php esc_html_e( 'Show Contact modal trigger', 'humata-chatbot' ); ?>
+            </label>
+            <p style="margin: 0;">
+                <label for="humata_floating_help_contact_label"><strong><?php esc_html_e( 'Contact link label', 'humata-chatbot' ); ?></strong></label><br>
+                <input
+                    type="text"
+                    id="humata_floating_help_contact_label"
+                    name="humata_floating_help[contact_label]"
+                    value="<?php echo esc_attr( $contact_label ); ?>"
+                    class="regular-text"
+                />
+            </p>
+        </fieldset>
+        <p class="description">
+            <?php esc_html_e( 'These links open full-screen modal overlays.', 'humata-chatbot' ); ?>
+        </p>
+        <?php
+    }
+
+    public function render_floating_help_social_field() {
+        $settings = $this->get_floating_help_settings();
+        $social   = isset( $settings['social'] ) && is_array( $settings['social'] ) ? $settings['social'] : array();
+        $keys     = array(
+            'facebook'  => __( 'Facebook', 'humata-chatbot' ),
+            'instagram' => __( 'Instagram', 'humata-chatbot' ),
+            'youtube'   => __( 'YouTube', 'humata-chatbot' ),
+            'x'         => __( 'X', 'humata-chatbot' ),
+            'tiktok'    => __( 'TikTok', 'humata-chatbot' ),
+        );
+        ?>
+        <table class="form-table" role="presentation" style="margin-top: 0;">
+            <tbody>
+                <?php foreach ( $keys as $key => $label ) : ?>
+                    <?php $url = isset( $social[ $key ] ) ? (string) $social[ $key ] : ''; ?>
+                    <tr>
+                        <th scope="row" style="padding: 10px 0 10px 0;"><?php echo esc_html( $label ); ?></th>
+                        <td style="padding: 10px 0 10px 0;">
+                            <input
+                                type="url"
+                                class="regular-text"
+                                name="humata_floating_help[social][<?php echo esc_attr( $key ); ?>]"
+                                value="<?php echo esc_attr( $url ); ?>"
+                                placeholder="<?php esc_attr_e( 'https://', 'humata-chatbot' ); ?>"
+                            />
+                        </td>
+                    </tr>
+                <?php endforeach; ?>
+            </tbody>
+        </table>
+        <p class="description">
+            <?php esc_html_e( 'Only social icons with a URL set will be displayed.', 'humata-chatbot' ); ?>
+        </p>
+        <?php
+    }
+
+    public function render_floating_help_footer_text_field() {
+        $settings = $this->get_floating_help_settings();
+        $text     = isset( $settings['footer_text'] ) ? (string) $settings['footer_text'] : '';
+        ?>
+        <textarea
+            class="large-text"
+            rows="4"
+            name="humata_floating_help[footer_text]"
+        ><?php echo esc_textarea( $text ); ?></textarea>
+        <p class="description">
+            <?php esc_html_e( 'Optional text shown at the bottom of the menu. Basic formatting and links are allowed.', 'humata-chatbot' ); ?>
+        </p>
+        <?php
+    }
+
+    public function render_floating_help_faq_items_field() {
+        $settings = $this->get_floating_help_settings();
+        $items    = isset( $settings['faq_items'] ) && is_array( $settings['faq_items'] ) ? $settings['faq_items'] : array();
+
+        if ( empty( $items ) ) {
+            $items = array(
+                array( 'question' => '', 'answer' => '' ),
+            );
+        }
+
+        $next_index = count( $items );
+        ?>
+        <div class="humata-floating-help-repeater" data-humata-repeater="faq_items" data-next-index="<?php echo esc_attr( (string) $next_index ); ?>">
+            <p class="description" style="margin-top: 0;">
+                <?php esc_html_e( 'Drag and drop rows to reorder.', 'humata-chatbot' ); ?>
+            </p>
+            <table class="widefat striped" style="max-width: 900px;">
+                <thead>
+                    <tr>
+                        <th style="width: 36px;"><span class="screen-reader-text"><?php esc_html_e( 'Order', 'humata-chatbot' ); ?></span></th>
+                        <th><?php esc_html_e( 'Question', 'humata-chatbot' ); ?></th>
+                        <th><?php esc_html_e( 'Answer', 'humata-chatbot' ); ?></th>
+                        <th><?php esc_html_e( 'Actions', 'humata-chatbot' ); ?></th>
+                    </tr>
+                </thead>
+                <tbody>
+                    <?php foreach ( $items as $i => $row ) : ?>
+                        <?php
+                        $row = is_array( $row ) ? $row : array();
+                        $q = isset( $row['question'] ) ? (string) $row['question'] : '';
+                        $a = isset( $row['answer'] ) ? (string) $row['answer'] : '';
+                        ?>
+                        <tr class="humata-repeater-row">
+                            <td class="humata-repeater-handle-cell">
+                                <span class="dashicons dashicons-move humata-repeater-handle" aria-hidden="true"></span>
+                                <span class="screen-reader-text"><?php esc_html_e( 'Drag to reorder', 'humata-chatbot' ); ?></span>
+                            </td>
+                            <td style="width: 34%;">
+                                <input
+                                    type="text"
+                                    class="regular-text"
+                                    name="humata_floating_help[faq_items][<?php echo esc_attr( (string) $i ); ?>][question]"
+                                    value="<?php echo esc_attr( $q ); ?>"
+                                    placeholder="<?php esc_attr_e( 'Question', 'humata-chatbot' ); ?>"
+                                />
+                            </td>
+                            <td>
+                                <textarea
+                                    class="large-text"
+                                    rows="3"
+                                    name="humata_floating_help[faq_items][<?php echo esc_attr( (string) $i ); ?>][answer]"
+                                    placeholder="<?php esc_attr_e( 'Answer', 'humata-chatbot' ); ?>"
+                                ><?php echo esc_textarea( $a ); ?></textarea>
+                            </td>
+                            <td style="width: 90px;">
+                                <button type="button" class="button link-delete humata-repeater-remove"><?php esc_html_e( 'Remove', 'humata-chatbot' ); ?></button>
+                            </td>
+                        </tr>
+                    <?php endforeach; ?>
+                </tbody>
+            </table>
+            <p style="margin-top: 10px;">
+                <button type="button" class="button button-secondary humata-repeater-add"><?php esc_html_e( 'Add Q&A', 'humata-chatbot' ); ?></button>
+            </p>
+            <p class="description">
+                <?php esc_html_e( 'If no FAQ items are configured, the FAQ trigger will be hidden on the frontend.', 'humata-chatbot' ); ?>
+            </p>
+        </div>
+        <?php
+    }
+
+    public function render_floating_help_contact_html_field() {
+        $settings = $this->get_floating_help_settings();
+        $content  = isset( $settings['contact_html'] ) ? (string) $settings['contact_html'] : '';
+
+        $editor_id = 'humata_floating_help_contact_html';
+        $args = array(
+            'textarea_name' => 'humata_floating_help[contact_html]',
+            'textarea_rows' => 12,
+            'media_buttons' => false,
+            'teeny'         => true,
+            'quicktags'     => true,
+        );
+
+        wp_editor( $content, $editor_id, $args );
+        ?>
+        <p class="description">
+            <?php esc_html_e( 'Content shown inside the Contact modal. Links and basic formatting are supported.', 'humata-chatbot' ); ?>
+        </p>
+        <?php
     }
 
     private function get_anthropic_model_options() {
@@ -1348,6 +2362,64 @@ class Humata_Chatbot_Admin_Settings {
                 <span><?php echo esc_html( sprintf( __( '(%d titles cached)', 'humata-chatbot' ), $titles_cached ) ); ?></span>
             <?php endif; ?>
         </p>
+        <div class="humata-document-ids-io">
+            <div class="humata-document-ids-io-row">
+                <span class="humata-document-ids-io-label"><?php esc_html_e( 'Export', 'humata-chatbot' ); ?></span>
+                <button type="button" id="humata-document-ids-export-copy" class="button button-secondary">
+                    <?php esc_html_e( 'Copy IDs', 'humata-chatbot' ); ?>
+                </button>
+                <button type="button" id="humata-document-ids-export-download" class="button button-secondary">
+                    <?php esc_html_e( 'Download TXT', 'humata-chatbot' ); ?>
+                </button>
+                <button type="button" id="humata-document-ids-export-download-json" class="button button-secondary">
+                    <?php esc_html_e( 'Download JSON', 'humata-chatbot' ); ?>
+                </button>
+            </div>
+
+            <div class="humata-document-ids-io-row humata-document-ids-io-row-import">
+                <span class="humata-document-ids-io-label"><?php esc_html_e( 'Import', 'humata-chatbot' ); ?></span>
+                <fieldset class="humata-document-ids-import-mode">
+                    <label>
+                        <input type="radio" name="humata_document_ids_import_mode" value="merge" checked />
+                        <?php esc_html_e( 'Merge', 'humata-chatbot' ); ?>
+                    </label>
+                    <label>
+                        <input type="radio" name="humata_document_ids_import_mode" value="replace" />
+                        <?php esc_html_e( 'Replace', 'humata-chatbot' ); ?>
+                    </label>
+                </fieldset>
+                <label class="humata-document-ids-import-file-label" for="humata-document-ids-import-file">
+                    <?php esc_html_e( 'File:', 'humata-chatbot' ); ?>
+                </label>
+                <input
+                    type="file"
+                    id="humata-document-ids-import-file"
+                    class="humata-document-ids-import-file"
+                    accept=".txt,.csv,.json,text/plain,application/json,text/csv"
+                />
+            </div>
+
+            <textarea
+                id="humata-document-ids-import-text"
+                class="large-text code"
+                rows="4"
+                placeholder="<?php esc_attr_e( 'Paste document IDs here (one per line, comma-separated, CSV, JSON, URLs, etc.)', 'humata-chatbot' ); ?>"
+            ></textarea>
+
+            <div class="humata-document-ids-io-row humata-document-ids-io-actions">
+                <button type="button" id="humata-document-ids-import-apply" class="button button-primary">
+                    <?php esc_html_e( 'Apply Import', 'humata-chatbot' ); ?>
+                </button>
+                <button type="button" id="humata-document-ids-clear-all" class="button button-secondary">
+                    <?php esc_html_e( 'Clear All', 'humata-chatbot' ); ?>
+                </button>
+                <span id="humata-document-ids-io-status" class="humata-document-ids-io-status" aria-live="polite"></span>
+            </div>
+
+            <p class="description">
+                <?php esc_html_e( 'Tip: valid UUIDs will be extracted and deduplicated. Click “Save Settings” to persist changes.', 'humata-chatbot' ); ?>
+            </p>
+        </div>
         <?php if ( ! empty( $doc_ids_array ) ) : ?>
             <details class="humata-documents-details">
                 <summary><?php esc_html_e( 'Show documents', 'humata-chatbot' ); ?></summary>
@@ -1786,6 +2858,25 @@ class Humata_Chatbot_Admin_Settings {
         ><?php echo esc_textarea( $value ); ?></textarea>
         <p class="description">
             <?php esc_html_e( 'Shown at the bottom of the dedicated chat page. Leave blank to disable. Use blank lines to separate paragraphs.', 'humata-chatbot' ); ?>
+        </p>
+        <?php
+    }
+
+    public function render_footer_copyright_text_field() {
+        $value = get_option( 'humata_footer_copyright_text', '' );
+        if ( ! is_string( $value ) ) {
+            $value = '';
+        }
+        ?>
+        <input
+            type="text"
+            id="humata_footer_copyright_text"
+            name="humata_footer_copyright_text"
+            value="<?php echo esc_attr( $value ); ?>"
+            class="regular-text"
+        />
+        <p class="description">
+            <?php esc_html_e( 'Shown at the bottom of the dedicated chat page footer (below the medical disclaimer). Leave blank to disable.', 'humata-chatbot' ); ?>
         </p>
         <?php
     }

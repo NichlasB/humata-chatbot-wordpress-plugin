@@ -32,6 +32,12 @@ if ( ! is_string( $medical_disclaimer_text ) ) {
     $medical_disclaimer_text = '';
 }
 $medical_disclaimer_text = trim( $medical_disclaimer_text );
+
+$footer_copyright_text = get_option( 'humata_footer_copyright_text', '' );
+if ( ! is_string( $footer_copyright_text ) ) {
+    $footer_copyright_text = '';
+}
+$footer_copyright_text = trim( $footer_copyright_text );
 ?>
 <!DOCTYPE html>
 <html <?php language_attributes(); ?> class="<?php echo esc_attr( $theme_class ); ?>">
@@ -53,6 +59,13 @@ $medical_disclaimer_text = trim( $medical_disclaimer_text );
                     <span class="humata-chat-title"><?php echo esc_html( get_bloginfo( 'name' ) ); ?></span>
                 </div>
                 <div class="humata-header-right">
+                    <button type="button" id="humata-export-pdf" title="<?php esc_attr_e( 'Export PDF', 'humata-chatbot' ); ?>" aria-label="<?php esc_attr_e( 'Export PDF', 'humata-chatbot' ); ?>">
+                        <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round">
+                            <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"></path>
+                            <polyline points="7 10 12 15 17 10"></polyline>
+                            <line x1="12" y1="15" x2="12" y2="3"></line>
+                        </svg>
+                    </button>
                     <button type="button" id="humata-theme-toggle" title="<?php esc_attr_e( 'Toggle Theme', 'humata-chatbot' ); ?>">
                         <svg class="humata-icon-sun" xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round">
                             <circle cx="12" cy="12" r="5"></circle>
@@ -92,7 +105,7 @@ $medical_disclaimer_text = trim( $medical_disclaimer_text );
                         </svg>
                     </div>
                     <div class="humata-message-content">
-                        <p><?php esc_html_e( 'Hello! I\'m here to help answer your questions. What would you like to know?', 'humata-chatbot' ); ?></p>
+                        <p><?php esc_html_e( 'Hi! Ask any Dr. Morse related question and I\'ll do my best to provide an answer. 🙂', 'humata-chatbot' ); ?></p>
                     </div>
                 </div>
             </main>
@@ -124,16 +137,21 @@ $medical_disclaimer_text = trim( $medical_disclaimer_text );
                 <p class="humata-disclaimer">
                     <?php esc_html_e( 'AI responses may not always be accurate. Please verify important information.', 'humata-chatbot' ); ?>
                     <?php if ( '' !== $medical_disclaimer_text ) : ?>
-                        <a class="humata-medical-disclaimer-link" href="#humata-medical-disclaimer"><?php esc_html_e( 'Medical disclaimer', 'humata-chatbot' ); ?></a>
+                        <a class="humata-chat-footer-link" href="#humata-chat-page-footer"><?php esc_html_e( 'Medical disclaimer', 'humata-chatbot' ); ?></a>
                     <?php endif; ?>
                 </p>
             </footer>
         </div>
     </div>
-    <?php if ( '' !== $medical_disclaimer_text ) : ?>
-        <footer id="humata-medical-disclaimer">
-            <div class="humata-medical-disclaimer-inner">
-                <?php echo wp_kses_post( wpautop( esc_html( $medical_disclaimer_text ) ) ); ?>
+    <?php if ( '' !== $medical_disclaimer_text || '' !== $footer_copyright_text ) : ?>
+        <footer id="humata-chat-page-footer">
+            <div id="humata-chat-page-footer-inner">
+                <?php if ( '' !== $medical_disclaimer_text ) : ?>
+                    <?php echo wp_kses_post( wpautop( esc_html( $medical_disclaimer_text ) ) ); ?>
+                <?php endif; ?>
+                <?php if ( '' !== $footer_copyright_text ) : ?>
+                    <p><?php echo esc_html( $footer_copyright_text ); ?></p>
+                <?php endif; ?>
             </div>
         </footer>
     <?php endif; ?>
