@@ -971,6 +971,100 @@ class Humata_Chatbot_Admin_Settings {
                 background: rgba(34, 113, 177, 0.08);
                 border: 1px dashed rgba(34, 113, 177, 0.45);
             }
+
+            /* Intent-Based Links admin card styles */
+            .humata-intent-links-container {
+                display: flex;
+                flex-direction: column;
+                gap: 20px;
+            }
+
+            .humata-intent-card {
+                background: #fff;
+                border: 1px solid #c3c4c7;
+                border-radius: 4px;
+                box-shadow: 0 1px 1px rgba(0,0,0,.04);
+            }
+
+            .humata-intent-card-header {
+                display: flex;
+                align-items: center;
+                padding: 12px 16px;
+                background: #f6f7f7;
+                border-bottom: 1px solid #c3c4c7;
+                border-radius: 4px 4px 0 0;
+            }
+
+            .humata-intent-card-title {
+                font-weight: 600;
+                color: #1d2327;
+                flex: 1;
+            }
+
+            .humata-intent-card-body {
+                padding: 16px;
+            }
+
+            .humata-intent-card-body p {
+                margin-top: 0;
+            }
+
+            .humata-intent-card-body .description {
+                color: #646970;
+                font-style: italic;
+            }
+
+            .humata-intent-links-sub {
+                margin-top: 12px;
+            }
+
+            .humata-intent-links-table input.regular-text {
+                width: 100%;
+            }
+
+            /* Intent card toggle button */
+            .humata-intent-toggle {
+                display: inline-flex;
+                align-items: center;
+                justify-content: center;
+                width: 28px;
+                height: 28px;
+                padding: 0;
+                margin-right: 8px;
+                background: transparent;
+                border: 1px solid transparent;
+                border-radius: 4px;
+                cursor: pointer;
+                color: #50575e;
+                transition: background 0.15s, border-color 0.15s, color 0.15s;
+            }
+
+            .humata-intent-toggle:hover {
+                background: #dcdcde;
+                border-color: #c3c4c7;
+                color: #1d2327;
+            }
+
+            .humata-intent-toggle:focus {
+                outline: none;
+                box-shadow: 0 0 0 2px #2271b1;
+            }
+
+            .humata-intent-toggle .dashicons {
+                font-size: 18px;
+                width: 18px;
+                height: 18px;
+            }
+
+            /* Collapsed state */
+            .humata-intent-card.humata-intent-collapsed .humata-intent-card-body {
+                display: none;
+            }
+
+            .humata-intent-card.humata-intent-collapsed .humata-intent-card-header {
+                border-bottom: none;
+                border-radius: 4px;
+            }
         ' );
 
         // Floating Help Menu admin UI helpers (repeaters).
@@ -1121,6 +1215,189 @@ class Humata_Chatbot_Admin_Settings {
                     $("#" + targetId).val("");
                     $("#" + targetId + "_preview").empty();
                     $(this).hide();
+                });
+
+                // Intent-Based Links repeater handlers.
+                function humataBuildIntentLinkRow(intentIdx, linkIdx) {
+                    return "" +
+                        "<tr class=\\"humata-intent-link-row\\">" +
+                            "<td>" +
+                                "<input type=\\"text\\" class=\\"regular-text\\" name=\\"humata_intent_links[" + intentIdx + "][links][" + linkIdx + "][title]\\" value=\\"\\" placeholder=\\"Shipping Policy\\">" +
+                            "</td>" +
+                            "<td>" +
+                                "<input type=\\"url\\" class=\\"regular-text\\" name=\\"humata_intent_links[" + intentIdx + "][links][" + linkIdx + "][url]\\" value=\\"\\" placeholder=\\"https://example.com/shipping\\">" +
+                            "</td>" +
+                            "<td>" +
+                                "<button type=\\"button\\" class=\\"button link-delete humata-intent-link-remove\\">Remove</button>" +
+                            "</td>" +
+                        "</tr>";
+                }
+
+                function humataBuildIntentCard(intentIdx) {
+                    return "" +
+                        "<div class=\\"humata-intent-card\\" data-intent-index=\\"" + intentIdx + "\\">" +
+                            "<div class=\\"humata-intent-card-header\\">" +
+                                "<button type=\\"button\\" class=\\"humata-intent-toggle\\" aria-expanded=\\"true\\" aria-label=\\"Toggle intent\\">" +
+                                    "<span class=\\"dashicons dashicons-arrow-down-alt2\\"></span>" +
+                                "</button>" +
+                                "<span class=\\"humata-intent-card-title\\">Intent #" + (intentIdx + 1) + "</span>" +
+                                "<button type=\\"button\\" class=\\"button link-delete humata-intent-remove\\">Remove Intent</button>" +
+                            "</div>" +
+                            "<div class=\\"humata-intent-card-body\\">" +
+                                "<p>" +
+                                    "<label><strong>Intent Name</strong></label><br>" +
+                                    "<input type=\\"text\\" class=\\"regular-text\\" name=\\"humata_intent_links[" + intentIdx + "][intent_name]\\" value=\\"\\" placeholder=\\"e.g., shipping_intent\\">" +
+                                    " <span class=\\"description\\">Internal label (not shown to users).</span>" +
+                                "</p>" +
+                                "<p>" +
+                                    "<label><strong>Keywords</strong></label><br>" +
+                                    "<textarea class=\\"large-text\\" rows=\\"2\\" name=\\"humata_intent_links[" + intentIdx + "][keywords]\\" placeholder=\\"shipping, ship, delivery, deliver, track, package\\"></textarea>" +
+                                    " <span class=\\"description\\">Comma-separated keywords. If any keyword appears in the user\'s question, the links below are shown.</span>" +
+                                "</p>" +
+                                "<div class=\\"humata-intent-links-sub\\" data-links-next-index=\\"1\\">" +
+                                    "<label><strong>Resource Links</strong></label>" +
+                                    "<table class=\\"widefat striped humata-intent-links-table\\" style=\\"max-width: 800px; margin-top: 6px;\\">" +
+                                        "<thead>" +
+                                            "<tr>" +
+                                                "<th>Title</th>" +
+                                                "<th>URL</th>" +
+                                                "<th style=\\"width: 80px;\\">Actions</th>" +
+                                            "</tr>" +
+                                        "</thead>" +
+                                        "<tbody>" +
+                                            "<tr class=\\"humata-intent-link-row\\">" +
+                                                "<td>" +
+                                                    "<input type=\\"text\\" class=\\"regular-text\\" name=\\"humata_intent_links[" + intentIdx + "][links][0][title]\\" value=\\"\\" placeholder=\\"Shipping Policy\\">" +
+                                                "</td>" +
+                                                "<td>" +
+                                                    "<input type=\\"url\\" class=\\"regular-text\\" name=\\"humata_intent_links[" + intentIdx + "][links][0][url]\\" value=\\"\\" placeholder=\\"https://example.com/shipping\\">" +
+                                                "</td>" +
+                                                "<td>" +
+                                                    "<button type=\\"button\\" class=\\"button link-delete humata-intent-link-remove\\">Remove</button>" +
+                                                "</td>" +
+                                            "</tr>" +
+                                        "</tbody>" +
+                                    "</table>" +
+                                    "<p style=\\"margin-top: 8px;\\">" +
+                                        "<button type=\\"button\\" class=\\"button button-secondary humata-intent-link-add\\">Add Link</button>" +
+                                    "</p>" +
+                                "</div>" +
+                            "</div>" +
+                        "</div>";
+                }
+
+                // Add new intent
+                $(document).on("click", ".humata-intent-add", function() {
+                    var $repeater = $(this).closest(".humata-intent-links-repeater");
+                    var $container = $repeater.find(".humata-intent-links-container");
+                    var nextIdx = humataSafeInt($repeater.attr("data-next-index"), $container.find(".humata-intent-card").length);
+
+                    $container.append(humataBuildIntentCard(nextIdx));
+                    $repeater.attr("data-next-index", String(nextIdx + 1));
+                });
+
+                // Remove intent
+                $(document).on("click", ".humata-intent-remove", function() {
+                    $(this).closest(".humata-intent-card").remove();
+                });
+
+                // Add link within an intent
+                $(document).on("click", ".humata-intent-link-add", function() {
+                    var $sub = $(this).closest(".humata-intent-links-sub");
+                    var $tbody = $sub.find("tbody");
+                    var $card = $(this).closest(".humata-intent-card");
+                    var intentIdx = humataSafeInt($card.attr("data-intent-index"), 0);
+                    var linkIdx = humataSafeInt($sub.attr("data-links-next-index"), $tbody.find("tr").length);
+
+                    $tbody.append(humataBuildIntentLinkRow(intentIdx, linkIdx));
+                    $sub.attr("data-links-next-index", String(linkIdx + 1));
+                });
+
+                // Remove link within an intent
+                $(document).on("click", ".humata-intent-link-remove", function() {
+                    var $tbody = $(this).closest("tbody");
+                    $(this).closest("tr").remove();
+                    // Ensure at least one row remains
+                    if ($tbody.find("tr").length === 0) {
+                        var $card = $tbody.closest(".humata-intent-card");
+                        var $sub = $tbody.closest(".humata-intent-links-sub");
+                        var intentIdx = humataSafeInt($card.attr("data-intent-index"), 0);
+                        $tbody.append(humataBuildIntentLinkRow(intentIdx, 0));
+                        $sub.attr("data-links-next-index", "1");
+                    }
+                });
+
+                // Intent collapse state persistence
+                var INTENT_COLLAPSE_KEY = "humata_intent_collapsed";
+
+                function humataGetCollapsedIntents() {
+                    try {
+                        var stored = localStorage.getItem(INTENT_COLLAPSE_KEY);
+                        if (stored) {
+                            var parsed = JSON.parse(stored);
+                            if (Array.isArray(parsed)) {
+                                return parsed;
+                            }
+                        }
+                    } catch (e) {}
+                    return [];
+                }
+
+                function humataSaveCollapsedIntents(indices) {
+                    try {
+                        localStorage.setItem(INTENT_COLLAPSE_KEY, JSON.stringify(indices));
+                    } catch (e) {}
+                }
+
+                function humataCollapseCard($card) {
+                    var $btn = $card.find(".humata-intent-toggle");
+                    $card.addClass("humata-intent-collapsed");
+                    $btn.attr("aria-expanded", "false");
+                    $btn.find(".dashicons").removeClass("dashicons-arrow-down-alt2").addClass("dashicons-arrow-right-alt2");
+                }
+
+                function humataExpandCard($card) {
+                    var $btn = $card.find(".humata-intent-toggle");
+                    $card.removeClass("humata-intent-collapsed");
+                    $btn.attr("aria-expanded", "true");
+                    $btn.find(".dashicons").removeClass("dashicons-arrow-right-alt2").addClass("dashicons-arrow-down-alt2");
+                }
+
+                // Restore collapsed state on page load
+                (function() {
+                    var collapsed = humataGetCollapsedIntents();
+                    if (!collapsed.length) return;
+
+                    $(".humata-intent-card").each(function() {
+                        var idx = humataSafeInt($(this).attr("data-intent-index"), -1);
+                        if (idx >= 0 && collapsed.indexOf(idx) !== -1) {
+                            humataCollapseCard($(this));
+                        }
+                    });
+                })();
+
+                // Toggle intent card collapse/expand
+                $(document).on("click", ".humata-intent-toggle", function() {
+                    var $btn = $(this);
+                    var $card = $btn.closest(".humata-intent-card");
+                    var isExpanded = $btn.attr("aria-expanded") === "true";
+                    var idx = humataSafeInt($card.attr("data-intent-index"), -1);
+
+                    if (isExpanded) {
+                        humataCollapseCard($card);
+                    } else {
+                        humataExpandCard($card);
+                    }
+
+                    // Persist to localStorage
+                    var collapsed = humataGetCollapsedIntents();
+                    var pos = collapsed.indexOf(idx);
+                    if (isExpanded && pos === -1) {
+                        collapsed.push(idx);
+                    } else if (!isExpanded && pos !== -1) {
+                        collapsed.splice(pos, 1);
+                    }
+                    humataSaveCollapsedIntents(collapsed);
                 });
             });
         ' );
@@ -1285,6 +1562,7 @@ class Humata_Chatbot_Admin_Settings {
             ),
             'auto_links'    => array(
                 'humata_auto_links',
+                'humata_intent_links',
             ),
         );
 
@@ -1366,6 +1644,7 @@ class Humata_Chatbot_Admin_Settings {
             'humata_anthropic_extended_thinking',
             'humata_floating_help',
             'humata_auto_links',
+            'humata_intent_links',
             'humata_user_avatar_url',
             'humata_bot_avatar_url',
             'humata_avatar_size',
@@ -1411,6 +1690,7 @@ class Humata_Chatbot_Admin_Settings {
             ),
             'auto_links'    => array(
                 'humata_auto_links',
+                'humata_intent_links',
             ),
         );
 
@@ -1640,6 +1920,16 @@ class Humata_Chatbot_Admin_Settings {
             array(
                 'type'              => 'array',
                 'sanitize_callback' => array( $this, 'sanitize_auto_links' ),
+                'default'           => array(),
+            )
+        );
+
+        register_setting(
+            'humata_chatbot_settings',
+            'humata_intent_links',
+            array(
+                'type'              => 'array',
+                'sanitize_callback' => array( $this, 'sanitize_intent_links' ),
                 'default'           => array(),
             )
         );
@@ -2067,6 +2357,106 @@ class Humata_Chatbot_Admin_Settings {
     }
 
     /**
+     * Sanitize intent-based auto-link rules.
+     *
+     * Each intent has: intent_name, keywords (comma-separated), links array.
+     *
+     * @since 1.0.0
+     * @param mixed $value Input value.
+     * @return array Sanitized intents array.
+     */
+    public function sanitize_intent_links( $value ) {
+        if ( ! is_array( $value ) ) {
+            return array();
+        }
+
+        $intents = array();
+        foreach ( $value as $intent ) {
+            if ( ! is_array( $intent ) ) {
+                continue;
+            }
+
+            $intent_name = isset( $intent['intent_name'] ) ? sanitize_text_field( trim( (string) $intent['intent_name'] ) ) : '';
+            if ( '' === $intent_name ) {
+                continue;
+            }
+            if ( strlen( $intent_name ) > 100 ) {
+                $intent_name = substr( $intent_name, 0, 100 );
+            }
+
+            // Parse keywords (comma-separated).
+            $keywords_raw = isset( $intent['keywords'] ) ? (string) $intent['keywords'] : '';
+            $keywords_arr = array_map( 'trim', explode( ',', $keywords_raw ) );
+            $keywords_arr = array_filter( $keywords_arr, function( $k ) {
+                return '' !== $k;
+            } );
+            $keywords_arr = array_map( 'sanitize_text_field', $keywords_arr );
+            $keywords_arr = array_unique( $keywords_arr );
+            $keywords_arr = array_slice( $keywords_arr, 0, 50 ); // Max 50 keywords per intent.
+
+            if ( empty( $keywords_arr ) ) {
+                continue;
+            }
+
+            // Parse links.
+            $links_raw = isset( $intent['links'] ) && is_array( $intent['links'] ) ? $intent['links'] : array();
+            $links = array();
+            foreach ( $links_raw as $link ) {
+                if ( ! is_array( $link ) ) {
+                    continue;
+                }
+
+                $title = isset( $link['title'] ) ? sanitize_text_field( trim( (string) $link['title'] ) ) : '';
+                $url   = isset( $link['url'] ) ? esc_url_raw( trim( (string) $link['url'] ) ) : '';
+
+                if ( '' === $title || '' === $url ) {
+                    continue;
+                }
+
+                $links[] = array(
+                    'title' => $title,
+                    'url'   => $url,
+                );
+
+                if ( count( $links ) >= 10 ) {
+                    break;
+                }
+            }
+
+            if ( empty( $links ) ) {
+                continue;
+            }
+
+            $intents[] = array(
+                'intent_name' => $intent_name,
+                'keywords'    => implode( ', ', $keywords_arr ),
+                'links'       => $links,
+            );
+
+            if ( count( $intents ) >= 50 ) {
+                break;
+            }
+        }
+
+        return array_values( $intents );
+    }
+
+    /**
+     * Get intent links settings, sanitized and normalized.
+     *
+     * @since 1.0.0
+     * @return array
+     */
+    private function get_intent_links_settings() {
+        $value = get_option( 'humata_intent_links', array() );
+        if ( ! is_array( $value ) ) {
+            $value = array();
+        }
+
+        return $this->sanitize_intent_links( $value );
+    }
+
+    /**
      * Auto-Links section description.
      *
      * @since 1.0.0
@@ -2149,6 +2539,156 @@ class Humata_Chatbot_Admin_Settings {
             </p>
             <p class="description">
                 <?php esc_html_e( 'Auto-links are applied to bot messages only. Existing Markdown links and code blocks/spans are not modified.', 'humata-chatbot' ); ?>
+            </p>
+        </div>
+        <?php
+    }
+
+    /**
+     * Intent-Based Links section description.
+     *
+     * @since 1.0.0
+     * @return void
+     */
+    public function render_intent_links_section() {
+        echo '<p>' . esc_html__( 'When keywords are detected in a user\'s question, resource links appear as pill buttons at the end of the bot\'s response.', 'humata-chatbot' ) . '</p>';
+    }
+
+    /**
+     * Render the intent-based links repeater UI.
+     *
+     * @since 1.0.0
+     * @return void
+     */
+    public function render_intent_links_field() {
+        $intents = $this->get_intent_links_settings();
+
+        // Show at least one empty intent for UX.
+        if ( empty( $intents ) ) {
+            $intents = array(
+                array(
+                    'intent_name' => '',
+                    'keywords'    => '',
+                    'links'       => array(
+                        array( 'title' => '', 'url' => '' ),
+                    ),
+                ),
+            );
+        }
+
+        $next_index = count( $intents );
+        ?>
+        <div class="humata-intent-links-repeater" data-humata-repeater="intent_links" data-next-index="<?php echo esc_attr( (string) $next_index ); ?>">
+            <p class="description" style="margin-top: 0;">
+                <?php esc_html_e( 'Create intents with keywords and associated resource links. Keywords are matched case-insensitively as whole words.', 'humata-chatbot' ); ?>
+            </p>
+
+            <div class="humata-intent-links-container">
+                <?php foreach ( $intents as $i => $intent ) : ?>
+                    <?php
+                    $intent      = is_array( $intent ) ? $intent : array();
+                    $intent_name = isset( $intent['intent_name'] ) ? (string) $intent['intent_name'] : '';
+                    $keywords    = isset( $intent['keywords'] ) ? (string) $intent['keywords'] : '';
+                    $links       = isset( $intent['links'] ) && is_array( $intent['links'] ) ? $intent['links'] : array();
+
+                    if ( empty( $links ) ) {
+                        $links = array( array( 'title' => '', 'url' => '' ) );
+                    }
+
+                    $links_next_index = count( $links );
+                    ?>
+                    <div class="humata-intent-card" data-intent-index="<?php echo esc_attr( (string) $i ); ?>">
+                        <div class="humata-intent-card-header">
+                            <button type="button" class="humata-intent-toggle" aria-expanded="true" aria-label="<?php esc_attr_e( 'Toggle intent', 'humata-chatbot' ); ?>">
+                                <span class="dashicons dashicons-arrow-down-alt2"></span>
+                            </button>
+                            <span class="humata-intent-card-title">
+                                <?php
+                                /* translators: %d: intent number */
+                                printf( esc_html__( 'Intent #%d', 'humata-chatbot' ), ( $i + 1 ) );
+                                ?>
+                            </span>
+                            <button type="button" class="button link-delete humata-intent-remove"><?php esc_html_e( 'Remove Intent', 'humata-chatbot' ); ?></button>
+                        </div>
+                        <div class="humata-intent-card-body">
+                            <p>
+                                <label><strong><?php esc_html_e( 'Intent Name', 'humata-chatbot' ); ?></strong></label><br>
+                                <input
+                                    type="text"
+                                    class="regular-text"
+                                    name="humata_intent_links[<?php echo esc_attr( (string) $i ); ?>][intent_name]"
+                                    value="<?php echo esc_attr( $intent_name ); ?>"
+                                    placeholder="<?php esc_attr_e( 'e.g., shipping_intent', 'humata-chatbot' ); ?>"
+                                />
+                                <span class="description"><?php esc_html_e( 'Internal label (not shown to users).', 'humata-chatbot' ); ?></span>
+                            </p>
+                            <p>
+                                <label><strong><?php esc_html_e( 'Keywords', 'humata-chatbot' ); ?></strong></label><br>
+                                <textarea
+                                    class="large-text"
+                                    rows="2"
+                                    name="humata_intent_links[<?php echo esc_attr( (string) $i ); ?>][keywords]"
+                                    placeholder="<?php esc_attr_e( 'shipping, ship, delivery, deliver, track, package', 'humata-chatbot' ); ?>"
+                                ><?php echo esc_textarea( $keywords ); ?></textarea>
+                                <span class="description"><?php esc_html_e( 'Comma-separated keywords. If any keyword appears in the user\'s question, the links below are shown.', 'humata-chatbot' ); ?></span>
+                            </p>
+                            <div class="humata-intent-links-sub" data-links-next-index="<?php echo esc_attr( (string) $links_next_index ); ?>">
+                                <label><strong><?php esc_html_e( 'Resource Links', 'humata-chatbot' ); ?></strong></label>
+                                <table class="widefat striped humata-intent-links-table" style="max-width: 800px; margin-top: 6px;">
+                                    <thead>
+                                        <tr>
+                                            <th><?php esc_html_e( 'Title', 'humata-chatbot' ); ?></th>
+                                            <th><?php esc_html_e( 'URL', 'humata-chatbot' ); ?></th>
+                                            <th style="width: 80px;"><?php esc_html_e( 'Actions', 'humata-chatbot' ); ?></th>
+                                        </tr>
+                                    </thead>
+                                    <tbody>
+                                        <?php foreach ( $links as $j => $link ) : ?>
+                                            <?php
+                                            $link  = is_array( $link ) ? $link : array();
+                                            $title = isset( $link['title'] ) ? (string) $link['title'] : '';
+                                            $url   = isset( $link['url'] ) ? (string) $link['url'] : '';
+                                            ?>
+                                            <tr class="humata-intent-link-row">
+                                                <td>
+                                                    <input
+                                                        type="text"
+                                                        class="regular-text"
+                                                        name="humata_intent_links[<?php echo esc_attr( (string) $i ); ?>][links][<?php echo esc_attr( (string) $j ); ?>][title]"
+                                                        value="<?php echo esc_attr( $title ); ?>"
+                                                        placeholder="<?php esc_attr_e( 'Shipping Policy', 'humata-chatbot' ); ?>"
+                                                    />
+                                                </td>
+                                                <td>
+                                                    <input
+                                                        type="url"
+                                                        class="regular-text"
+                                                        name="humata_intent_links[<?php echo esc_attr( (string) $i ); ?>][links][<?php echo esc_attr( (string) $j ); ?>][url]"
+                                                        value="<?php echo esc_attr( $url ); ?>"
+                                                        placeholder="<?php esc_attr_e( 'https://example.com/shipping', 'humata-chatbot' ); ?>"
+                                                    />
+                                                </td>
+                                                <td>
+                                                    <button type="button" class="button link-delete humata-intent-link-remove"><?php esc_html_e( 'Remove', 'humata-chatbot' ); ?></button>
+                                                </td>
+                                            </tr>
+                                        <?php endforeach; ?>
+                                    </tbody>
+                                </table>
+                                <p style="margin-top: 8px;">
+                                    <button type="button" class="button button-secondary humata-intent-link-add"><?php esc_html_e( 'Add Link', 'humata-chatbot' ); ?></button>
+                                </p>
+                            </div>
+                        </div>
+                    </div>
+                <?php endforeach; ?>
+            </div>
+
+            <p style="margin-top: 16px;">
+                <button type="button" class="button button-secondary humata-intent-add"><?php esc_html_e( 'Add Intent', 'humata-chatbot' ); ?></button>
+            </p>
+            <p class="description">
+                <?php esc_html_e( 'Resource links appear below the bot\'s response when matched. Links are deduplicated if multiple intents match.', 'humata-chatbot' ); ?>
             </p>
         </div>
         <?php

@@ -484,8 +484,8 @@
     color: var(--humata-accent-color);
     text-decoration: none;
     font-weight: 500;
-    word-break: break-all;
-    overflow-wrap: anywhere;
+    word-break: break-word;
+    overflow-wrap: break-word;
 }
 
 .humata-message-content a:hover {
@@ -920,6 +920,81 @@
     }
 }
 
+/* Intent-Based Resource Links */
+.humata-intent-links {
+    margin-top: 16px;
+    padding-top: 14px;
+    border-top: 1px solid var(--humata-border-color);
+}
+
+.humata-intent-links-label {
+    display: block;
+    font-size: 0.8125rem;
+    font-weight: 500;
+    color: var(--humata-text-secondary);
+    margin-bottom: 10px;
+}
+
+.humata-intent-links-pills {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 8px;
+}
+
+.humata-intent-link {
+    display: inline-flex;
+    align-items: center;
+    padding: 7px 16px;
+    font-size: 0.8125rem;
+    font-weight: 500;
+    color: var(--humata-accent-color);
+    background-color: var(--humata-bg-secondary);
+    border: 1px solid var(--humata-border-color);
+    border-radius: 8px;
+    text-decoration: none;
+    transition: background-color 0.15s ease, border-color 0.15s ease, color 0.15s ease, transform 0.1s ease;
+    cursor: pointer;
+}
+
+.humata-intent-link:hover,
+.humata-intent-link:focus {
+    background-color: var(--humata-accent-color);
+    color: #fff;
+    border-color: var(--humata-accent-color);
+    text-decoration: none;
+}
+
+.humata-intent-link:active {
+    transform: scale(0.97);
+}
+
+.humata-intent-link:focus-visible {
+    outline: 2px solid var(--humata-accent-color);
+    outline-offset: 2px;
+}
+
+@media (max-width: 768px) {
+    .humata-intent-links {
+        margin-top: 12px;
+        padding-top: 12px;
+    }
+
+    .humata-intent-links-label {
+        font-size: 0.75rem;
+        margin-bottom: 8px;
+    }
+
+    .humata-intent-links-pills {
+        gap: 6px;
+    }
+
+    .humata-intent-link {
+        padding: 6px 12px;
+        font-size: 0.75rem;
+        border-radius: 6px;
+    }
+}
+
 /* Print Styles */
 @media print {
     #humata-chat-header,
@@ -945,6 +1020,10 @@
     }
 
     .humata-bot-response-disclaimer {
+        display: none;
+    }
+
+    .humata-intent-links {
         display: none;
     }
 

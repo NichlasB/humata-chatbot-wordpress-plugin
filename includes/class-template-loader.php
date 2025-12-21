@@ -183,6 +183,7 @@ class Humata_Chatbot_Template_Loader {
                 'wpNonce'  => wp_create_nonce( 'wp_rest' ),
                 'theme'    => get_option( 'humata_chat_theme', 'auto' ),
                 'autoLinks' => $this->get_auto_links_for_frontend(),
+                'intentLinks' => $this->get_intent_links_for_frontend(),
                 'maxPromptChars' => $max_prompt_chars,
                 'secondLlmProvider' => $second_llm_provider,
                 'userAvatarUrl' => esc_url( $user_avatar_url ),
@@ -205,6 +206,7 @@ class Humata_Chatbot_Template_Loader {
                     'errorNetwork'   => __( 'Network error. Please check your connection.', 'humata-chatbot' ),
                     'errorRateLimit' => __( 'Too many requests. Please wait a moment.', 'humata-chatbot' ),
                     'chatCleared'    => __( 'Chat history cleared.', 'humata-chatbot' ),
+                    'relatedResources' => __( 'Related resources:', 'humata-chatbot' ),
                 ),
             )
         );
@@ -246,6 +248,71 @@ class Humata_Chatbot_Template_Loader {
         }
 
         return array_values( $rules );
+    }
+
+    /**
+     * Get intent-based links for frontend consumption.
+     *
+     * Transforms the stored format into an array optimized for JS matching.
+     *
+     * @since 1.0.0
+     * @return array
+     */
+    private function get_intent_links_for_frontend() {
+        $value = get_option( 'humata_intent_links', array() );
+        if ( ! is_array( $value ) ) {
+            return array();
+        }
+
+        $intents = array();
+        foreach ( $value as $intent ) {
+            if ( ! is_array( $intent ) ) {
+                continue;
+            }
+
+            $keywords_raw = isset( $intent['keywords'] ) ? (string) $intent['keywords'] : '';
+            $keywords_arr = array_map( 'trim', explode( ',', $keywords_raw ) );
+            $keywords_arr = array_filter( $keywords_arr, function( $k ) {
+                return '' !== $k;
+            } );
+            $keywords_arr = array_map( 'strtolower', $keywords_arr );
+            $keywords_arr = array_values( array_unique( $keywords_arr ) );
+
+            if ( empty( $keywords_arr ) ) {
+                continue;
+            }
+
+            $links_raw = isset( $intent['links'] ) && is_array( $intent['links'] ) ? $intent['links'] : array();
+            $links = array();
+            foreach ( $links_raw as $link ) {
+                if ( ! is_array( $link ) ) {
+                    continue;
+                }
+
+                $title = isset( $link['title'] ) ? sanitize_text_field( trim( (string) $link['title'] ) ) : '';
+                $url   = isset( $link['url'] ) ? esc_url( trim( (string) $link['url'] ) ) : '';
+
+                if ( '' === $title || '' === $url ) {
+                    continue;
+                }
+
+                $links[] = array(
+                    'title' => $title,
+                    'url'   => $url,
+                );
+            }
+
+            if ( empty( $links ) ) {
+                continue;
+            }
+
+            $intents[] = array(
+                'keywords' => $keywords_arr,
+                'links'    => $links,
+            );
+        }
+
+        return $intents;
     }
 
     /**

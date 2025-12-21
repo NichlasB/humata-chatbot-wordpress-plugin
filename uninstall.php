@@ -37,6 +37,7 @@ delete_option( 'humata_anthropic_model' );
 delete_option( 'humata_anthropic_extended_thinking' );
 delete_option( 'humata_floating_help' );
 delete_option( 'humata_auto_links' );
+delete_option( 'humata_intent_links' );
 delete_option( 'humata_user_avatar_url' );
 delete_option( 'humata_bot_avatar_url' );
 delete_option( 'humata_avatar_size' );

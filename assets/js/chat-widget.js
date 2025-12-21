@@ -697,6 +697,9 @@
 
         const history = getChatHistoryForRequest();
 
+        // Store user message for intent link matching
+        lastUserMessageForIntents = message;
+
         // Add user message to chat
         addMessage(message, 'user');
 
@@ -1510,6 +1513,9 @@
         cloned.querySelectorAll('.humata-bot-response-disclaimer').forEach(function(el) {
             el.remove();
         });
+        cloned.querySelectorAll('.humata-intent-links').forEach(function(el) {
+            el.remove();
+        });
         return ((cloned.innerText || cloned.textContent || '') + '').trim();
     }
 
@@ -1531,6 +1537,9 @@
             el.remove();
         });
         cloned.querySelectorAll('.humata-bot-response-disclaimer').forEach(function(el) {
+            el.remove();
+        });
+        cloned.querySelectorAll('.humata-intent-links').forEach(function(el) {
             el.remove();
         });
         return cloned.innerHTML;
@@ -1934,6 +1943,161 @@
     }
 
     /**
+     * Escape special regex characters in a string.
+     *
+     * @param {string} str - String to escape.
+     * @returns {string} Escaped string.
+     */
+    function escapeRegexChars(str) {
+        return String(str || '').replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
+    }
+
+    /**
+     * Find matching intent links based on the user's message.
+     * Matches keywords as whole words (case-insensitive).
+     *
+     * @param {string} userMessage - The user's question text.
+     * @returns {Array} Array of {title, url} objects to display (deduplicated).
+     */
+    function findMatchingIntentLinks(userMessage) {
+        const intents = config.intentLinks;
+        if (!intents || !Array.isArray(intents) || !intents.length) {
+            return [];
+        }
+
+        if (!userMessage || typeof userMessage !== 'string') {
+            return [];
+        }
+
+        const matchedLinks = [];
+        const seenUrls = new Set();
+
+        for (let i = 0; i < intents.length; i++) {
+            const intent = intents[i];
+            const keywords = intent.keywords;
+            const links = intent.links;
+
+            if (!keywords || !Array.isArray(keywords) || !keywords.length) {
+                continue;
+            }
+            if (!links || !Array.isArray(links) || !links.length) {
+                continue;
+            }
+
+            let matched = false;
+            for (let k = 0; k < keywords.length; k++) {
+                const keyword = keywords[k];
+                if (!keyword) {
+                    continue;
+                }
+
+                // Whole-word match (case-insensitive)
+                const pattern = new RegExp('\\b' + escapeRegexChars(keyword) + '\\b', 'i');
+                if (pattern.test(userMessage)) {
+                    matched = true;
+                    break;
+                }
+            }
+
+            if (matched) {
+                for (let j = 0; j < links.length; j++) {
+                    const link = links[j];
+                    if (!link || !link.title || !link.url) {
+                        continue;
+                    }
+                    if (!seenUrls.has(link.url)) {
+                        seenUrls.add(link.url);
+                        matchedLinks.push({
+                            title: link.title,
+                            url: link.url
+                        });
+                    }
+                }
+            }
+        }
+
+        return matchedLinks;
+    }
+
+    /**
+     * Create the intent links element with pill-shaped buttons.
+     *
+     * @param {Array} links - Array of {title, url} objects.
+     * @returns {HTMLElement|null} The container element or null if no links.
+     */
+    function createIntentLinksElement(links) {
+        if (!links || !links.length) {
+            return null;
+        }
+
+        const container = document.createElement('div');
+        container.className = 'humata-intent-links';
+
+        const label = document.createElement('span');
+        label.className = 'humata-intent-links-label';
+        label.textContent = config.i18n?.relatedResources || 'Related resources:';
+        container.appendChild(label);
+
+        const pillsWrap = document.createElement('div');
+        pillsWrap.className = 'humata-intent-links-pills';
+
+        for (let i = 0; i < links.length; i++) {
+            const link = links[i];
+            const a = document.createElement('a');
+            a.href = link.url;
+            a.target = '_blank';
+            a.rel = 'noopener noreferrer';
+            a.className = 'humata-intent-link';
+            a.textContent = link.title;
+            pillsWrap.appendChild(a);
+        }
+
+        container.appendChild(pillsWrap);
+        return container;
+    }
+
+    /**
+     * Append intent links to a bot message element based on the user's question.
+     *
+     * @param {HTMLElement} botMessageEl - The bot message element.
+     * @param {string} userMessage - The user's original question.
+     */
+    function appendIntentLinksToMessage(botMessageEl, userMessage) {
+        if (!botMessageEl || !userMessage) {
+            return;
+        }
+
+        const contentEl = botMessageEl.querySelector('.humata-message-content');
+        if (!contentEl) {
+            return;
+        }
+
+        const links = findMatchingIntentLinks(userMessage);
+        if (!links.length) {
+            return;
+        }
+
+        const intentLinksEl = createIntentLinksElement(links);
+        if (!intentLinksEl) {
+            return;
+        }
+
+        // Store the matched links on the element for PDF export
+        botMessageEl._humataIntentLinks = links;
+
+        // Insert before the bot response disclaimer if present, otherwise append
+        const disclaimerEl = contentEl.querySelector('.humata-bot-response-disclaimer');
+        if (disclaimerEl) {
+            contentEl.insertBefore(intentLinksEl, disclaimerEl);
+        } else {
+            contentEl.appendChild(intentLinksEl);
+        }
+    }
+
+    // Track the last user message for intent link matching
+    let lastUserMessageForIntents = '';
+
+    /**
      * Show loading indicator.
      *
      * @returns {HTMLElement} The loading element.
@@ -2079,7 +2243,12 @@
             }
 
             if (data.success && data.answer) {
-                addMessage(data.answer, 'bot');
+                const botMessageEl = addMessage(data.answer, 'bot');
+                // Append intent-based resource links if keywords matched
+                if (botMessageEl && lastUserMessageForIntents) {
+                    appendIntentLinksToMessage(botMessageEl, lastUserMessageForIntents);
+                    saveHistory(); // Re-save to include intent links
+                }
             } else {
                 addMessage(config.i18n?.errorGeneric || 'An error occurred. Please try again.', 'bot', true);
             }
@@ -2194,10 +2363,17 @@
                     return;
                 }
 
+                // Collect intent links if present on bot messages
+                let intentLinks = null;
+                if (!isUser && !isError && el._humataIntentLinks && el._humataIntentLinks.length) {
+                    intentLinks = el._humataIntentLinks;
+                }
+
                 messages.push({
                     role: isUser ? 'You' : 'Assistant',
                     text: text,
-                    isError: isError
+                    isError: isError,
+                    intentLinks: intentLinks
                 });
             });
 
@@ -2232,6 +2408,36 @@
                     }
                     docTextSafe(lines[i], marginX, y);
                     y += lineHeight;
+                }
+
+                // Render intent links if present
+                if (msg.intentLinks && msg.intentLinks.length) {
+                    y += 4;
+                    doc.setFont('helvetica', 'italic');
+                    doc.setFontSize(10);
+
+                    const resourceLabel = config.i18n?.relatedResources || 'Related resources:';
+                    if (y + lineHeight > pageHeight - marginY) {
+                        doc.addPage();
+                        y = marginY;
+                    }
+                    docTextSafe(resourceLabel, marginX, y);
+                    y += lineHeight;
+
+                    doc.setFont('helvetica', 'normal');
+                    for (let k = 0; k < msg.intentLinks.length; k++) {
+                        const link = msg.intentLinks[k];
+                        const linkText = '• ' + link.title + ' - ' + link.url;
+                        const linkLines = doc.splitTextToSize(linkText, maxWidth);
+                        for (let l = 0; l < linkLines.length; l++) {
+                            if (y + lineHeight > pageHeight - marginY) {
+                                doc.addPage();
+                                y = marginY;
+                            }
+                            docTextSafe(linkLines[l], marginX, y);
+                            y += lineHeight;
+                        }
+                    }
                 }
 
                 y += lineHeight;
@@ -2302,6 +2508,7 @@
 
         const messages = [];
         const messageElements = elements.messages.querySelectorAll('.humata-message:not(#humata-welcome-message):not(.humata-message-loading)');
+        let lastUserMessage = '';
 
         messageElements.forEach(function(el) {
             const isUser = el.classList.contains('humata-message-user');
@@ -2309,11 +2516,20 @@
             const content = el.querySelector('.humata-message-content');
 
             if (content) {
-                messages.push({
+                const msgData = {
                     type: isUser ? 'user' : 'bot',
                     content: isUser ? getMessagePlainText(content) : getMessageHtmlForStorage(content),
                     isError: isError
-                });
+                };
+
+                if (isUser) {
+                    lastUserMessage = msgData.content;
+                } else {
+                    // Store the user message that triggered this bot response for intent links
+                    msgData.triggerUserMessage = lastUserMessage;
+                }
+
+                messages.push(msgData);
             }
         });
 
@@ -2375,6 +2591,11 @@
                 messageDiv.appendChild(avatarDiv);
                 messageDiv.appendChild(contentDiv);
                 elements.messages.appendChild(messageDiv);
+
+                // Re-apply intent links for bot messages
+                if (msg.type === 'bot' && !msg.isError && msg.triggerUserMessage) {
+                    appendIntentLinksToMessage(messageDiv, msg.triggerUserMessage);
+                }
             });
 
             // Load conversation ID
