@@ -26,6 +26,33 @@
     let maxPromptChars = 3000;
     let isEmbedded = false;
 
+    // Default SVG icons for avatars
+    const DEFAULT_USER_AVATAR_SVG = '<svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><path d="M19 21v-2a4 4 0 0 0-4-4H9a4 4 0 0 0-4 4v2"></path><circle cx="12" cy="7" r="4"></circle></svg>';
+    const DEFAULT_BOT_AVATAR_SVG = '<svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><path d="M12 8V4H8"></path><rect width="16" height="12" x="4" y="8" rx="2"></rect><path d="M2 14h2"></path><path d="M20 14h2"></path><path d="M15 13v2"></path><path d="M9 13v2"></path></svg>';
+
+    /**
+     * Set avatar content for a message avatar element.
+     *
+     * @param {HTMLElement} avatarDiv - The avatar container element.
+     * @param {string} type - 'user' or 'bot'.
+     */
+    function setAvatarContent(avatarDiv, type) {
+        var avatarUrl = (type === 'user') ? config.userAvatarUrl : config.botAvatarUrl;
+
+        if (avatarUrl && avatarUrl.length > 0) {
+            // Custom image avatar
+            var img = document.createElement('img');
+            img.src = avatarUrl;
+            img.alt = (type === 'user') ? 'User' : 'Bot';
+            img.className = 'humata-avatar-img';
+            avatarDiv.innerHTML = '';
+            avatarDiv.appendChild(img);
+        } else {
+            // Default SVG icon
+            avatarDiv.innerHTML = (type === 'user') ? DEFAULT_USER_AVATAR_SVG : DEFAULT_BOT_AVATAR_SVG;
+        }
+    }
+
     /**
      * Initialize the chat widget.
      */
@@ -743,12 +770,7 @@
         // Avatar
         const avatarDiv = document.createElement('div');
         avatarDiv.className = 'humata-message-avatar';
-
-        if (type === 'user') {
-            avatarDiv.innerHTML = '<svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><path d="M19 21v-2a4 4 0 0 0-4-4H9a4 4 0 0 0-4 4v2"></path><circle cx="12" cy="7" r="4"></circle></svg>';
-        } else {
-            avatarDiv.innerHTML = '<svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><path d="M12 8V4H8"></path><rect width="16" height="12" x="4" y="8" rx="2"></rect><path d="M2 14h2"></path><path d="M20 14h2"></path><path d="M15 13v2"></path><path d="M9 13v2"></path></svg>';
-        }
+        setAvatarContent(avatarDiv, type);
 
         // Content
         const contentDiv = document.createElement('div');
@@ -772,6 +794,11 @@
         messageDiv.appendChild(avatarDiv);
         messageDiv.appendChild(contentDiv);
         elements.messages.appendChild(messageDiv);
+
+        // Update bot response disclaimer position for bot messages
+        if (type === 'bot' && !isError) {
+            updateBotResponseDisclaimerPosition();
+        }
 
         // Scroll to bottom
         scrollToBottom();
@@ -1480,6 +1507,9 @@
         cloned.querySelectorAll('.humata-message-actions').forEach(function(el) {
             el.remove();
         });
+        cloned.querySelectorAll('.humata-bot-response-disclaimer').forEach(function(el) {
+            el.remove();
+        });
         return ((cloned.innerText || cloned.textContent || '') + '').trim();
     }
 
@@ -1498,6 +1528,9 @@
             el.remove();
         });
         cloned.querySelectorAll('.humata-message-actions').forEach(function(el) {
+            el.remove();
+        });
+        cloned.querySelectorAll('.humata-bot-response-disclaimer').forEach(function(el) {
             el.remove();
         });
         return cloned.innerHTML;
@@ -1830,18 +1863,92 @@
     }
 
     /**
+     * Get or create the bot response disclaimer element.
+     * Returns null if no disclaimer is configured.
+     *
+     * @returns {HTMLElement|null}
+     */
+    function getBotResponseDisclaimerElement() {
+        const disclaimerHtml = config.botResponseDisclaimer;
+        if (!disclaimerHtml || typeof disclaimerHtml !== 'string' || !disclaimerHtml.trim()) {
+            return null;
+        }
+
+        let disclaimerEl = document.getElementById('humata-bot-response-disclaimer');
+        if (!disclaimerEl) {
+            disclaimerEl = document.createElement('div');
+            disclaimerEl.id = 'humata-bot-response-disclaimer';
+            disclaimerEl.className = 'humata-bot-response-disclaimer';
+            disclaimerEl.innerHTML = '<p>' + disclaimerHtml + '</p>';
+        }
+
+        return disclaimerEl;
+    }
+
+    /**
+     * Update the position of the bot response disclaimer to be inside the
+     * latest non-error bot message's content (after the message actions).
+     * Hides it if no suitable bot message exists.
+     */
+    function updateBotResponseDisclaimerPosition() {
+        const disclaimerEl = getBotResponseDisclaimerElement();
+        if (!disclaimerEl) {
+            return;
+        }
+
+        if (!elements.messages) {
+            disclaimerEl.remove();
+            return;
+        }
+
+        // Find the latest non-error, non-loading bot message
+        const botMessages = elements.messages.querySelectorAll(
+            '.humata-message-bot:not(.humata-message-error):not(.humata-message-loading):not(#humata-welcome-message)'
+        );
+
+        if (!botMessages.length) {
+            disclaimerEl.remove();
+            return;
+        }
+
+        const latestBotMessage = botMessages[botMessages.length - 1];
+        const contentEl = latestBotMessage.querySelector('.humata-message-content');
+
+        if (!contentEl) {
+            disclaimerEl.remove();
+            return;
+        }
+
+        // Append disclaimer inside the message content (after actions if present)
+        contentEl.appendChild(disclaimerEl);
+    }
+
+    /**
+     * Hide the bot response disclaimer temporarily (e.g., during loading).
+     */
+    function hideBotResponseDisclaimer() {
+        const disclaimerEl = document.getElementById('humata-bot-response-disclaimer');
+        if (disclaimerEl) {
+            disclaimerEl.remove();
+        }
+    }
+
+    /**
      * Show loading indicator.
      *
      * @returns {HTMLElement} The loading element.
      */
     function showLoading() {
+        // Hide disclaimer while loading
+        hideBotResponseDisclaimer();
+
         const loadingDiv = document.createElement('div');
         loadingDiv.className = 'humata-message humata-message-bot humata-message-loading';
         loadingDiv.id = 'humata-loading-indicator';
 
         const avatarDiv = document.createElement('div');
         avatarDiv.className = 'humata-message-avatar';
-        avatarDiv.innerHTML = '<svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><path d="M12 8V4H8"></path><rect width="16" height="12" x="4" y="8" rx="2"></rect><path d="M2 14h2"></path><path d="M20 14h2"></path><path d="M15 13v2"></path><path d="M9 13v2"></path></svg>';
+        setAvatarContent(avatarDiv, 'bot');
 
         const contentDiv = document.createElement('div');
         contentDiv.className = 'humata-message-content';
@@ -2156,28 +2263,24 @@
             ensureCopyButton(elements.welcomeMessage.querySelector('.humata-message-content'));
         } else {
             // Recreate welcome message if it doesn't exist
-            const welcomeHtml = `
-                <div id="humata-welcome-message" class="humata-message humata-message-bot">
-                    <div class="humata-message-avatar">
-                        <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round">
-                            <path d="M12 8V4H8"></path>
-                            <rect width="16" height="12" x="4" y="8" rx="2"></rect>
-                            <path d="M2 14h2"></path>
-                            <path d="M20 14h2"></path>
-                            <path d="M15 13v2"></path>
-                            <path d="M9 13v2"></path>
-                        </svg>
-                    </div>
-                    <div class="humata-message-content">
-                        <p>${config.i18n?.welcome || "Hello! I'm here to help answer your questions. What would you like to know?"}</p>
-                    </div>
-                </div>
-            `;
-            elements.messages.innerHTML = welcomeHtml;
-            elements.welcomeMessage = document.getElementById('humata-welcome-message');
-            if (elements.welcomeMessage) {
-                ensureCopyButton(elements.welcomeMessage.querySelector('.humata-message-content'));
-            }
+            const welcomeDiv = document.createElement('div');
+            welcomeDiv.id = 'humata-welcome-message';
+            welcomeDiv.className = 'humata-message humata-message-bot';
+
+            const avatarDiv = document.createElement('div');
+            avatarDiv.className = 'humata-message-avatar';
+            setAvatarContent(avatarDiv, 'bot');
+
+            const contentDiv = document.createElement('div');
+            contentDiv.className = 'humata-message-content';
+            contentDiv.innerHTML = '<p>' + (config.i18n?.welcome || "Hello! I'm here to help answer your questions. What would you like to know?") + '</p>';
+
+            welcomeDiv.appendChild(avatarDiv);
+            welcomeDiv.appendChild(contentDiv);
+            elements.messages.appendChild(welcomeDiv);
+
+            elements.welcomeMessage = welcomeDiv;
+            ensureCopyButton(contentDiv);
         }
 
         // Clear localStorage
@@ -2248,12 +2351,7 @@
 
                 const avatarDiv = document.createElement('div');
                 avatarDiv.className = 'humata-message-avatar';
-
-                if (msg.type === 'user') {
-                    avatarDiv.innerHTML = '<svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><path d="M19 21v-2a4 4 0 0 0-4-4H9a4 4 0 0 0-4 4v2"></path><circle cx="12" cy="7" r="4"></circle></svg>';
-                } else {
-                    avatarDiv.innerHTML = '<svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><path d="M12 8V4H8"></path><rect width="16" height="12" x="4" y="8" rx="2"></rect><path d="M2 14h2"></path><path d="M20 14h2"></path><path d="M15 13v2"></path><path d="M9 13v2"></path></svg>';
-                }
+                setAvatarContent(avatarDiv, msg.type);
 
                 const contentDiv = document.createElement('div');
                 contentDiv.className = 'humata-message-content';
@@ -2281,6 +2379,9 @@
 
             // Load conversation ID
             conversationId = localStorage.getItem(CONVERSATION_KEY);
+
+            // Update bot response disclaimer position
+            updateBotResponseDisclaimerPosition();
 
             // Scroll to bottom
             scrollToBottom();

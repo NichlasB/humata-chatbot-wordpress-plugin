@@ -71,6 +71,46 @@ class Humata_Chatbot_Settings_Tab_Display extends Humata_Chatbot_Settings_Tab_Ba
             $page_id,
             'humata_disclaimer_section'
         );
+
+        add_settings_field(
+            'humata_bot_response_disclaimer',
+            __( 'Bot Response Disclaimer', 'humata-chatbot' ),
+            array( $this->admin, 'render_bot_response_disclaimer_field' ),
+            $page_id,
+            'humata_disclaimer_section'
+        );
+
+        // Avatar Settings Section.
+        add_settings_section(
+            'humata_avatar_section',
+            __( 'Avatar Settings', 'humata-chatbot' ),
+            array( $this->admin, 'render_avatar_section' ),
+            $page_id
+        );
+
+        add_settings_field(
+            'humata_user_avatar_url',
+            __( 'User Avatar Image', 'humata-chatbot' ),
+            array( $this->admin, 'render_user_avatar_field' ),
+            $page_id,
+            'humata_avatar_section'
+        );
+
+        add_settings_field(
+            'humata_bot_avatar_url',
+            __( 'Bot Avatar Image', 'humata-chatbot' ),
+            array( $this->admin, 'render_bot_avatar_field' ),
+            $page_id,
+            'humata_avatar_section'
+        );
+
+        add_settings_field(
+            'humata_avatar_size',
+            __( 'Avatar Size (px)', 'humata-chatbot' ),
+            array( $this->admin, 'render_avatar_size_field' ),
+            $page_id,
+            'humata_avatar_section'
+        );
     }
 }
 

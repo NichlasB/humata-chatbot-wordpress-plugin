@@ -38,6 +38,16 @@ if ( ! is_string( $footer_copyright_text ) ) {
     $footer_copyright_text = '';
 }
 $footer_copyright_text = trim( $footer_copyright_text );
+
+// Avatar settings.
+$bot_avatar_url = get_option( 'humata_bot_avatar_url', '' );
+$avatar_size    = absint( get_option( 'humata_avatar_size', 40 ) );
+if ( $avatar_size < 32 ) {
+    $avatar_size = 32;
+}
+if ( $avatar_size > 64 ) {
+    $avatar_size = 64;
+}
 ?>
 <!DOCTYPE html>
 <html <?php language_attributes(); ?> class="<?php echo esc_attr( $theme_class ); ?>">
@@ -46,6 +56,7 @@ $footer_copyright_text = trim( $footer_copyright_text );
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <meta name="robots" content="noindex, nofollow">
     <title><?php echo esc_html( get_bloginfo( 'name' ) ); ?> - <?php esc_html_e( 'Chat', 'humata-chatbot' ); ?></title>
+    <style>:root { --humata-avatar-size: <?php echo esc_attr( $avatar_size ); ?>px; }</style>
     <?php wp_head(); ?>
 </head>
 <body class="humata-chat-body <?php echo esc_attr( $theme_class ); ?>">
@@ -95,14 +106,18 @@ $footer_copyright_text = trim( $footer_copyright_text );
             <main id="humata-chat-messages">
                 <div id="humata-welcome-message" class="humata-message humata-message-bot">
                     <div class="humata-message-avatar">
-                        <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round">
-                            <path d="M12 8V4H8"></path>
-                            <rect width="16" height="12" x="4" y="8" rx="2"></rect>
-                            <path d="M2 14h2"></path>
-                            <path d="M20 14h2"></path>
-                            <path d="M15 13v2"></path>
-                            <path d="M9 13v2"></path>
-                        </svg>
+                        <?php if ( ! empty( $bot_avatar_url ) ) : ?>
+                            <img class="humata-avatar-img" src="<?php echo esc_url( $bot_avatar_url ); ?>" alt="<?php esc_attr_e( 'Bot', 'humata-chatbot' ); ?>" />
+                        <?php else : ?>
+                            <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round">
+                                <path d="M12 8V4H8"></path>
+                                <rect width="16" height="12" x="4" y="8" rx="2"></rect>
+                                <path d="M2 14h2"></path>
+                                <path d="M20 14h2"></path>
+                                <path d="M15 13v2"></path>
+                                <path d="M9 13v2"></path>
+                            </svg>
+                        <?php endif; ?>
                     </div>
                     <div class="humata-message-content">
                         <p><?php esc_html_e( 'Hi! Ask any Dr. Morse related question and I\'ll do my best to provide an answer. 🙂', 'humata-chatbot' ); ?></p>

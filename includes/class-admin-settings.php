@@ -103,6 +103,7 @@ class Humata_Chatbot_Admin_Settings {
 
         wp_enqueue_script( 'jquery' );
         wp_enqueue_script( 'jquery-ui-sortable' );
+        wp_enqueue_media();
 
         $titles_for_js = get_option( 'humata_document_titles', array() );
         if ( ! is_array( $titles_for_js ) ) {
@@ -1094,6 +1095,33 @@ class Humata_Chatbot_Admin_Settings {
                 $(".humata-floating-help-repeater").each(function() {
                     humataInitRepeaterSortable($(this));
                 });
+
+                // Avatar uploader handlers.
+                $(document).on("click", ".humata-upload-avatar", function(e) {
+                    e.preventDefault();
+                    var targetId = $(this).data("target");
+                    var frame = wp.media({
+                        title: "Select Avatar Image",
+                        button: { text: "Use this image" },
+                        multiple: false,
+                        library: { type: ["image/jpeg", "image/png"] }
+                    });
+                    frame.on("select", function() {
+                        var attachment = frame.state().get("selection").first().toJSON();
+                        $("#" + targetId).val(attachment.url);
+                        $("#" + targetId + "_preview").html("<img src=\"" + attachment.url + "\" style=\"max-width:64px;max-height:64px;border-radius:6px;\" />");
+                        $(".humata-remove-avatar[data-target=\"" + targetId + "\"]").show();
+                    });
+                    frame.open();
+                });
+
+                $(document).on("click", ".humata-remove-avatar", function(e) {
+                    e.preventDefault();
+                    var targetId = $(this).data("target");
+                    $("#" + targetId).val("");
+                    $("#" + targetId + "_preview").empty();
+                    $(this).hide();
+                });
             });
         ' );
     }
@@ -1243,6 +1271,10 @@ class Humata_Chatbot_Admin_Settings {
                 'humata_chat_theme',
                 'humata_medical_disclaimer_text',
                 'humata_footer_copyright_text',
+                'humata_bot_response_disclaimer',
+                'humata_user_avatar_url',
+                'humata_bot_avatar_url',
+                'humata_avatar_size',
             ),
             'security'      => array(
                 'humata_max_prompt_chars',
@@ -1334,6 +1366,10 @@ class Humata_Chatbot_Admin_Settings {
             'humata_anthropic_extended_thinking',
             'humata_floating_help',
             'humata_auto_links',
+            'humata_user_avatar_url',
+            'humata_bot_avatar_url',
+            'humata_avatar_size',
+            'humata_bot_response_disclaimer',
         );
 
         if ( ! in_array( (string) $option, $plugin_options, true ) ) {
@@ -1361,6 +1397,10 @@ class Humata_Chatbot_Admin_Settings {
                 'humata_chat_theme',
                 'humata_medical_disclaimer_text',
                 'humata_footer_copyright_text',
+                'humata_bot_response_disclaimer',
+                'humata_user_avatar_url',
+                'humata_bot_avatar_url',
+                'humata_avatar_size',
             ),
             'security'      => array(
                 'humata_max_prompt_chars',
@@ -1496,6 +1536,16 @@ class Humata_Chatbot_Admin_Settings {
 
         register_setting(
             'humata_chatbot_settings',
+            'humata_bot_response_disclaimer',
+            array(
+                'type'              => 'string',
+                'sanitize_callback' => array( $this, 'sanitize_bot_response_disclaimer' ),
+                'default'           => '',
+            )
+        );
+
+        register_setting(
+            'humata_chatbot_settings',
             'humata_second_llm_provider',
             array(
                 'type'              => 'string',
@@ -1594,6 +1644,36 @@ class Humata_Chatbot_Admin_Settings {
             )
         );
 
+        register_setting(
+            'humata_chatbot_settings',
+            'humata_user_avatar_url',
+            array(
+                'type'              => 'string',
+                'sanitize_callback' => 'esc_url_raw',
+                'default'           => '',
+            )
+        );
+
+        register_setting(
+            'humata_chatbot_settings',
+            'humata_bot_avatar_url',
+            array(
+                'type'              => 'string',
+                'sanitize_callback' => 'esc_url_raw',
+                'default'           => '',
+            )
+        );
+
+        register_setting(
+            'humata_chatbot_settings',
+            'humata_avatar_size',
+            array(
+                'type'              => 'integer',
+                'sanitize_callback' => array( $this, 'sanitize_avatar_size' ),
+                'default'           => 40,
+            )
+        );
+
         // Register per-tab sections/fields.
         foreach ( $this->get_tab_modules() as $module ) {
             if ( is_object( $module ) && method_exists( $module, 'register' ) ) {
@@ -1648,6 +1728,54 @@ class Humata_Chatbot_Admin_Settings {
             return 100000;
         }
 
+        return $value;
+    }
+
+    /**
+     * Sanitize bot response disclaimer HTML.
+     * Allows limited HTML: links, bold, italic, line breaks.
+     *
+     * @since 1.0.0
+     * @param string $value Input value.
+     * @return string Sanitized HTML.
+     */
+    public function sanitize_bot_response_disclaimer( $value ) {
+        if ( ! is_string( $value ) ) {
+            return '';
+        }
+
+        $allowed_html = array(
+            'a'      => array(
+                'href'   => array(),
+                'target' => array(),
+                'rel'    => array(),
+                'title'  => array(),
+            ),
+            'strong' => array(),
+            'b'      => array(),
+            'em'     => array(),
+            'i'      => array(),
+            'br'     => array(),
+        );
+
+        return wp_kses( $value, $allowed_html );
+    }
+
+    /**
+     * Sanitize avatar size option.
+     *
+     * @since 1.0.0
+     * @param mixed $value Input value.
+     * @return int Clamped value between 32 and 64.
+     */
+    public function sanitize_avatar_size( $value ) {
+        $value = absint( $value );
+        if ( $value < 32 ) {
+            $value = 32;
+        }
+        if ( $value > 64 ) {
+            $value = 64;
+        }
         return $value;
     }
 
@@ -3149,6 +3277,108 @@ class Humata_Chatbot_Admin_Settings {
         <p class="description">
             <?php esc_html_e( 'Shown at the bottom of the dedicated chat page footer (below the medical disclaimer). Leave blank to disable.', 'humata-chatbot' ); ?>
         </p>
+        <?php
+    }
+
+    /**
+     * Render bot response disclaimer field.
+     *
+     * @since 1.0.0
+     * @return void
+     */
+    public function render_bot_response_disclaimer_field() {
+        $value = get_option( 'humata_bot_response_disclaimer', '' );
+        if ( ! is_string( $value ) ) {
+            $value = '';
+        }
+        ?>
+        <textarea
+            id="humata_bot_response_disclaimer"
+            name="humata_bot_response_disclaimer"
+            rows="4"
+            class="large-text"
+        ><?php echo esc_textarea( $value ); ?></textarea>
+        <p class="description">
+            <?php esc_html_e( 'Displayed in a styled box below the latest AI response. Leave blank to disable.', 'humata-chatbot' ); ?><br>
+            <?php esc_html_e( 'Supports: <strong>, <em>, <a href="..."> for links, bold, and italic text.', 'humata-chatbot' ); ?>
+        </p>
+        <?php
+    }
+
+    /**
+     * Render avatar settings section description.
+     *
+     * @since 1.0.0
+     * @return void
+     */
+    public function render_avatar_section() {
+        echo '<p>' . esc_html__( 'Customize the avatar images displayed for user and bot messages. Upload square images (e.g., 512×512) for best results.', 'humata-chatbot' ) . '</p>';
+    }
+
+    /**
+     * Render user avatar image field.
+     *
+     * @since 1.0.0
+     * @return void
+     */
+    public function render_user_avatar_field() {
+        $url = get_option( 'humata_user_avatar_url', '' );
+        ?>
+        <div class="humata-avatar-uploader">
+            <input type="hidden" id="humata_user_avatar_url" name="humata_user_avatar_url" value="<?php echo esc_attr( $url ); ?>" />
+            <button type="button" class="button humata-upload-avatar" data-target="humata_user_avatar_url"><?php esc_html_e( 'Select Image', 'humata-chatbot' ); ?></button>
+            <button type="button" class="button humata-remove-avatar" data-target="humata_user_avatar_url" <?php echo empty( $url ) ? 'style="display:none;"' : ''; ?>><?php esc_html_e( 'Remove', 'humata-chatbot' ); ?></button>
+            <div class="humata-avatar-preview" id="humata_user_avatar_url_preview">
+                <?php if ( ! empty( $url ) ) : ?>
+                    <img src="<?php echo esc_url( $url ); ?>" alt="<?php esc_attr_e( 'User Avatar Preview', 'humata-chatbot' ); ?>" style="max-width:64px;max-height:64px;border-radius:6px;" />
+                <?php endif; ?>
+            </div>
+        </div>
+        <p class="description"><?php esc_html_e( 'Upload a custom avatar for user messages. Leave empty for default icon.', 'humata-chatbot' ); ?></p>
+        <?php
+    }
+
+    /**
+     * Render bot avatar image field.
+     *
+     * @since 1.0.0
+     * @return void
+     */
+    public function render_bot_avatar_field() {
+        $url = get_option( 'humata_bot_avatar_url', '' );
+        ?>
+        <div class="humata-avatar-uploader">
+            <input type="hidden" id="humata_bot_avatar_url" name="humata_bot_avatar_url" value="<?php echo esc_attr( $url ); ?>" />
+            <button type="button" class="button humata-upload-avatar" data-target="humata_bot_avatar_url"><?php esc_html_e( 'Select Image', 'humata-chatbot' ); ?></button>
+            <button type="button" class="button humata-remove-avatar" data-target="humata_bot_avatar_url" <?php echo empty( $url ) ? 'style="display:none;"' : ''; ?>><?php esc_html_e( 'Remove', 'humata-chatbot' ); ?></button>
+            <div class="humata-avatar-preview" id="humata_bot_avatar_url_preview">
+                <?php if ( ! empty( $url ) ) : ?>
+                    <img src="<?php echo esc_url( $url ); ?>" alt="<?php esc_attr_e( 'Bot Avatar Preview', 'humata-chatbot' ); ?>" style="max-width:64px;max-height:64px;border-radius:6px;" />
+                <?php endif; ?>
+            </div>
+        </div>
+        <p class="description"><?php esc_html_e( 'Upload a custom avatar for bot messages. Leave empty for default icon.', 'humata-chatbot' ); ?></p>
+        <?php
+    }
+
+    /**
+     * Render avatar size field.
+     *
+     * @since 1.0.0
+     * @return void
+     */
+    public function render_avatar_size_field() {
+        $size = absint( get_option( 'humata_avatar_size', 40 ) );
+        if ( $size < 32 ) {
+            $size = 32;
+        }
+        if ( $size > 64 ) {
+            $size = 64;
+        }
+        ?>
+        <input type="number" id="humata_avatar_size" name="humata_avatar_size" value="<?php echo esc_attr( $size ); ?>" min="32" max="64" step="1" class="small-text" />
+        <span><?php esc_html_e( 'pixels', 'humata-chatbot' ); ?></span>
+        <p class="description"><?php esc_html_e( 'Avatar display size on desktop (32–64 px). Mobile uses a fixed smaller size.', 'humata-chatbot' ); ?></p>
         <?php
     }
 

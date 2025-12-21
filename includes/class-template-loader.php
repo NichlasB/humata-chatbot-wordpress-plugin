@@ -154,6 +154,24 @@ class Humata_Chatbot_Template_Loader {
             $max_prompt_chars = 100000;
         }
 
+        // Avatar settings.
+        $user_avatar_url = get_option( 'humata_user_avatar_url', '' );
+        $bot_avatar_url  = get_option( 'humata_bot_avatar_url', '' );
+        $avatar_size     = absint( get_option( 'humata_avatar_size', 40 ) );
+        if ( $avatar_size < 32 ) {
+            $avatar_size = 32;
+        }
+        if ( $avatar_size > 64 ) {
+            $avatar_size = 64;
+        }
+
+        // Bot response disclaimer (supports limited HTML).
+        $bot_response_disclaimer = get_option( 'humata_bot_response_disclaimer', '' );
+        if ( ! is_string( $bot_response_disclaimer ) ) {
+            $bot_response_disclaimer = '';
+        }
+        $bot_response_disclaimer = trim( $bot_response_disclaimer );
+
         // Localize script with configuration
         wp_localize_script(
             'humata-chat-widget',
@@ -167,6 +185,10 @@ class Humata_Chatbot_Template_Loader {
                 'autoLinks' => $this->get_auto_links_for_frontend(),
                 'maxPromptChars' => $max_prompt_chars,
                 'secondLlmProvider' => $second_llm_provider,
+                'userAvatarUrl' => esc_url( $user_avatar_url ),
+                'botAvatarUrl'  => esc_url( $bot_avatar_url ),
+                'avatarSize'    => $avatar_size,
+                'botResponseDisclaimer' => $bot_response_disclaimer,
                 'i18n'     => array(
                     'placeholder'    => __( 'Ask a question...', 'humata-chatbot' ),
                     'send'           => __( 'Send', 'humata-chatbot' ),

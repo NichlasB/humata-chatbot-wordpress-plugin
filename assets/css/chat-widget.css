@@ -272,15 +272,23 @@
 /* Message Avatar */
 .humata-message-avatar {
     flex-shrink: 0;
-    width: 32px;
-    height: 32px;
+    width: var(--humata-avatar-size, 40px);
+    height: var(--humata-avatar-size, 40px);
     display: flex;
     align-items: center;
     justify-content: center;
-    border-radius: 6px;
+    border-radius: 40px;
     background-color: transparent;
     color: var(--humata-text-primary);
     border: 1px solid var(--humata-border-color);
+    overflow: hidden;
+}
+
+.humata-message-avatar .humata-avatar-img {
+    width: 100%;
+    height: 100%;
+    object-fit: cover;
+    border-radius: 40px;
 }
 
 .humata-message-user .humata-message-avatar {
@@ -867,6 +875,51 @@
     outline: none;
 }
 
+/* Bot Response Disclaimer Box */
+.humata-bot-response-disclaimer {
+    margin-top: 16px;
+    margin-bottom: 44px;
+    padding: 14px 18px;
+    background-color: var(--humata-bg-secondary);
+    border: 1px solid var(--humata-border-color);
+    border-radius: 10px;
+    font-size: 13px;
+    line-height: 1.55;
+    color: var(--humata-text-secondary);
+}
+
+.humata-bot-response-disclaimer p {
+    margin: 0;
+}
+
+.humata-bot-response-disclaimer a {
+    color: var(--humata-accent-color);
+    text-decoration: underline;
+    font-weight: 500;
+}
+
+.humata-bot-response-disclaimer a:hover {
+    color: var(--humata-accent-hover);
+}
+
+.humata-bot-response-disclaimer strong,
+.humata-bot-response-disclaimer b {
+    font-weight: 600;
+    color: var(--humata-text-primary);
+}
+
+.humata-bot-response-disclaimer em,
+.humata-bot-response-disclaimer i {
+    font-style: italic;
+}
+
+@media (max-width: 768px) {
+    .humata-bot-response-disclaimer {
+        padding: 12px 14px;
+        font-size: 12px;
+    }
+}
+
 /* Print Styles */
 @media print {
     #humata-chat-header,
@@ -888,6 +941,10 @@
 
     .humata-edit-button,
     .humata-edit-actions {
+        display: none;
+    }
+
+    .humata-bot-response-disclaimer {
         display: none;
     }
 
