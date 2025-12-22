@@ -48,14 +48,24 @@ if ( $avatar_size < 32 ) {
 if ( $avatar_size > 64 ) {
     $avatar_size = 64;
 }
+
+// SEO settings: determine if we should output noindex.
+// Allow indexing only on homepage when the option is enabled.
+$allow_seo_indexing = get_option( 'humata_allow_seo_indexing', false );
+$is_homepage_mode   = is_front_page();
+$should_noindex     = ! ( $is_homepage_mode && $allow_seo_indexing );
 ?>
 <!DOCTYPE html>
 <html <?php language_attributes(); ?> class="<?php echo esc_attr( $theme_class ); ?>">
 <head>
     <meta charset="<?php bloginfo( 'charset' ); ?>">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <meta name="robots" content="noindex, nofollow">
-    <title><?php echo esc_html( get_bloginfo( 'name' ) ); ?> - <?php esc_html_e( 'Chat', 'humata-chatbot' ); ?></title>
+    <?php if ( $should_noindex ) : ?>
+        <meta name="robots" content="noindex, nofollow">
+    <?php endif; ?>
+    <?php if ( $should_noindex ) : ?>
+        <title><?php echo esc_html( get_bloginfo( 'name' ) ); ?> - <?php esc_html_e( 'Chat', 'humata-chatbot' ); ?></title>
+    <?php endif; ?>
     <style>:root { --humata-avatar-size: <?php echo esc_attr( $avatar_size ); ?>px; }</style>
     <?php wp_head(); ?>
 </head>
@@ -131,6 +141,7 @@ if ( $avatar_size > 64 ) {
                         <polyline points="6 9 12 15 18 9"></polyline>
                     </svg>
                 </button>
+                <div id="humata-turnstile-container" style="display: none;"></div>
                 <div class="humata-input-wrapper">
                     <textarea
                         id="humata-chat-input"

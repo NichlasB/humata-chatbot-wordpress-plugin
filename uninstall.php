@@ -21,6 +21,7 @@ delete_option( 'humata_folder_id' ); // Legacy option
 delete_option( 'humata_chat_location' );
 delete_option( 'humata_chat_page_slug' );
 delete_option( 'humata_chat_theme' );
+delete_option( 'humata_allow_seo_indexing' );
 delete_option( 'humata_system_prompt' );
 delete_option( 'humata_rate_limit' );
 delete_option( 'humata_max_prompt_chars' );

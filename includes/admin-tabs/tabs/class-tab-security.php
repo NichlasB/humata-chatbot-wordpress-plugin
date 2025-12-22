@@ -47,6 +47,46 @@ class Humata_Chatbot_Settings_Tab_Security extends Humata_Chatbot_Settings_Tab_B
             $page_id,
             'humata_security_section'
         );
+
+        // Cloudflare Turnstile Section.
+        add_settings_section(
+            'humata_turnstile_section',
+            __( 'Cloudflare Turnstile', 'humata-chatbot' ),
+            array( $this->admin, 'render_turnstile_section' ),
+            $page_id
+        );
+
+        add_settings_field(
+            'humata_turnstile_enabled',
+            __( 'Enable Turnstile', 'humata-chatbot' ),
+            array( $this->admin, 'render_turnstile_enabled_field' ),
+            $page_id,
+            'humata_turnstile_section'
+        );
+
+        add_settings_field(
+            'humata_turnstile_site_key',
+            __( 'Site Key', 'humata-chatbot' ),
+            array( $this->admin, 'render_turnstile_site_key_field' ),
+            $page_id,
+            'humata_turnstile_section'
+        );
+
+        add_settings_field(
+            'humata_turnstile_secret_key',
+            __( 'Secret Key', 'humata-chatbot' ),
+            array( $this->admin, 'render_turnstile_secret_key_field' ),
+            $page_id,
+            'humata_turnstile_section'
+        );
+
+        add_settings_field(
+            'humata_turnstile_appearance',
+            __( 'Widget Appearance', 'humata-chatbot' ),
+            array( $this->admin, 'render_turnstile_appearance_field' ),
+            $page_id,
+            'humata_turnstile_section'
+        );
     }
 }
 

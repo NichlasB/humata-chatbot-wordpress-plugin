@@ -1022,6 +1022,36 @@ class Humata_Chatbot_Admin_Settings {
                 width: 100%;
             }
 
+            .humata-intent-accordions-table input.regular-text {
+                width: 100%;
+            }
+
+            .humata-intent-accordions-table textarea.large-text {
+                width: 100%;
+            }
+
+            /* Accordion content formatting toolbar */
+            .humata-accordion-toolbar {
+                display: flex;
+                gap: 4px;
+                margin-bottom: 6px;
+            }
+
+            .humata-accordion-toolbar .button-small {
+                min-width: 28px;
+                padding: 0 6px;
+                line-height: 24px;
+                height: 24px;
+            }
+
+            .humata-accordion-toolbar .button-small strong {
+                font-weight: 700;
+            }
+
+            .humata-accordion-toolbar .button-small em {
+                font-style: italic;
+            }
+
             /* Intent card toggle button */
             .humata-intent-toggle {
                 display: inline-flex;
@@ -1233,6 +1263,26 @@ class Humata_Chatbot_Admin_Settings {
                         "</tr>";
                 }
 
+                function humataBuildAccordionRow(intentIdx, accIdx) {
+                    return "" +
+                        "<tr class=\\"humata-intent-accordion-row\\">" +
+                            "<td>" +
+                                "<input type=\\"text\\" class=\\"regular-text\\" name=\\"humata_intent_links[" + intentIdx + "][accordions][" + accIdx + "][title]\\" value=\\"\\" placeholder=\\"e.g., Shipping Restrictions\\">" +
+                            "</td>" +
+                            "<td>" +
+                                "<div class=\\"humata-accordion-toolbar\\">" +
+                                    "<button type=\\"button\\" class=\\"button button-small humata-format-bold\\" title=\\"Bold\\"><strong>B</strong></button>" +
+                                    "<button type=\\"button\\" class=\\"button button-small humata-format-italic\\" title=\\"Italic\\"><em>I</em></button>" +
+                                    "<button type=\\"button\\" class=\\"button button-small humata-format-link\\" title=\\"Insert Link\\">🔗</button>" +
+                                "</div>" +
+                                "<textarea class=\\"large-text humata-accordion-content-input\\" rows=\\"3\\" name=\\"humata_intent_links[" + intentIdx + "][accordions][" + accIdx + "][content]\\" placeholder=\\"Content shown when expanded... (supports formatting)\\" maxlength=\\"1000\\"></textarea>" +
+                            "</td>" +
+                            "<td>" +
+                                "<button type=\\"button\\" class=\\"button link-delete humata-intent-accordion-remove\\">Remove</button>" +
+                            "</td>" +
+                        "</tr>";
+                }
+
                 function humataBuildIntentCard(intentIdx) {
                     return "" +
                         "<div class=\\"humata-intent-card\\" data-intent-index=\\"" + intentIdx + "\\">" +
@@ -1282,6 +1332,40 @@ class Humata_Chatbot_Admin_Settings {
                                         "<button type=\\"button\\" class=\\"button button-secondary humata-intent-link-add\\">Add Link</button>" +
                                     "</p>" +
                                 "</div>" +
+                                "<div class=\\"humata-intent-accordions-sub\\" data-accordions-next-index=\\"1\\" style=\\"margin-top: 20px;\\">" +
+                                    "<label><strong>Custom Accordions</strong></label>" +
+                                    "<span class=\\"description\\" style=\\"display: block; margin-bottom: 6px;\\">FAQ-style collapsible toggles shown in the chat response.</span>" +
+                                    "<table class=\\"widefat striped humata-intent-accordions-table\\" style=\\"max-width: 800px; margin-top: 6px;\\">" +
+                                        "<thead>" +
+                                            "<tr>" +
+                                                "<th style=\\"width: 200px;\\">Title</th>" +
+                                                "<th>Content</th>" +
+                                                "<th style=\\"width: 80px;\\">Actions</th>" +
+                                            "</tr>" +
+                                        "</thead>" +
+                                        "<tbody>" +
+                                            "<tr class=\\"humata-intent-accordion-row\\">" +
+                                                "<td>" +
+                                                    "<input type=\\"text\\" class=\\"regular-text\\" name=\\"humata_intent_links[" + intentIdx + "][accordions][0][title]\\" value=\\"\\" placeholder=\\"e.g., Shipping Restrictions\\">" +
+                                                "</td>" +
+                                                "<td>" +
+                                                    "<div class=\\"humata-accordion-toolbar\\">" +
+                                                        "<button type=\\"button\\" class=\\"button button-small humata-format-bold\\" title=\\"Bold\\"><strong>B</strong></button>" +
+                                                        "<button type=\\"button\\" class=\\"button button-small humata-format-italic\\" title=\\"Italic\\"><em>I</em></button>" +
+                                                        "<button type=\\"button\\" class=\\"button button-small humata-format-link\\" title=\\"Insert Link\\">🔗</button>" +
+                                                    "</div>" +
+                                                    "<textarea class=\\"large-text humata-accordion-content-input\\" rows=\\"3\\" name=\\"humata_intent_links[" + intentIdx + "][accordions][0][content]\\" placeholder=\\"Content shown when expanded... (supports formatting)\\" maxlength=\\"1000\\"></textarea>" +
+                                                "</td>" +
+                                                "<td>" +
+                                                    "<button type=\\"button\\" class=\\"button link-delete humata-intent-accordion-remove\\">Remove</button>" +
+                                                "</td>" +
+                                            "</tr>" +
+                                        "</tbody>" +
+                                    "</table>" +
+                                    "<p style=\\"margin-top: 8px;\\">" +
+                                        "<button type=\\"button\\" class=\\"button button-secondary humata-intent-accordion-add\\">Add Accordion</button>" +
+                                    "</p>" +
+                                "</div>" +
                             "</div>" +
                         "</div>";
                 }
@@ -1324,6 +1408,81 @@ class Humata_Chatbot_Admin_Settings {
                         var intentIdx = humataSafeInt($card.attr("data-intent-index"), 0);
                         $tbody.append(humataBuildIntentLinkRow(intentIdx, 0));
                         $sub.attr("data-links-next-index", "1");
+                    }
+                });
+
+                // Add accordion within an intent
+                $(document).on("click", ".humata-intent-accordion-add", function() {
+                    var $sub = $(this).closest(".humata-intent-accordions-sub");
+                    var $tbody = $sub.find("tbody");
+                    var $card = $(this).closest(".humata-intent-card");
+                    var intentIdx = humataSafeInt($card.attr("data-intent-index"), 0);
+                    var accIdx = humataSafeInt($sub.attr("data-accordions-next-index"), $tbody.find("tr").length);
+
+                    // Limit to 5 accordions per intent
+                    if ($tbody.find("tr").length >= 5) {
+                        return;
+                    }
+
+                    $tbody.append(humataBuildAccordionRow(intentIdx, accIdx));
+                    $sub.attr("data-accordions-next-index", String(accIdx + 1));
+                });
+
+                // Remove accordion within an intent
+                $(document).on("click", ".humata-intent-accordion-remove", function() {
+                    var $tbody = $(this).closest("tbody");
+                    $(this).closest("tr").remove();
+                    // Ensure at least one row remains
+                    if ($tbody.find("tr").length === 0) {
+                        var $card = $tbody.closest(".humata-intent-card");
+                        var $sub = $tbody.closest(".humata-intent-accordions-sub");
+                        var intentIdx = humataSafeInt($card.attr("data-intent-index"), 0);
+                        $tbody.append(humataBuildAccordionRow(intentIdx, 0));
+                        $sub.attr("data-accordions-next-index", "1");
+                    }
+                });
+
+                // Accordion content formatting toolbar
+                function humataWrapSelection(textarea, before, after) {
+                    var start = textarea.selectionStart;
+                    var end = textarea.selectionEnd;
+                    var text = textarea.value;
+                    var selected = text.substring(start, end);
+
+                    if (!selected) {
+                        selected = "text";
+                    }
+
+                    var newText = text.substring(0, start) + before + selected + after + text.substring(end);
+                    textarea.value = newText;
+                    textarea.focus();
+                    textarea.setSelectionRange(start + before.length, start + before.length + selected.length);
+                }
+
+                // Format selected text with bold
+                $(document).on("click", ".humata-format-bold", function() {
+                    var $textarea = $(this).closest("td").find("textarea");
+                    if ($textarea.length) {
+                        humataWrapSelection($textarea[0], "<strong>", "</strong>");
+                    }
+                });
+
+                // Format selected text with italic
+                $(document).on("click", ".humata-format-italic", function() {
+                    var $textarea = $(this).closest("td").find("textarea");
+                    if ($textarea.length) {
+                        humataWrapSelection($textarea[0], "<em>", "</em>");
+                    }
+                });
+
+                // Insert link around selected text
+                $(document).on("click", ".humata-format-link", function() {
+                    var $textarea = $(this).closest("td").find("textarea");
+                    if ($textarea.length) {
+                        var url = prompt("Enter URL:", "https://");
+                        if (url && url !== "https://") {
+                            humataWrapSelection($textarea[0], "<a href=\"" + url + "\" target=\"_blank\">", "</a>");
+                        }
                     }
                 });
 
@@ -1556,6 +1715,10 @@ class Humata_Chatbot_Admin_Settings {
             'security'      => array(
                 'humata_max_prompt_chars',
                 'humata_rate_limit',
+                'humata_turnstile_enabled',
+                'humata_turnstile_site_key',
+                'humata_turnstile_secret_key',
+                'humata_turnstile_appearance',
             ),
             'floating_help' => array(
                 'humata_floating_help',
@@ -1649,6 +1812,10 @@ class Humata_Chatbot_Admin_Settings {
             'humata_bot_avatar_url',
             'humata_avatar_size',
             'humata_bot_response_disclaimer',
+            'humata_turnstile_enabled',
+            'humata_turnstile_site_key',
+            'humata_turnstile_secret_key',
+            'humata_turnstile_appearance',
         );
 
         if ( ! in_array( (string) $option, $plugin_options, true ) ) {
@@ -1684,6 +1851,10 @@ class Humata_Chatbot_Admin_Settings {
             'security'      => array(
                 'humata_max_prompt_chars',
                 'humata_rate_limit',
+                'humata_turnstile_enabled',
+                'humata_turnstile_site_key',
+                'humata_turnstile_secret_key',
+                'humata_turnstile_appearance',
             ),
             'floating_help' => array(
                 'humata_floating_help',
@@ -1761,6 +1932,16 @@ class Humata_Chatbot_Admin_Settings {
                 'type'              => 'string',
                 'sanitize_callback' => array( $this, 'sanitize_theme' ),
                 'default'           => 'auto',
+            )
+        );
+
+        register_setting(
+            'humata_chatbot_settings',
+            'humata_allow_seo_indexing',
+            array(
+                'type'              => 'boolean',
+                'sanitize_callback' => 'rest_sanitize_boolean',
+                'default'           => false,
             )
         );
 
@@ -1961,6 +2142,47 @@ class Humata_Chatbot_Admin_Settings {
                 'type'              => 'integer',
                 'sanitize_callback' => array( $this, 'sanitize_avatar_size' ),
                 'default'           => 40,
+            )
+        );
+
+        // Cloudflare Turnstile settings.
+        register_setting(
+            'humata_chatbot_settings',
+            'humata_turnstile_enabled',
+            array(
+                'type'              => 'integer',
+                'sanitize_callback' => array( $this, 'sanitize_checkbox' ),
+                'default'           => 0,
+            )
+        );
+
+        register_setting(
+            'humata_chatbot_settings',
+            'humata_turnstile_site_key',
+            array(
+                'type'              => 'string',
+                'sanitize_callback' => 'sanitize_text_field',
+                'default'           => '',
+            )
+        );
+
+        register_setting(
+            'humata_chatbot_settings',
+            'humata_turnstile_secret_key',
+            array(
+                'type'              => 'string',
+                'sanitize_callback' => 'sanitize_text_field',
+                'default'           => '',
+            )
+        );
+
+        register_setting(
+            'humata_chatbot_settings',
+            'humata_turnstile_appearance',
+            array(
+                'type'              => 'string',
+                'sanitize_callback' => array( $this, 'sanitize_turnstile_appearance' ),
+                'default'           => 'managed',
             )
         );
 
@@ -2423,7 +2645,38 @@ class Humata_Chatbot_Admin_Settings {
                 }
             }
 
-            if ( empty( $links ) ) {
+            // Parse accordions.
+            $accordions_raw = isset( $intent['accordions'] ) && is_array( $intent['accordions'] ) ? $intent['accordions'] : array();
+            $accordions = array();
+            foreach ( $accordions_raw as $acc ) {
+                if ( ! is_array( $acc ) ) {
+                    continue;
+                }
+
+                $acc_title   = isset( $acc['title'] ) ? sanitize_text_field( trim( (string) $acc['title'] ) ) : '';
+                $acc_content = isset( $acc['content'] ) ? wp_kses_post( trim( (string) $acc['content'] ) ) : '';
+
+                // Limit content length to 1000 characters.
+                if ( strlen( $acc_content ) > 1000 ) {
+                    $acc_content = substr( $acc_content, 0, 1000 );
+                }
+
+                if ( '' === $acc_title || '' === $acc_content ) {
+                    continue;
+                }
+
+                $accordions[] = array(
+                    'title'   => $acc_title,
+                    'content' => $acc_content,
+                );
+
+                if ( count( $accordions ) >= 5 ) {
+                    break;
+                }
+            }
+
+            // Intent must have at least links or accordions to be valid.
+            if ( empty( $links ) && empty( $accordions ) ) {
                 continue;
             }
 
@@ -2431,6 +2684,7 @@ class Humata_Chatbot_Admin_Settings {
                 'intent_name' => $intent_name,
                 'keywords'    => implode( ', ', $keywords_arr ),
                 'links'       => $links,
+                'accordions'  => $accordions,
             );
 
             if ( count( $intents ) >= 50 ) {
@@ -2590,12 +2844,18 @@ class Humata_Chatbot_Admin_Settings {
                     $intent_name = isset( $intent['intent_name'] ) ? (string) $intent['intent_name'] : '';
                     $keywords    = isset( $intent['keywords'] ) ? (string) $intent['keywords'] : '';
                     $links       = isset( $intent['links'] ) && is_array( $intent['links'] ) ? $intent['links'] : array();
+                    $accordions  = isset( $intent['accordions'] ) && is_array( $intent['accordions'] ) ? $intent['accordions'] : array();
 
                     if ( empty( $links ) ) {
                         $links = array( array( 'title' => '', 'url' => '' ) );
                     }
 
-                    $links_next_index = count( $links );
+                    if ( empty( $accordions ) ) {
+                        $accordions = array( array( 'title' => '', 'content' => '' ) );
+                    }
+
+                    $links_next_index      = count( $links );
+                    $accordions_next_index = count( $accordions );
                     ?>
                     <div class="humata-intent-card" data-intent-index="<?php echo esc_attr( (string) $i ); ?>">
                         <div class="humata-intent-card-header">
@@ -2677,6 +2937,60 @@ class Humata_Chatbot_Admin_Settings {
                                 </table>
                                 <p style="margin-top: 8px;">
                                     <button type="button" class="button button-secondary humata-intent-link-add"><?php esc_html_e( 'Add Link', 'humata-chatbot' ); ?></button>
+                                </p>
+                            </div>
+
+                            <div class="humata-intent-accordions-sub" data-accordions-next-index="<?php echo esc_attr( (string) $accordions_next_index ); ?>" style="margin-top: 20px;">
+                                <label><strong><?php esc_html_e( 'Custom Accordions', 'humata-chatbot' ); ?></strong></label>
+                                <span class="description" style="display: block; margin-bottom: 6px;"><?php esc_html_e( 'FAQ-style collapsible toggles shown in the chat response.', 'humata-chatbot' ); ?></span>
+                                <table class="widefat striped humata-intent-accordions-table" style="max-width: 800px; margin-top: 6px;">
+                                    <thead>
+                                        <tr>
+                                            <th style="width: 200px;"><?php esc_html_e( 'Title', 'humata-chatbot' ); ?></th>
+                                            <th><?php esc_html_e( 'Content', 'humata-chatbot' ); ?></th>
+                                            <th style="width: 80px;"><?php esc_html_e( 'Actions', 'humata-chatbot' ); ?></th>
+                                        </tr>
+                                    </thead>
+                                    <tbody>
+                                        <?php foreach ( $accordions as $k => $accordion ) : ?>
+                                            <?php
+                                            $accordion = is_array( $accordion ) ? $accordion : array();
+                                            $acc_title   = isset( $accordion['title'] ) ? (string) $accordion['title'] : '';
+                                            $acc_content = isset( $accordion['content'] ) ? (string) $accordion['content'] : '';
+                                            ?>
+                                            <tr class="humata-intent-accordion-row">
+                                                <td>
+                                                    <input
+                                                        type="text"
+                                                        class="regular-text"
+                                                        name="humata_intent_links[<?php echo esc_attr( (string) $i ); ?>][accordions][<?php echo esc_attr( (string) $k ); ?>][title]"
+                                                        value="<?php echo esc_attr( $acc_title ); ?>"
+                                                        placeholder="<?php esc_attr_e( 'e.g., Shipping Restrictions', 'humata-chatbot' ); ?>"
+                                                    />
+                                                </td>
+                                                <td>
+                                                    <div class="humata-accordion-toolbar">
+                                                        <button type="button" class="button button-small humata-format-bold" title="<?php esc_attr_e( 'Bold', 'humata-chatbot' ); ?>"><strong>B</strong></button>
+                                                        <button type="button" class="button button-small humata-format-italic" title="<?php esc_attr_e( 'Italic', 'humata-chatbot' ); ?>"><em>I</em></button>
+                                                        <button type="button" class="button button-small humata-format-link" title="<?php esc_attr_e( 'Insert Link', 'humata-chatbot' ); ?>">🔗</button>
+                                                    </div>
+                                                    <textarea
+                                                        class="large-text humata-accordion-content-input"
+                                                        rows="3"
+                                                        name="humata_intent_links[<?php echo esc_attr( (string) $i ); ?>][accordions][<?php echo esc_attr( (string) $k ); ?>][content]"
+                                                        placeholder="<?php esc_attr_e( 'Content shown when expanded... (supports formatting)', 'humata-chatbot' ); ?>"
+                                                        maxlength="1000"
+                                                    ><?php echo esc_textarea( $acc_content ); ?></textarea>
+                                                </td>
+                                                <td>
+                                                    <button type="button" class="button link-delete humata-intent-accordion-remove"><?php esc_html_e( 'Remove', 'humata-chatbot' ); ?></button>
+                                                </td>
+                                            </tr>
+                                        <?php endforeach; ?>
+                                    </tbody>
+                                </table>
+                                <p style="margin-top: 8px;">
+                                    <button type="button" class="button button-secondary humata-intent-accordion-add"><?php esc_html_e( 'Add Accordion', 'humata-chatbot' ); ?></button>
                                 </p>
                             </div>
                         </div>
@@ -3739,6 +4053,30 @@ class Humata_Chatbot_Admin_Settings {
         <?php
     }
 
+    /**
+     * Render SEO indexing field.
+     *
+     * @since 1.0.0
+     * @return void
+     */
+    public function render_allow_seo_indexing_field() {
+        $value = get_option( 'humata_allow_seo_indexing', false );
+        ?>
+        <label>
+            <input
+                type="checkbox"
+                name="humata_allow_seo_indexing"
+                value="1"
+                <?php checked( $value, true ); ?>
+            />
+            <?php esc_html_e( 'Allow search engines to index the chat page', 'humata-chatbot' ); ?>
+        </label>
+        <p class="description">
+            <?php esc_html_e( 'When enabled and using "Replace Homepage" mode, search engines can index the page and SEO plugins can control meta tags. The dedicated chat page URL always remains noindexed.', 'humata-chatbot' ); ?>
+        </p>
+        <?php
+    }
+
     public function render_max_prompt_chars_field() {
         $value = get_option( 'humata_max_prompt_chars', 3000 );
         ?>
@@ -3781,6 +4119,131 @@ class Humata_Chatbot_Admin_Settings {
             <?php esc_html_e( 'Limit the number of API requests to prevent abuse. Default is 50.', 'humata-chatbot' ); ?>
         </p>
         <?php
+    }
+
+    /**
+     * Render Cloudflare Turnstile section description.
+     *
+     * @since 1.0.0
+     * @return void
+     */
+    public function render_turnstile_section() {
+        ?>
+        <p>
+            <?php esc_html_e( 'Cloudflare Turnstile provides human verification to protect against bots. Users must complete a challenge before sending their first message.', 'humata-chatbot' ); ?>
+        </p>
+        <p>
+            <a href="https://dash.cloudflare.com/?to=/:account/turnstile" target="_blank" rel="noopener noreferrer">
+                <?php esc_html_e( 'Get your Turnstile keys from Cloudflare Dashboard', 'humata-chatbot' ); ?>
+            </a>
+        </p>
+        <?php
+    }
+
+    /**
+     * Render Turnstile enabled checkbox.
+     *
+     * @since 1.0.0
+     * @return void
+     */
+    public function render_turnstile_enabled_field() {
+        $value = (int) get_option( 'humata_turnstile_enabled', 0 );
+        ?>
+        <label>
+            <input
+                type="checkbox"
+                id="humata_turnstile_enabled"
+                name="humata_turnstile_enabled"
+                value="1"
+                <?php checked( 1, $value ); ?>
+            />
+            <?php esc_html_e( 'Require human verification before first message', 'humata-chatbot' ); ?>
+        </label>
+        <?php
+    }
+
+    /**
+     * Render Turnstile site key field.
+     *
+     * @since 1.0.0
+     * @return void
+     */
+    public function render_turnstile_site_key_field() {
+        $value = get_option( 'humata_turnstile_site_key', '' );
+        ?>
+        <input
+            type="text"
+            id="humata_turnstile_site_key"
+            name="humata_turnstile_site_key"
+            value="<?php echo esc_attr( $value ); ?>"
+            class="regular-text"
+            autocomplete="off"
+        />
+        <p class="description">
+            <?php esc_html_e( 'The site key from your Cloudflare Turnstile widget configuration.', 'humata-chatbot' ); ?>
+        </p>
+        <?php
+    }
+
+    /**
+     * Render Turnstile secret key field.
+     *
+     * @since 1.0.0
+     * @return void
+     */
+    public function render_turnstile_secret_key_field() {
+        $value = get_option( 'humata_turnstile_secret_key', '' );
+        ?>
+        <input
+            type="password"
+            id="humata_turnstile_secret_key"
+            name="humata_turnstile_secret_key"
+            value="<?php echo esc_attr( $value ); ?>"
+            class="regular-text"
+            autocomplete="off"
+        />
+        <p class="description">
+            <?php esc_html_e( 'The secret key from your Cloudflare Turnstile widget configuration. This is used for server-side verification.', 'humata-chatbot' ); ?>
+        </p>
+        <?php
+    }
+
+    /**
+     * Render Turnstile appearance field.
+     *
+     * @since 1.0.0
+     * @return void
+     */
+    public function render_turnstile_appearance_field() {
+        $value = get_option( 'humata_turnstile_appearance', 'managed' );
+        ?>
+        <select id="humata_turnstile_appearance" name="humata_turnstile_appearance">
+            <option value="managed" <?php selected( 'managed', $value ); ?>>
+                <?php esc_html_e( 'Managed (recommended)', 'humata-chatbot' ); ?>
+            </option>
+            <option value="non-interactive" <?php selected( 'non-interactive', $value ); ?>>
+                <?php esc_html_e( 'Non-interactive (always invisible)', 'humata-chatbot' ); ?>
+            </option>
+            <option value="interaction-only" <?php selected( 'interaction-only', $value ); ?>>
+                <?php esc_html_e( 'Interaction-only (shows checkbox only when needed)', 'humata-chatbot' ); ?>
+            </option>
+        </select>
+        <p class="description">
+            <?php esc_html_e( 'How the Turnstile widget appears to users. Note: Cloudflare may verify users invisibly using browser signals (like Private Access Tokens) even in "interaction-only" mode if it determines no interaction is needed.', 'humata-chatbot' ); ?>
+        </p>
+        <?php
+    }
+
+    /**
+     * Sanitize Turnstile appearance option.
+     *
+     * @since 1.0.0
+     * @param string $value Input value.
+     * @return string Sanitized value.
+     */
+    public function sanitize_turnstile_appearance( $value ) {
+        $valid = array( 'managed', 'non-interactive', 'interaction-only' );
+        return in_array( $value, $valid, true ) ? $value : 'managed';
     }
 
     public function render_medical_disclaimer_text_field() {

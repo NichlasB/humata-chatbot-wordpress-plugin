@@ -207,7 +207,11 @@ class Humata_Chatbot_Template_Loader {
                     'errorRateLimit' => __( 'Too many requests. Please wait a moment.', 'humata-chatbot' ),
                     'chatCleared'    => __( 'Chat history cleared.', 'humata-chatbot' ),
                     'relatedResources' => __( 'Related resources:', 'humata-chatbot' ),
+                    'errorTurnstile' => __( 'Human verification failed. Please try again.', 'humata-chatbot' ),
+                    'errorTurnstileRequired' => __( 'Please complete the human verification to continue.', 'humata-chatbot' ),
+                    'errorTurnstileFailed' => __( 'Human verification failed. Please try again.', 'humata-chatbot' ),
                 ),
+                'turnstile' => $this->get_turnstile_config(),
             )
         );
     }
@@ -248,6 +252,31 @@ class Humata_Chatbot_Template_Loader {
         }
 
         return array_values( $rules );
+    }
+
+    /**
+     * Get Cloudflare Turnstile configuration for frontend.
+     *
+     * @since 1.0.0
+     * @return array
+     */
+    private function get_turnstile_config() {
+        $enabled    = (int) get_option( 'humata_turnstile_enabled', 0 );
+        $site_key   = get_option( 'humata_turnstile_site_key', '' );
+        $appearance = get_option( 'humata_turnstile_appearance', 'managed' );
+
+        if ( ! is_string( $site_key ) ) {
+            $site_key = '';
+        }
+        if ( ! is_string( $appearance ) ) {
+            $appearance = 'managed';
+        }
+
+        return array(
+            'enabled'    => ( 1 === $enabled && '' !== trim( $site_key ) ),
+            'siteKey'    => sanitize_text_field( $site_key ),
+            'appearance' => sanitize_text_field( $appearance ),
+        );
     }
 
     /**
@@ -302,13 +331,36 @@ class Humata_Chatbot_Template_Loader {
                 );
             }
 
-            if ( empty( $links ) ) {
+            // Parse accordions.
+            $accordions_raw = isset( $intent['accordions'] ) && is_array( $intent['accordions'] ) ? $intent['accordions'] : array();
+            $accordions = array();
+            foreach ( $accordions_raw as $acc ) {
+                if ( ! is_array( $acc ) ) {
+                    continue;
+                }
+
+                $acc_title   = isset( $acc['title'] ) ? sanitize_text_field( trim( (string) $acc['title'] ) ) : '';
+                $acc_content = isset( $acc['content'] ) ? wp_kses_post( trim( (string) $acc['content'] ) ) : '';
+
+                if ( '' === $acc_title || '' === $acc_content ) {
+                    continue;
+                }
+
+                $accordions[] = array(
+                    'title'   => $acc_title,
+                    'content' => $acc_content,
+                );
+            }
+
+            // Must have either links or accordions.
+            if ( empty( $links ) && empty( $accordions ) ) {
                 continue;
             }
 
             $intents[] = array(
-                'keywords' => $keywords_arr,
-                'links'    => $links,
+                'keywords'   => $keywords_arr,
+                'links'      => $links,
+                'accordions' => $accordions,
             );
         }
 

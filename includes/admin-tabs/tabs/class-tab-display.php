@@ -48,6 +48,14 @@ class Humata_Chatbot_Settings_Tab_Display extends Humata_Chatbot_Settings_Tab_Ba
             'humata_display_section'
         );
 
+        add_settings_field(
+            'humata_allow_seo_indexing',
+            __( 'Search Engine Indexing', 'humata-chatbot' ),
+            array( $this->admin, 'render_allow_seo_indexing_field' ),
+            $page_id,
+            'humata_display_section'
+        );
+
         // Disclaimers Section.
         add_settings_section(
             'humata_disclaimer_section',

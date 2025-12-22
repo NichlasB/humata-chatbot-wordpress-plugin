@@ -627,6 +627,37 @@
     z-index: 5;
 }
 
+/* Cloudflare Turnstile Container */
+#humata-turnstile-container {
+    display: none;
+    justify-content: center;
+    align-items: center;
+    padding: 16px;
+    margin-bottom: 8px;
+    min-height: 80px;
+    background-color: var(--humata-bg-secondary);
+    border-radius: 8px;
+}
+
+#humata-turnstile-widget {
+    display: block;
+    width: 300px;
+    min-height: 65px;
+}
+
+/* Turnstile widget iframe styling - ensure visibility */
+#humata-turnstile-container iframe,
+#humata-turnstile-widget iframe,
+#humata-turnstile-widget > div {
+    display: block !important;
+    visibility: visible !important;
+    opacity: 1 !important;
+    width: 300px !important;
+    height: 65px !important;
+    min-width: 300px !important;
+    min-height: 65px !important;
+}
+
 .humata-input-wrapper {
     display: flex;
     align-items: flex-end;
@@ -973,6 +1004,140 @@
     outline-offset: 2px;
 }
 
+/* Custom Accordion Toggles */
+.humata-accordions {
+    margin-bottom: 16px;
+    margin-top: 16px;
+}
+
+.humata-accordion-item {
+    border: 1px solid var(--humata-border-color);
+    border-radius: 8px;
+    margin-bottom: 8px;
+    overflow: hidden;
+    background: var(--humata-bg-secondary);
+}
+
+.humata-accordion-item:last-child {
+    margin-bottom: 0;
+}
+
+.humata-accordion-toggle {
+    width: 100%;
+    padding: 12px 16px;
+    background: transparent;
+    border: none;
+    cursor: pointer;
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    font-weight: 500;
+    font-size: 0.775rem;
+    color: var(--humata-text-primary);
+    text-align: left;
+    transition: background-color 0.15s ease;
+    font-family: inherit;
+}
+
+.humata-accordion-toggle:hover {
+    background: var(--humata-bg-tertiary);
+}
+
+.humata-accordion-toggle:focus-visible {
+    outline: 2px solid var(--humata-accent-color);
+    outline-offset: -2px;
+}
+
+.humata-accordion-toggle span {
+    flex: 1;
+    margin-right: 12px;
+}
+
+.humata-accordion-toggle svg {
+    flex-shrink: 0;
+    opacity: 0.6;
+    transition: transform 0.2s ease, opacity 0.15s ease;
+}
+
+.humata-accordion-toggle:hover svg {
+    opacity: 1;
+}
+
+.humata-accordion-item.open .humata-accordion-toggle svg {
+    transform: rotate(180deg);
+}
+
+.humata-accordion-content {
+    display: none;
+    padding: 12px 16px;
+    padding-top: 0;
+    color: var(--humata-text-secondary);
+    font-size: 0.8125rem;
+    line-height: 1.5;
+    white-space: pre-line;
+}
+
+.humata-accordion-item.open .humata-accordion-content {
+    display: block;
+    animation: humataAccordionFadeIn 0.2s ease;
+}
+
+@keyframes humataAccordionFadeIn {
+    from {
+        opacity: 0;
+        transform: translateY(-4px);
+    }
+    to {
+        opacity: 1;
+        transform: translateY(0);
+    }
+}
+
+.humata-accordion-content p {
+    margin: 0 0 8px 0;
+}
+
+.humata-accordion-content p:last-child {
+    margin-bottom: 0;
+}
+
+.humata-accordion-content strong {
+    font-weight: 600;
+    color: var(--humata-text-primary);
+}
+
+.humata-accordion-content em {
+    font-style: italic;
+}
+
+.humata-accordion-content a {
+    color: var(--humata-accent-color);
+    text-decoration: underline;
+    text-underline-offset: 2px;
+}
+
+.humata-accordion-content a:hover {
+    text-decoration: none;
+}
+
+@media (max-width: 768px) {
+    .humata-accordions {
+        margin-bottom: 16px;
+        margin-top: 12px;
+    }
+
+    .humata-accordion-toggle {
+        padding: 10px 14px;
+        font-size: 0.8125rem;
+    }
+
+    .humata-accordion-content {
+        padding: 10px 14px;
+        padding-top: 0;
+        font-size: 0.75rem;
+    }
+}
+
 @media (max-width: 768px) {
     .humata-intent-links {
         margin-top: 12px;
@@ -1024,6 +1189,10 @@
     }
 
     .humata-intent-links {
+        display: none;
+    }
+
+    .humata-accordions {
         display: none;
     }
 

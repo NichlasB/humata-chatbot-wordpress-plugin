@@ -15,6 +15,7 @@
     const STORAGE_KEY = 'humata_chat_history';
     const CONVERSATION_KEY = 'humata_conversation_id';
     const THEME_KEY = 'humata_theme_preference';
+    const TURNSTILE_VERIFIED_KEY = 'humata_turnstile_verified';
 
     // DOM Elements
     let elements = {};
@@ -25,6 +26,10 @@
     let activeEdit = null;
     let maxPromptChars = 3000;
     let isEmbedded = false;
+    let turnstileToken = null;
+    let turnstileWidgetId = null;
+    let turnstileReady = false;
+    let turnstilePendingCallback = null;
 
     // Default SVG icons for avatars
     const DEFAULT_USER_AVATAR_SVG = '<svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><path d="M19 21v-2a4 4 0 0 0-4-4H9a4 4 0 0 0-4 4v2"></path><circle cx="12" cy="7" r="4"></circle></svg>';
@@ -85,6 +90,9 @@
 
         // Initialize theme
         initTheme();
+
+        // Initialize Turnstile if enabled
+        initTurnstile();
 
         if (elements.welcomeMessage) {
             ensureCopyButton(elements.welcomeMessage.querySelector('.humata-message-content'));
@@ -164,6 +172,174 @@
 
         localStorage.setItem(THEME_KEY, newTheme);
         applyTheme(newTheme);
+    }
+
+    /**
+     * Check if Turnstile is enabled.
+     *
+     * @returns {boolean} True if Turnstile is enabled.
+     */
+    function isTurnstileEnabled() {
+        return config.turnstile && config.turnstile.enabled && config.turnstile.siteKey;
+    }
+
+    /**
+     * Check if user is already verified in this session.
+     *
+     * @returns {boolean} True if already verified.
+     */
+    function isTurnstileVerified() {
+        if (!isTurnstileEnabled()) {
+            return true;
+        }
+        return sessionStorage.getItem(TURNSTILE_VERIFIED_KEY) === 'true';
+    }
+
+    /**
+     * Mark Turnstile as verified in session storage.
+     */
+    function setTurnstileVerified() {
+        sessionStorage.setItem(TURNSTILE_VERIFIED_KEY, 'true');
+    }
+
+    /**
+     * Load Cloudflare Turnstile script.
+     *
+     * @returns {Promise} Resolves when script is loaded.
+     */
+    function loadTurnstileScript() {
+        return new Promise(function(resolve, reject) {
+            if (window.turnstile) {
+                turnstileReady = true;
+                resolve();
+                return;
+            }
+
+            const script = document.createElement('script');
+            script.src = 'https://challenges.cloudflare.com/turnstile/v0/api.js?onload=onTurnstileLoad';
+            script.async = true;
+            script.defer = true;
+
+            // Global callback for Turnstile script load
+            window.onTurnstileLoad = function() {
+                turnstileReady = true;
+                resolve();
+            };
+
+            script.onerror = function() {
+                reject(new Error('Failed to load Turnstile script'));
+            };
+
+            document.head.appendChild(script);
+        });
+    }
+
+    /**
+     * Show Turnstile widget and get verification token.
+     *
+     * @returns {Promise<string>} Resolves with the Turnstile token.
+     */
+    function getTurnstileToken() {
+        return new Promise(function(resolve, reject) {
+            // If already verified, resolve immediately
+            if (isTurnstileVerified()) {
+                resolve(null);
+                return;
+            }
+
+            // Get the container element
+            const container = document.getElementById('humata-turnstile-container');
+            if (!container) {
+                // No container, skip Turnstile
+                resolve(null);
+                return;
+            }
+
+            // Load script if not already loaded
+            loadTurnstileScript().then(function() {
+                console.log('Turnstile script loaded, preparing to render widget');
+
+                // Remove any existing widget first
+                if (turnstileWidgetId !== null && window.turnstile) {
+                    try {
+                        window.turnstile.remove(turnstileWidgetId);
+                    } catch (e) {
+                        // Ignore removal errors
+                    }
+                    turnstileWidgetId = null;
+                }
+
+                // Prepare the container - must be visible for Turnstile to work
+                container.innerHTML = '<div id="humata-turnstile-widget"></div>';
+                container.style.display = 'flex';
+
+                const widgetContainer = document.getElementById('humata-turnstile-widget');
+                console.log('Turnstile container visible, widget container:', widgetContainer);
+
+                // Small delay to ensure DOM is ready
+                setTimeout(function() {
+                    try {
+                        // Render the Turnstile widget
+                        turnstileWidgetId = window.turnstile.render(widgetContainer, {
+                            sitekey: config.turnstile.siteKey,
+                            appearance: config.turnstile.appearance || 'managed',
+                            theme: document.documentElement.classList.contains('humata-theme-dark') ? 'dark' : 'light',
+                            size: 'normal',
+                            callback: function(token) {
+                                turnstileToken = token;
+                                // Hide container after verification
+                                container.style.display = 'none';
+                                container.innerHTML = '';
+                                resolve(token);
+                            },
+                            'error-callback': function(errorCode) {
+                                console.error('Turnstile error:', errorCode);
+                                container.style.display = 'none';
+                                container.innerHTML = '';
+                                reject(new Error('Turnstile verification failed: ' + (errorCode || 'unknown')));
+                            },
+                            'expired-callback': function() {
+                                // Token expired, need to re-verify
+                                turnstileToken = null;
+                            }
+                        });
+                        
+                        // Check if Cloudflare rendered a visible widget (iframe)
+                        // If not, hide the container since verification is happening invisibly
+                        setTimeout(function() {
+                            const iframe = widgetContainer.querySelector('iframe');
+                            if (!iframe) {
+                                // No visible widget - Cloudflare is verifying invisibly
+                                // Hide the empty container to avoid showing a blank box
+                                container.style.display = 'none';
+                            }
+                        }, 100);
+                    } catch (renderError) {
+                        console.error('Turnstile render error:', renderError);
+                        container.style.display = 'none';
+                        container.innerHTML = '';
+                        reject(renderError);
+                    }
+                }, 50);
+            }).catch(function(error) {
+                console.error('Turnstile script load error:', error);
+                reject(error);
+            });
+        });
+    }
+
+    /**
+     * Initialize Turnstile if enabled.
+     */
+    function initTurnstile() {
+        if (!isTurnstileEnabled()) {
+            return;
+        }
+
+        // Preload the script for faster first-message experience
+        loadTurnstileScript().catch(function() {
+            // Silent fail - will retry when needed
+        });
     }
 
     /**
@@ -1516,6 +1692,9 @@
         cloned.querySelectorAll('.humata-intent-links').forEach(function(el) {
             el.remove();
         });
+        cloned.querySelectorAll('.humata-accordions').forEach(function(el) {
+            el.remove();
+        });
         return ((cloned.innerText || cloned.textContent || '') + '').trim();
     }
 
@@ -1540,6 +1719,9 @@
             el.remove();
         });
         cloned.querySelectorAll('.humata-intent-links').forEach(function(el) {
+            el.remove();
+        });
+        cloned.querySelectorAll('.humata-accordions').forEach(function(el) {
             el.remove();
         });
         return cloned.innerHTML;
@@ -2057,7 +2239,116 @@
     }
 
     /**
-     * Append intent links to a bot message element based on the user's question.
+     * Find matching intent accordions based on the user's message.
+     * Matches keywords as whole words (case-insensitive).
+     *
+     * @param {string} userMessage - The user's question text.
+     * @returns {Array} Array of {title, content} objects to display (deduplicated).
+     */
+    function findMatchingIntentAccordions(userMessage) {
+        const intents = config.intentLinks;
+        if (!intents || !Array.isArray(intents) || !intents.length) {
+            return [];
+        }
+
+        if (!userMessage || typeof userMessage !== 'string') {
+            return [];
+        }
+
+        const matchedAccordions = [];
+        const seenTitles = new Set();
+
+        for (let i = 0; i < intents.length; i++) {
+            const intent = intents[i];
+            const keywords = intent.keywords;
+            const accordions = intent.accordions;
+
+            if (!keywords || !Array.isArray(keywords) || !keywords.length) {
+                continue;
+            }
+            if (!accordions || !Array.isArray(accordions) || !accordions.length) {
+                continue;
+            }
+
+            let matched = false;
+            for (let k = 0; k < keywords.length; k++) {
+                const keyword = keywords[k];
+                if (!keyword) {
+                    continue;
+                }
+
+                // Whole-word match (case-insensitive)
+                const pattern = new RegExp('\\b' + escapeRegexChars(keyword) + '\\b', 'i');
+                if (pattern.test(userMessage)) {
+                    matched = true;
+                    break;
+                }
+            }
+
+            if (matched) {
+                for (let j = 0; j < accordions.length; j++) {
+                    const acc = accordions[j];
+                    if (!acc || !acc.title || !acc.content) {
+                        continue;
+                    }
+                    if (!seenTitles.has(acc.title)) {
+                        seenTitles.add(acc.title);
+                        matchedAccordions.push({
+                            title: acc.title,
+                            content: acc.content
+                        });
+                    }
+                }
+            }
+        }
+
+        return matchedAccordions;
+    }
+
+    /**
+     * Create the accordion toggles element.
+     *
+     * @param {Array} accordions - Array of {title, content} objects.
+     * @returns {HTMLElement|null} The container element or null if no accordions.
+     */
+    function createAccordionElement(accordions) {
+        if (!accordions || !accordions.length) {
+            return null;
+        }
+
+        const container = document.createElement('div');
+        container.className = 'humata-accordions';
+
+        for (let i = 0; i < accordions.length; i++) {
+            const acc = accordions[i];
+
+            const item = document.createElement('div');
+            item.className = 'humata-accordion-item';
+
+            const toggle = document.createElement('button');
+            toggle.type = 'button';
+            toggle.className = 'humata-accordion-toggle';
+            toggle.innerHTML = '<span>' + escapeHtml(acc.title) + '</span>' +
+                '<svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="6 9 12 15 18 9"></polyline></svg>';
+
+            toggle.addEventListener('click', function() {
+                item.classList.toggle('open');
+            });
+
+            const content = document.createElement('div');
+            content.className = 'humata-accordion-content';
+            content.innerHTML = acc.content; // Pre-sanitized server-side
+
+            item.appendChild(toggle);
+            item.appendChild(content);
+            container.appendChild(item);
+        }
+
+        return container;
+    }
+
+    /**
+     * Append intent links and accordions to a bot message element based on the user's question.
      *
      * @param {HTMLElement} botMessageEl - The bot message element.
      * @param {string} userMessage - The user's original question.
@@ -2072,7 +2363,26 @@
             return;
         }
 
+        // Find matching accordions and links
+        const accordions = findMatchingIntentAccordions(userMessage);
         const links = findMatchingIntentLinks(userMessage);
+
+        // Create accordion element if any matched
+        const accordionEl = createAccordionElement(accordions);
+        if (accordionEl) {
+            // Store matched accordions on element for potential export
+            botMessageEl._humataIntentAccordions = accordions;
+
+            // Insert accordions before message-actions if present
+            const actionsEl = contentEl.querySelector('.humata-message-actions');
+            if (actionsEl) {
+                contentEl.insertBefore(accordionEl, actionsEl);
+            } else {
+                contentEl.appendChild(accordionEl);
+            }
+        }
+
+        // Create intent links element if any matched
         if (!links.length) {
             return;
         }
@@ -2204,17 +2514,40 @@
         if (isLoading) return;
 
         isLoading = true;
-        showLoading();
 
         try {
+            // Check if Turnstile verification is needed (before showing loading)
+            let turnstileTokenForRequest = null;
+            if (isTurnstileEnabled() && !isTurnstileVerified()) {
+                try {
+                    turnstileTokenForRequest = await getTurnstileToken();
+                } catch (turnstileError) {
+                    console.error('Turnstile error:', turnstileError);
+                    isLoading = false;
+                    addMessage(config.i18n?.errorTurnstile || 'Human verification failed. Please try again.', 'bot', true);
+                    return;
+                }
+            }
+
+            // Show loading indicator after Turnstile verification
+            showLoading();
+
+            // Build request headers
+            const headers = {
+                'Content-Type': 'application/json',
+                'X-WP-Nonce': config.wpNonce,
+                'X-Humata-Nonce': config.nonce
+            };
+
+            // Include Turnstile token if we have one
+            if (turnstileTokenForRequest) {
+                headers['X-Turnstile-Token'] = turnstileTokenForRequest;
+            }
+
             const response = await fetch(config.apiUrl, {
                 method: 'POST',
                 credentials: 'same-origin',
-                headers: {
-                    'Content-Type': 'application/json',
-                    'X-WP-Nonce': config.wpNonce,
-                    'X-Humata-Nonce': config.nonce
-                },
+                headers: headers,
                 body: JSON.stringify({
                     message: message,
                     history: history
@@ -2231,6 +2564,16 @@
 
                 if (response.status === 429) {
                     errorMessage = config.i18n?.errorRateLimit || 'Too many requests. Please wait a moment.';
+                } else if (data && data.code === 'turnstile_required') {
+                    // Server requires Turnstile verification - clear local state and retry
+                    sessionStorage.removeItem(TURNSTILE_VERIFIED_KEY);
+                    turnstileToken = null;
+                    errorMessage = config.i18n?.errorTurnstileRequired || 'Please complete the human verification to continue.';
+                } else if (data && data.code === 'turnstile_failed') {
+                    // Turnstile verification failed
+                    sessionStorage.removeItem(TURNSTILE_VERIFIED_KEY);
+                    turnstileToken = null;
+                    errorMessage = config.i18n?.errorTurnstileFailed || 'Human verification failed. Please try again.';
                 } else if (data && typeof data.message === 'string' && data.message.trim() !== '') {
                     const providerMentionPattern = /\b(straico|humata|anthropic|claude)\b/i;
                     errorMessage = providerMentionPattern.test(data.message) ? requestFailedMessage : data.message;
@@ -2240,6 +2583,11 @@
 
                 addMessage(errorMessage, 'bot', true);
                 return;
+            }
+
+            // Mark Turnstile as verified on successful response
+            if (isTurnstileEnabled() && turnstileTokenForRequest) {
+                setTurnstileVerified();
             }
 
             if (data.success && data.answer) {
@@ -2369,13 +2717,23 @@
                     intentLinks = el._humataIntentLinks;
                 }
 
+                // Collect accordions if present on bot messages
+                let intentAccordions = null;
+                if (!isUser && !isError && el._humataIntentAccordions && el._humataIntentAccordions.length) {
+                    intentAccordions = el._humataIntentAccordions;
+                }
+
                 messages.push({
                     role: isUser ? 'You' : 'Assistant',
                     text: text,
                     isError: isError,
-                    intentLinks: intentLinks
+                    intentLinks: intentLinks,
+                    intentAccordions: intentAccordions
                 });
             });
+
+            // Track seen accordion titles globally to avoid duplicates in PDF
+            const seenAccordionTitles = new Set();
 
             if (!messages.length) {
                 doc.setFont('helvetica', 'normal');
@@ -2408,6 +2766,61 @@
                     }
                     docTextSafe(lines[i], marginX, y);
                     y += lineHeight;
+                }
+
+                // Render accordions if present (deduplicated globally)
+                if (msg.intentAccordions && msg.intentAccordions.length) {
+                    // Filter to only accordions we haven't seen yet
+                    const newAccordions = msg.intentAccordions.filter(function(acc) {
+                        if (seenAccordionTitles.has(acc.title)) {
+                            return false;
+                        }
+                        seenAccordionTitles.add(acc.title);
+                        return true;
+                    });
+
+                    if (newAccordions.length) {
+                        y += 4;
+
+                        for (let a = 0; a < newAccordions.length; a++) {
+                            const acc = newAccordions[a];
+
+                            // Accordion title (bold)
+                            doc.setFont('helvetica', 'bold');
+                            doc.setFontSize(10);
+                            if (y + lineHeight > pageHeight - marginY) {
+                                doc.addPage();
+                                y = marginY;
+                            }
+                            docTextSafe('▸ ' + acc.title, marginX, y);
+                            y += lineHeight;
+
+                            // Accordion content (normal, indented)
+                            doc.setFont('helvetica', 'normal');
+                            doc.setFontSize(10);
+                            // Strip HTML tags and convert to plain text
+                            const plainContent = acc.content
+                                .replace(/<br\s*\/?>/gi, '\n')
+                                .replace(/<\/p>/gi, '\n')
+                                .replace(/<[^>]+>/g, '')
+                                .replace(/&nbsp;/g, ' ')
+                                .replace(/&amp;/g, '&')
+                                .replace(/&lt;/g, '<')
+                                .replace(/&gt;/g, '>')
+                                .replace(/&quot;/g, '"')
+                                .trim();
+                            const contentLines = doc.splitTextToSize(plainContent, maxWidth - 10);
+                            for (let c = 0; c < contentLines.length; c++) {
+                                if (y + lineHeight > pageHeight - marginY) {
+                                    doc.addPage();
+                                    y = marginY;
+                                }
+                                docTextSafe('  ' + contentLines[c], marginX, y);
+                                y += lineHeight;
+                            }
+                            y += 2;
+                        }
+                    }
                 }
 
                 // Render intent links if present
