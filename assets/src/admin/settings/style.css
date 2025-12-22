@@ -1,0 +1,327 @@
+.humata-settings-wrap .form-table th {
+    width: 250px;
+}
+.humata-settings-wrap .slug-input-wrapper {
+    display: flex;
+    align-items: center;
+    gap: 5px;
+}
+.humata-settings-wrap .slug-prefix {
+    color: #666;
+}
+.humata-settings-wrap .description {
+    margin-top: 8px;
+}
+.humata-settings-wrap .radio-group label {
+    display: block;
+    margin-bottom: 8px;
+}
+.humata-settings-wrap .conditional-field {
+    margin-left: 25px;
+    margin-top: 5px;
+}
+.humata-api-actions {
+    margin-top: 15px;
+    display: flex;
+    gap: 10px;
+    align-items: center;
+}
+.humata-documents-details {
+    margin-top: 10px;
+}
+.humata-documents-pagination {
+    margin-top: 10px;
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    max-width: 900px;
+}
+.humata-documents-page-info {
+    color: #646970;
+}
+.humata-documents-table-wrapper {
+    max-width: 900px;
+    max-height: 360px;
+    overflow: auto;
+}
+.humata-documents-table-wrapper thead th {
+    position: sticky;
+    top: 0;
+    z-index: 1;
+    background: #fff;
+}
+#humata-test-result {
+    margin-left: 10px;
+}
+.humata-document-ids-control {
+    border: 1px solid #8c8f94;
+    border-radius: 4px;
+    padding: 6px;
+    max-width: 900px;
+    background: #fff;
+    display: flex;
+    align-items: flex-start;
+    flex-wrap: wrap;
+    gap: 6px;
+    min-height: 38px;
+    box-sizing: border-box;
+}
+.humata-document-ids-control:focus-within {
+    border-color: #2271b1;
+    box-shadow: 0 0 0 1px #2271b1;
+}
+.humata-document-ids-tokens {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 6px;
+    flex: 1 1 auto;
+    max-height: 180px;
+    overflow-y: auto;
+    align-content: flex-start;
+}
+#humata_document_ids_input {
+    flex: 1 1 220px;
+    min-width: 220px;
+    border: none;
+    align-self: flex-end;
+    box-shadow: none;
+    padding: 2px 4px;
+    margin: 0;
+}
+#humata_document_ids_input:focus {
+    outline: none;
+    box-shadow: none;
+}
+.humata-token {
+    display: inline-flex;
+    align-items: center;
+    gap: 6px;
+    padding: 2px 8px;
+    border: 1px solid #c3c4c7;
+    border-radius: 14px;
+    background: #f6f7f7;
+    font-size: 12px;
+    line-height: 20px;
+    max-width: 100%;
+    box-sizing: border-box;
+}
+.humata-token-label {
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+    max-width: 260px;
+}
+.humata-token-remove {
+    border: none;
+    background: transparent;
+    cursor: pointer;
+    padding: 0;
+    margin: 0;
+    color: #646970;
+    line-height: 20px;
+}
+.humata-token-remove:hover {
+    color: #d63638;
+}
+
+.humata-document-ids-io {
+    max-width: 900px;
+    margin-top: 10px;
+    padding: 10px 12px;
+    border: 1px solid #c3c4c7;
+    border-radius: 4px;
+    background: #fff;
+    box-sizing: border-box;
+}
+.humata-document-ids-io-row {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: center;
+    gap: 8px;
+    margin-top: 8px;
+}
+.humata-document-ids-io-row:first-child {
+    margin-top: 0;
+}
+.humata-document-ids-io-label {
+    min-width: 60px;
+    font-weight: 600;
+    color: #1d2327;
+}
+.humata-document-ids-import-mode {
+    display: flex;
+    gap: 12px;
+    margin: 0;
+    padding: 0;
+    border: 0;
+}
+.humata-document-ids-import-file-label {
+    color: #646970;
+}
+.humata-document-ids-import-file {
+    max-width: 100%;
+}
+#humata-document-ids-import-text {
+    margin-top: 8px;
+    max-width: 900px;
+}
+.humata-document-ids-io-status {
+    flex: 1 1 100%;
+    margin-top: 6px;
+}
+.humata-io-status-success {
+    color: #1d6f42;
+}
+.humata-io-status-error {
+    color: #b32d2e;
+}
+.humata-io-status-info {
+    color: #646970;
+}
+
+.humata-floating-help-repeater .humata-repeater-handle-cell {
+    width: 36px;
+    text-align: center;
+    vertical-align: middle;
+}
+
+.humata-floating-help-repeater .humata-repeater-handle {
+    cursor: move;
+    color: #646970;
+}
+
+.humata-floating-help-repeater .humata-repeater-handle:hover {
+    color: #2271b1;
+}
+
+.humata-floating-help-repeater .humata-repeater-placeholder {
+    height: 44px;
+    background: rgba(34, 113, 177, 0.08);
+    border: 1px dashed rgba(34, 113, 177, 0.45);
+}
+
+/* Intent-Based Links admin card styles */
+.humata-intent-links-container {
+    display: flex;
+    flex-direction: column;
+    gap: 20px;
+}
+
+.humata-intent-card {
+    background: #fff;
+    border: 1px solid #c3c4c7;
+    border-radius: 4px;
+    box-shadow: 0 1px 1px rgba(0,0,0,.04);
+}
+
+.humata-intent-card-header {
+    display: flex;
+    align-items: center;
+    padding: 12px 16px;
+    background: #f6f7f7;
+    border-bottom: 1px solid #c3c4c7;
+    border-radius: 4px 4px 0 0;
+}
+
+.humata-intent-card-title {
+    font-weight: 600;
+    color: #1d2327;
+    flex: 1;
+}
+
+.humata-intent-card-body {
+    padding: 16px;
+}
+
+.humata-intent-card-body p {
+    margin-top: 0;
+}
+
+.humata-intent-card-body .description {
+    color: #646970;
+    font-style: italic;
+}
+
+.humata-intent-links-sub {
+    margin-top: 12px;
+}
+
+.humata-intent-links-table input.regular-text {
+    width: 100%;
+}
+
+.humata-intent-accordions-table input.regular-text {
+    width: 100%;
+}
+
+.humata-intent-accordions-table textarea.large-text {
+    width: 100%;
+}
+
+/* Accordion content formatting toolbar */
+.humata-accordion-toolbar {
+    display: flex;
+    gap: 4px;
+    margin-bottom: 6px;
+}
+
+.humata-accordion-toolbar .button-small {
+    min-width: 28px;
+    padding: 0 6px;
+    line-height: 24px;
+    height: 24px;
+}
+
+.humata-accordion-toolbar .button-small strong {
+    font-weight: 700;
+}
+
+.humata-accordion-toolbar .button-small em {
+    font-style: italic;
+}
+
+/* Intent card toggle button */
+.humata-intent-toggle {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    width: 28px;
+    height: 28px;
+    padding: 0;
+    margin-right: 8px;
+    background: transparent;
+    border: 1px solid transparent;
+    border-radius: 4px;
+    cursor: pointer;
+    color: #50575e;
+    transition: background 0.15s, border-color 0.15s, color 0.15s;
+}
+
+.humata-intent-toggle:hover {
+    background: #dcdcde;
+    border-color: #c3c4c7;
+    color: #1d2327;
+}
+
+.humata-intent-toggle:focus {
+    outline: none;
+    box-shadow: 0 0 0 2px #2271b1;
+}
+
+.humata-intent-toggle .dashicons {
+    font-size: 18px;
+    width: 18px;
+    height: 18px;
+}
+
+/* Collapsed state */
+.humata-intent-card.humata-intent-collapsed .humata-intent-card-body {
+    display: none;
+}
+
+.humata-intent-card.humata-intent-collapsed .humata-intent-card-header {
+    border-bottom: none;
+    border-radius: 4px;
+}
+
+

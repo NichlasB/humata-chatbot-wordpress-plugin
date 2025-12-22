@@ -1,0 +1,7 @@
+/* Entry point for the bundled chat widget CSS (Phase 0).
+ * We currently import the existing stylesheet from assets/css/.
+ */
+@import "../../css/chat-widget.css";
+
+
+

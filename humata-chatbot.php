@@ -74,6 +74,9 @@ function humata_chatbot_activate() {
         add_option( 'humata_floating_help', array( 'enabled' => 0 ) );
     }
 
+    // Trigger pages (empty by default).
+    add_option( 'humata_trigger_pages', array() );
+
     // Add rewrite rules for dedicated page
     humata_chatbot_add_rewrite_rules();
     flush_rewrite_rules();

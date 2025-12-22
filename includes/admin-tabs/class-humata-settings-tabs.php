@@ -100,6 +100,11 @@ class Humata_Chatbot_Settings_Tabs {
                 'page_id'  => 'humata-chatbot-tab-auto-links',
                 'has_form' => true,
             ),
+            'pages'         => array(
+                'label'    => __( 'Pages', 'humata-chatbot' ),
+                'page_id'  => 'humata-chatbot-tab-pages',
+                'has_form' => true,
+            ),
             'usage'         => array(
                 'label'    => __( 'Usage', 'humata-chatbot' ),
                 'page_id'  => 'humata-chatbot-tab-usage',

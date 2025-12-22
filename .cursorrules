@@ -1,0 +1,89 @@
+# Humata Chatbot – Cursor AI Rules
+
+This is a WordPress plugin. Follow these conventions when adding features or modifying code.
+
+## File Organization
+
+### PHP
+
+- **Admin settings**: Use traits in `includes/Admin/` organized by concern:
+  - `Render/*.php` – field/section rendering methods
+  - `Settings/Sanitize/*.php` – sanitization/validation methods
+  - `Settings/*.php` – helpers (DocumentIds, Schema, Register)
+- **REST API**: Service classes in `includes/Rest/`:
+  - Single-purpose classes: `RateLimiter.php`, `TurnstileVerifier.php`, `SseParser.php`, etc.
+  - Third-party API clients in `includes/Rest/Clients/`
+- **Settings tabs**: Tab classes in `includes/admin-tabs/tabs/`
+- **Keep files under 300 lines**; extract to new traits/classes when growing
+
+### JavaScript
+
+- **Source files** in `assets/src/` (never edit `assets/dist/`)
+- **Chat widget modules** in `assets/src/chat-widget/`:
+  - `config.js` – configuration from WordPress
+  - `avatars.js` – avatar display logic
+  - `main.js` – core initialization
+- **Admin scripts** in `assets/src/admin/settings/`
+- **Use ES6 modules** with named exports
+- **Run `npm run build`** after any JS/CSS changes
+
+## Naming Conventions
+
+### PHP
+- Classes: `Humata_Chatbot_{Category}_{Name}`
+- Traits: `Humata_Chatbot_{Category}_{Name}_Trait`
+- Options: `humata_{setting_name}`
+- Transients: `humata_{purpose}_{identifier}`
+
+### JavaScript
+- Use camelCase for variables/functions
+- Export named functions, not default exports
+- Configuration object: `window.humataConfig`
+
+### CSS
+- BEM-style: `.humata-{block}__element--modifier`
+- Use CSS custom properties for theming
+
+## WordPress Standards
+
+- Guard clause first: `defined( 'ABSPATH' ) || exit;`
+- Use `esc_html__()`, `esc_attr()`, `wp_kses_post()` for output escaping
+- Use `sanitize_text_field()`, `absint()` for input sanitization
+- Register all settings via `register_setting()` with sanitize callbacks
+- Use `wp_localize_script()` to pass PHP data to JavaScript
+
+## Adding Features
+
+### New Admin Setting
+1. Define option default in `humata-chatbot.php` activation hook
+2. Register in `includes/Admin/Settings/Register.php`
+3. Add sanitizer in `includes/Admin/Settings/Sanitize/`
+4. Add render method in `includes/Admin/Render/`
+5. Wire up in appropriate tab class
+
+### New REST Endpoint
+1. Create service class in `includes/Rest/` if needed
+2. Register route in `class-rest-api.php`
+3. Implement handler that delegates to services
+
+### New JS Feature
+1. Create module in appropriate `assets/src/` folder
+2. Export functions with named exports
+3. Import in entry point
+4. Run `npm run build`
+
+## Do NOT
+
+- Edit files in `assets/dist/` (they are built output)
+- Add inline scripts/styles via `wp_add_inline_script` in admin settings
+- Create monolithic files over 300 lines
+- Use jQuery in new code (vanilla JS only)
+- Skip sanitization/escaping
+
+## Verification After Changes
+
+1. Run `npm run build` – ensure no errors
+2. Verify `assets/dist/` outputs exist
+3. Test admin settings page loads
+4. Test frontend chat interface loads
+

@@ -39,6 +39,30 @@ if ( ! is_string( $footer_copyright_text ) ) {
 }
 $footer_copyright_text = trim( $footer_copyright_text );
 
+// Trigger pages.
+$trigger_pages = get_option( 'humata_trigger_pages', array() );
+if ( ! is_array( $trigger_pages ) ) {
+    $trigger_pages = array();
+}
+$trigger_pages_clean = array();
+foreach ( $trigger_pages as $page ) {
+    if ( ! is_array( $page ) ) {
+        continue;
+    }
+    $title     = isset( $page['title'] ) ? trim( (string) $page['title'] ) : '';
+    $link_text = isset( $page['link_text'] ) ? trim( (string) $page['link_text'] ) : '';
+    $content   = isset( $page['content'] ) ? trim( (string) $page['content'] ) : '';
+    if ( '' === $title || '' === $link_text || '' === $content ) {
+        continue;
+    }
+    $trigger_pages_clean[] = array(
+        'title'     => $title,
+        'link_text' => $link_text,
+        'content'   => $content,
+    );
+}
+$has_trigger_pages = ! empty( $trigger_pages_clean );
+
 // Avatar settings.
 $bot_avatar_url = get_option( 'humata_bot_avatar_url', '' );
 $avatar_size    = absint( get_option( 'humata_avatar_size', 40 ) );
@@ -71,48 +95,48 @@ $should_noindex     = ! ( $is_homepage_mode && $allow_seo_indexing );
 </head>
 <body class="humata-chat-body <?php echo esc_attr( $theme_class ); ?>">
     <div id="humata-chat-wrapper">
-        <div id="humata-chat-container" class="humata-chat-fullpage">
-            <header id="humata-chat-header">
-                <div class="humata-header-left">
+        <header id="humata-chat-header">
+            <div class="humata-header-left">
                     <svg class="humata-logo" xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round">
                         <path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z"></path>
                     </svg>
                     <span class="humata-chat-title"><?php echo esc_html( get_bloginfo( 'name' ) ); ?></span>
-                </div>
-                <div class="humata-header-right">
-                    <button type="button" id="humata-export-pdf" title="<?php esc_attr_e( 'Export PDF', 'humata-chatbot' ); ?>" aria-label="<?php esc_attr_e( 'Export PDF', 'humata-chatbot' ); ?>">
-                        <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round">
-                            <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"></path>
-                            <polyline points="7 10 12 15 17 10"></polyline>
-                            <line x1="12" y1="15" x2="12" y2="3"></line>
-                        </svg>
-                    </button>
-                    <button type="button" id="humata-theme-toggle" title="<?php esc_attr_e( 'Toggle Theme', 'humata-chatbot' ); ?>">
-                        <svg class="humata-icon-sun" xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round">
-                            <circle cx="12" cy="12" r="5"></circle>
-                            <line x1="12" y1="1" x2="12" y2="3"></line>
-                            <line x1="12" y1="21" x2="12" y2="23"></line>
-                            <line x1="4.22" y1="4.22" x2="5.64" y2="5.64"></line>
-                            <line x1="18.36" y1="18.36" x2="19.78" y2="19.78"></line>
-                            <line x1="1" y1="12" x2="3" y2="12"></line>
-                            <line x1="21" y1="12" x2="23" y2="12"></line>
-                            <line x1="4.22" y1="19.78" x2="5.64" y2="18.36"></line>
-                            <line x1="18.36" y1="5.64" x2="19.78" y2="4.22"></line>
-                        </svg>
-                        <svg class="humata-icon-moon" xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round">
-                            <path d="M21 12.79A9 9 0 1 1 11.21 3 7 7 0 0 0 21 12.79z"></path>
-                        </svg>
-                    </button>
-                    <button type="button" id="humata-clear-chat" title="<?php esc_attr_e( 'Clear Chat', 'humata-chatbot' ); ?>">
-                        <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round">
-                            <path d="M3 6h18"></path>
-                            <path d="M19 6v14c0 1-1 2-2 2H7c-1 0-2-1-2-2V6"></path>
-                            <path d="M8 6V4c0-1 1-2 2-2h4c1 0 2 1 2 2v2"></path>
-                        </svg>
-                    </button>
-                </div>
-            </header>
-
+            </div>
+            <div class="humata-header-center"></div>
+            <div class="humata-header-right">
+                <button type="button" id="humata-export-pdf" title="<?php esc_attr_e( 'Export PDF', 'humata-chatbot' ); ?>" aria-label="<?php esc_attr_e( 'Export PDF', 'humata-chatbot' ); ?>">
+                    <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round">
+                        <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"></path>
+                        <polyline points="7 10 12 15 17 10"></polyline>
+                        <line x1="12" y1="15" x2="12" y2="3"></line>
+                    </svg>
+                </button>
+                <button type="button" id="humata-clear-chat" title="<?php esc_attr_e( 'Clear Chat', 'humata-chatbot' ); ?>">
+                    <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round">
+                        <path d="M3 6h18"></path>
+                        <path d="M19 6v14c0 1-1 2-2 2H7c-1 0-2-1-2-2V6"></path>
+                        <path d="M8 6V4c0-1 1-2 2-2h4c1 0 2 1 2 2v2"></path>
+                    </svg>
+                </button>
+                <button type="button" id="humata-theme-toggle" title="<?php esc_attr_e( 'Toggle Theme', 'humata-chatbot' ); ?>">
+                    <svg class="humata-icon-sun" xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round">
+                        <circle cx="12" cy="12" r="5"></circle>
+                        <line x1="12" y1="1" x2="12" y2="3"></line>
+                        <line x1="12" y1="21" x2="12" y2="23"></line>
+                        <line x1="4.22" y1="4.22" x2="5.64" y2="5.64"></line>
+                        <line x1="18.36" y1="18.36" x2="19.78" y2="19.78"></line>
+                        <line x1="1" y1="12" x2="3" y2="12"></line>
+                        <line x1="21" y1="12" x2="23" y2="12"></line>
+                        <line x1="4.22" y1="19.78" x2="5.64" y2="18.36"></line>
+                        <line x1="18.36" y1="5.64" x2="19.78" y2="4.22"></line>
+                    </svg>
+                    <svg class="humata-icon-moon" xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round">
+                        <path d="M21 12.79A9 9 0 1 1 11.21 3 7 7 0 0 0 21 12.79z"></path>
+                    </svg>
+                </button>
+            </div>
+        </header>
+        <div id="humata-chat-container" class="humata-chat-fullpage">
             <main id="humata-chat-messages">
                 <div id="humata-welcome-message" class="humata-message humata-message-bot">
                     <div class="humata-message-avatar">
@@ -169,6 +193,19 @@ $should_noindex     = ! ( $is_homepage_mode && $allow_seo_indexing );
             </footer>
         </div>
     </div>
+    <?php if ( $has_trigger_pages ) : ?>
+        <nav class="humata-trigger-pages" aria-label="<?php esc_attr_e( 'Page links', 'humata-chatbot' ); ?>">
+            <ul class="humata-trigger-pages__list">
+                <?php foreach ( $trigger_pages_clean as $idx => $tpage ) : ?>
+                    <li>
+                        <button type="button" class="humata-trigger-pages__link" data-humata-page-modal="<?php echo esc_attr( (string) $idx ); ?>">
+                            <?php echo esc_html( $tpage['link_text'] ); ?>
+                        </button>
+                    </li>
+                <?php endforeach; ?>
+            </ul>
+        </nav>
+    <?php endif; ?>
     <?php if ( '' !== $medical_disclaimer_text || '' !== $footer_copyright_text ) : ?>
         <footer id="humata-chat-page-footer">
             <div id="humata-chat-page-footer-inner">
@@ -180,6 +217,25 @@ $should_noindex     = ! ( $is_homepage_mode && $allow_seo_indexing );
                 <?php endif; ?>
             </div>
         </footer>
+    <?php endif; ?>
+    <?php if ( $has_trigger_pages ) : ?>
+        <?php foreach ( $trigger_pages_clean as $idx => $tpage ) : ?>
+            <div id="humata-page-modal-<?php echo esc_attr( (string) $idx ); ?>" class="humata-help-modal" hidden aria-hidden="true">
+                <div class="humata-help-modal__overlay" data-humata-page-close-modal></div>
+                <div class="humata-help-modal__dialog" role="dialog" aria-modal="true" aria-labelledby="humata-page-modal-<?php echo esc_attr( (string) $idx ); ?>-title">
+                    <button type="button" class="humata-help-modal__close" data-humata-page-close-modal aria-label="<?php esc_attr_e( 'Close', 'humata-chatbot' ); ?>">
+                        <svg xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round">
+                            <path d="M18 6 6 18"></path>
+                            <path d="m6 6 12 12"></path>
+                        </svg>
+                    </button>
+                    <h2 id="humata-page-modal-<?php echo esc_attr( (string) $idx ); ?>-title" class="humata-help-modal__title"><?php echo esc_html( $tpage['title'] ); ?></h2>
+                    <div class="humata-help-modal__content">
+                        <?php echo wp_kses_post( wpautop( $tpage['content'] ) ); ?>
+                    </div>
+                </div>
+            </div>
+        <?php endforeach; ?>
     <?php endif; ?>
     <?php wp_footer(); ?>
 </body>

@@ -1,0 +1,125 @@
+<?php
+/**
+ * Core sanitizers
+ *
+ * @package Humata_Chatbot
+ * @since 1.0.0
+ */
+
+defined( 'ABSPATH' ) || exit;
+
+trait Humata_Chatbot_Admin_Settings_Sanitize_Core_Trait {
+
+    /**
+     * Sanitize location option.
+     *
+     * @since 1.0.0
+     * @param string $value Input value.
+     * @return string Sanitized value.
+     */
+    public function sanitize_location( $value ) {
+        $valid = array( 'homepage', 'dedicated', 'shortcode' );
+        return in_array( $value, $valid, true ) ? $value : 'dedicated';
+    }
+
+    /**
+     * Sanitize theme option.
+     *
+     * @since 1.0.0
+     * @param string $value Input value.
+     * @return string Sanitized value.
+     */
+    public function sanitize_theme( $value ) {
+        $valid = array( 'dark', 'light', 'auto' );
+        return in_array( $value, $valid, true ) ? $value : 'auto';
+    }
+
+    /**
+     * Sanitize a checkbox value to 0/1.
+     *
+     * @since 1.0.0
+     * @param mixed $value Input value.
+     * @return int 0 or 1.
+     */
+    public function sanitize_checkbox( $value ) {
+        return empty( $value ) ? 0 : 1;
+    }
+
+    public function sanitize_max_prompt_chars( $value ) {
+        $value = absint( $value );
+
+        if ( $value <= 0 ) {
+            return 3000;
+        }
+
+        if ( $value > 100000 ) {
+            return 100000;
+        }
+
+        return $value;
+    }
+
+    /**
+     * Sanitize bot response disclaimer HTML.
+     * Allows limited HTML: links, bold, italic, line breaks.
+     *
+     * @since 1.0.0
+     * @param string $value Input value.
+     * @return string Sanitized HTML.
+     */
+    public function sanitize_bot_response_disclaimer( $value ) {
+        if ( ! is_string( $value ) ) {
+            return '';
+        }
+
+        $allowed_html = array(
+            'a'      => array(
+                'href'   => array(),
+                'target' => array(),
+                'rel'    => array(),
+                'title'  => array(),
+            ),
+            'strong' => array(),
+            'b'      => array(),
+            'em'     => array(),
+            'i'      => array(),
+            'br'     => array(),
+        );
+
+        return wp_kses( $value, $allowed_html );
+    }
+
+    /**
+     * Sanitize avatar size option.
+     *
+     * @since 1.0.0
+     * @param mixed $value Input value.
+     * @return int Clamped value between 32 and 64.
+     */
+    public function sanitize_avatar_size( $value ) {
+        $value = absint( $value );
+        if ( $value < 32 ) {
+            $value = 32;
+        }
+        if ( $value > 64 ) {
+            $value = 64;
+        }
+        return $value;
+    }
+
+    /**
+     * Sanitize second-stage LLM provider selection.
+     *
+     * @since 1.0.0
+     * @param string $value Input value.
+     * @return string Sanitized provider value.
+     */
+    public function sanitize_second_llm_provider( $value ) {
+        $value = sanitize_text_field( (string) $value );
+        $valid = array( 'none', 'straico', 'anthropic' );
+        return in_array( $value, $valid, true ) ? $value : 'none';
+    }
+}
+
+
+

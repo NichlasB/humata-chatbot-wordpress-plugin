@@ -1,0 +1,20 @@
+#!/bin/sh
+. "$(dirname "$0")/_/husky.sh"
+
+# On Windows, npm may not be in PATH when run from IDE Git integrations.
+# Add common Node.js installation paths to PATH.
+export PATH="/c/Program Files/nodejs:$PATH"
+export PATH="$PROGRAMFILES/nodejs:$PATH"
+
+# Always rebuild assets so `assets/dist/*` stays in sync with `assets/src/*`.
+if command -v npm >/dev/null 2>&1; then
+  npm run build
+else
+  echo "Warning: npm not found, skipping asset build. Run 'npm run build' manually before pushing."
+fi
+
+# Ensure built assets are included in the commit.
+git add assets/dist
+
+
+

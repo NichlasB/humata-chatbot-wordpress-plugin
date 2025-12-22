@@ -42,6 +42,7 @@ delete_option( 'humata_intent_links' );
 delete_option( 'humata_user_avatar_url' );
 delete_option( 'humata_bot_avatar_url' );
 delete_option( 'humata_avatar_size' );
+delete_option( 'humata_trigger_pages' );
 
 // Delete rate limit and conversation transients
 global $wpdb;

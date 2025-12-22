@@ -96,8 +96,22 @@ class Humata_Chatbot_Template_Loader {
      * @return void
      */
     private function enqueue_chat_assets() {
-        $css_file = HUMATA_CHATBOT_PATH . 'assets/css/chat-widget.css';
-        $js_file  = HUMATA_CHATBOT_PATH . 'assets/js/chat-widget.js';
+        // Prefer built assets from assets/dist when present (keeps runtime lean and lets devs work modularly).
+        $css_rel = 'assets/css/chat-widget.css';
+        $js_rel  = 'assets/js/chat-widget.js';
+
+        $css_dist_rel = 'assets/dist/chat-widget.css';
+        $js_dist_rel  = 'assets/dist/chat-widget.js';
+
+        if ( file_exists( HUMATA_CHATBOT_PATH . $css_dist_rel ) ) {
+            $css_rel = $css_dist_rel;
+        }
+        if ( file_exists( HUMATA_CHATBOT_PATH . $js_dist_rel ) ) {
+            $js_rel = $js_dist_rel;
+        }
+
+        $css_file = HUMATA_CHATBOT_PATH . $css_rel;
+        $js_file  = HUMATA_CHATBOT_PATH . $js_rel;
         $jspdf_file = HUMATA_CHATBOT_PATH . 'assets/js/vendor/jspdf.umd.min.js';
 
         $css_version = file_exists( $css_file ) ? filemtime( $css_file ) : HUMATA_CHATBOT_VERSION;
@@ -107,7 +121,7 @@ class Humata_Chatbot_Template_Loader {
         // Enqueue CSS
         wp_enqueue_style(
             'humata-chat-widget',
-            HUMATA_CHATBOT_URL . 'assets/css/chat-widget.css',
+            HUMATA_CHATBOT_URL . $css_rel,
             array(),
             $css_version
         );
@@ -123,7 +137,7 @@ class Humata_Chatbot_Template_Loader {
         // Enqueue JavaScript
         wp_enqueue_script(
             'humata-chat-widget',
-            HUMATA_CHATBOT_URL . 'assets/js/chat-widget.js',
+            HUMATA_CHATBOT_URL . $js_rel,
             array( 'humata-jspdf' ),
             $js_version,
             true
@@ -410,22 +424,35 @@ class Humata_Chatbot_Template_Loader {
             return;
         }
 
-        $css_file = HUMATA_CHATBOT_PATH . 'assets/css/floating-help.css';
-        $js_file  = HUMATA_CHATBOT_PATH . 'assets/js/floating-help.js';
+        $css_rel = 'assets/css/floating-help.css';
+        $js_rel  = 'assets/js/floating-help.js';
+
+        $css_dist_rel = 'assets/dist/floating-help.css';
+        $js_dist_rel  = 'assets/dist/floating-help.js';
+
+        if ( file_exists( HUMATA_CHATBOT_PATH . $css_dist_rel ) ) {
+            $css_rel = $css_dist_rel;
+        }
+        if ( file_exists( HUMATA_CHATBOT_PATH . $js_dist_rel ) ) {
+            $js_rel = $js_dist_rel;
+        }
+
+        $css_file = HUMATA_CHATBOT_PATH . $css_rel;
+        $js_file  = HUMATA_CHATBOT_PATH . $js_rel;
 
         $css_version = file_exists( $css_file ) ? filemtime( $css_file ) : HUMATA_CHATBOT_VERSION;
         $js_version  = file_exists( $js_file ) ? filemtime( $js_file ) : HUMATA_CHATBOT_VERSION;
 
         wp_enqueue_style(
             'humata-floating-help',
-            HUMATA_CHATBOT_URL . 'assets/css/floating-help.css',
+            HUMATA_CHATBOT_URL . $css_rel,
             array(),
             $css_version
         );
 
         wp_enqueue_script(
             'humata-floating-help',
-            HUMATA_CHATBOT_URL . 'assets/js/floating-help.js',
+            HUMATA_CHATBOT_URL . $js_rel,
             array(),
             $js_version,
             true
@@ -729,6 +756,7 @@ class Humata_Chatbot_Template_Loader {
                 <div class="humata-header-left">
                     <span class="humata-chat-title"><?php esc_html_e( 'Chat with AI', 'humata-chatbot' ); ?></span>
                 </div>
+                <div class="humata-header-center"></div>
                 <div class="humata-header-right">
                     <button type="button" id="humata-export-pdf" title="<?php esc_attr_e( 'Export PDF', 'humata-chatbot' ); ?>" aria-label="<?php esc_attr_e( 'Export PDF', 'humata-chatbot' ); ?>">
                         <svg xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round">

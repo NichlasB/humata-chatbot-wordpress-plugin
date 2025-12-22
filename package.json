@@ -1,0 +1,19 @@
+{
+  "name": "humata-chatbot",
+  "version": "1.0.0",
+  "private": true,
+  "description": "Build tooling for Humata Chatbot WordPress plugin assets",
+  "type": "module",
+  "scripts": {
+    "build": "node scripts/build.mjs",
+    "dev": "node scripts/build.mjs --watch",
+    "prepare": "husky install"
+  },
+  "devDependencies": {
+    "esbuild": "^0.24.2",
+    "husky": "^8.0.3"
+  }
+}
+
+
+
