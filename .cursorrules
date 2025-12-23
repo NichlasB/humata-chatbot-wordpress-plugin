@@ -19,6 +19,7 @@ This is a WordPress plugin. Follow these conventions when adding features or mod
 ### JavaScript
 
 - **Source files** in `assets/src/` (never edit `assets/dist/`)
+- **Legacy files** in `assets/js/` and `assets/css/` are fallbacks used when `assets/dist/` files are missing. Do NOT edit them directly — edit `assets/src/` and run `npm run build` instead
 - **Chat widget modules** in `assets/src/chat-widget/`:
   - `config.js` – configuration from WordPress
   - `avatars.js` – avatar display logic

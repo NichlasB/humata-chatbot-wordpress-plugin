@@ -83,7 +83,7 @@ $should_noindex     = ! ( $is_homepage_mode && $allow_seo_indexing );
 <html <?php language_attributes(); ?> class="<?php echo esc_attr( $theme_class ); ?>">
 <head>
     <meta charset="<?php bloginfo( 'charset' ); ?>">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, interactive-widget=resizes-content">
     <?php if ( $should_noindex ) : ?>
         <meta name="robots" content="noindex, nofollow">
     <?php endif; ?>

@@ -115,6 +115,97 @@
         }
 
         updateScrollToggleState();
+
+        // Initialize mobile keyboard handling
+        initMobileKeyboardHandler();
+    }
+
+    /**
+     * Initialize mobile keyboard handler using visualViewport API.
+     * Adjusts the input container position when the virtual keyboard appears.
+     */
+    function initMobileKeyboardHandler() {
+        // Only apply when visualViewport is supported
+        if (!window.visualViewport) {
+            return;
+        }
+
+        const inputContainer = document.getElementById('humata-chat-input-container');
+        if (!inputContainer) {
+            return;
+        }
+
+        // Store initial viewport height to detect keyboard
+        const initialViewportHeight = window.visualViewport.height;
+        let isKeyboardVisible = false;
+        let pendingUpdate = false;
+
+        function updateInputPosition() {
+            if (pendingUpdate) {
+                return;
+            }
+            pendingUpdate = true;
+
+            requestAnimationFrame(function() {
+                pendingUpdate = false;
+
+                const vv = window.visualViewport;
+                
+                // Calculate the bottom position of the visual viewport relative to the layout viewport
+                // This accounts for both keyboard and any browser UI changes
+                const viewportBottom = vv.offsetTop + vv.height;
+                const layoutBottom = window.innerHeight;
+                const bottomOffset = layoutBottom - viewportBottom;
+
+                // Detect keyboard by significant viewport height reduction (more than 150px)
+                const heightReduction = initialViewportHeight - vv.height;
+                const keyboardOpen = heightReduction > 150;
+
+                if (keyboardOpen) {
+                    if (!isKeyboardVisible) {
+                        isKeyboardVisible = true;
+                        document.body.classList.add('humata-keyboard-open');
+                    }
+                    
+                    // Position the input container at the bottom of the visible viewport
+                    // Using transform to position relative to its current location
+                    inputContainer.style.position = 'fixed';
+                    inputContainer.style.bottom = '0';
+                    inputContainer.style.left = '0';
+                    inputContainer.style.right = '0';
+                    inputContainer.style.transform = 'translateY(' + (-bottomOffset) + 'px)';
+                } else {
+                    if (isKeyboardVisible) {
+                        isKeyboardVisible = false;
+                        document.body.classList.remove('humata-keyboard-open');
+                    }
+                    
+                    // Reset styles
+                    inputContainer.style.position = '';
+                    inputContainer.style.bottom = '';
+                    inputContainer.style.left = '';
+                    inputContainer.style.right = '';
+                    inputContainer.style.transform = '';
+                }
+            });
+        }
+
+        // Listen for both resize and scroll events on visual viewport
+        window.visualViewport.addEventListener('resize', updateInputPosition);
+        window.visualViewport.addEventListener('scroll', updateInputPosition);
+        
+        // Also handle focus/blur on the input for more reliable detection
+        if (elements.input) {
+            elements.input.addEventListener('focus', function() {
+                // Small delay to let keyboard open
+                setTimeout(updateInputPosition, 300);
+            });
+            
+            elements.input.addEventListener('blur', function() {
+                // Small delay to let keyboard close
+                setTimeout(updateInputPosition, 100);
+            });
+        }
     }
 
     /**

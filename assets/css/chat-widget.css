@@ -99,6 +99,7 @@
     color: var(--humata-text-primary);
     -webkit-font-smoothing: antialiased;
     -moz-osx-font-smoothing: grayscale;
+    overscroll-behavior-y: none;
 }
 
 /* Chat Wrapper */
@@ -106,9 +107,12 @@
     width: 100%;
     min-height: 100vh;
     min-height: 100dvh;
+    height: 100vh;
+    height: 100dvh;
     display: flex;
     flex-direction: column;
     background-color: var(--humata-bg-primary);
+    overflow: hidden;
 }
 
 /* Chat Container */
@@ -125,6 +129,9 @@
 #humata-chat-container.humata-chat-fullpage {
     flex: 1;
     min-height: 0;
+    overflow: hidden;
+    display: flex;
+    flex-direction: column;
 }
 
 /* Embedded (shortcode) specific styles */
@@ -231,12 +238,13 @@
 /* Chat Messages Container */
 #humata-chat-messages {
     flex: 1;
-    overflow-y: visible;
+    overflow-y: auto;
     padding: 40px 24px 24px 24px;
     display: flex;
     flex-direction: column;
     gap: 32px;
     margin-bottom: 0;
+    min-height: 0;
 }
 
 /* Custom Scrollbar */
@@ -1226,6 +1234,25 @@
     .humata-trigger-pages__link {
         font-size: 0.8125rem;
     }
+}
+
+/* Mobile Keyboard Open State */
+.humata-keyboard-open #humata-chat-input-container {
+    box-shadow: 0 -4px 20px rgba(0, 0, 0, 0.15);
+    padding-bottom: 8px;
+    padding-top: 12px;
+}
+
+.humata-keyboard-open #humata-chat-input-container::before {
+    display: none;
+}
+
+.humata-keyboard-open .humata-disclaimer {
+    display: none;
+}
+
+.humata-keyboard-open #humata-scroll-toggle {
+    display: none;
 }
 
 /* Print Styles */

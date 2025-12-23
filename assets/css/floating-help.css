@@ -29,6 +29,27 @@
     }
 }
 
+/* Theme class overrides for manual theme toggle */
+.humata-theme-dark {
+    --humata-help-bg: #18181b;
+    --humata-help-text: #e4e4e7;
+    --humata-help-muted: #a1a1aa;
+    --humata-help-border: rgba(255, 255, 255, 0.14);
+    --humata-help-divider: rgba(255, 255, 255, 0.10);
+    --humata-help-shadow: 0 12px 15px rgba(0, 0, 0, 0.55);
+    --humata-help-accent: #1ab98f;
+}
+
+.humata-theme-light {
+    --humata-help-bg: #ffffff;
+    --humata-help-text: #111827;
+    --humata-help-muted: #6b7280;
+    --humata-help-border: rgba(0, 0, 0, 0.12);
+    --humata-help-divider: rgba(0, 0, 0, 0.08);
+    --humata-help-shadow: 0 12px 15px rgba(0, 0, 0, 0.18);
+    --humata-help-accent: #2e5f28;
+}
+
 .humata-floating-help {
     position: fixed;
     right: 20px;
@@ -358,16 +379,22 @@ body.humata-help-modal-open {
 }
 
 .humata-help-modal__content h2,
-.humata-help-modal__content h3 {
+.humata-help-modal__content h3,
+.humata-help-modal__content h4,
+.humata-help-modal__content h5,
+.humata-help-modal__content h6 {
     margin: 16px 0 10px 0;
     font-weight: 650;
     line-height: 1.25;
-    color: var(--humata-help-text);
+    color: var(--humata-help-text) !important;
     opacity: 1;
 }
 
 .humata-help-modal__content h2:first-child,
-.humata-help-modal__content h3:first-child {
+.humata-help-modal__content h3:first-child,
+.humata-help-modal__content h4:first-child,
+.humata-help-modal__content h5:first-child,
+.humata-help-modal__content h6:first-child {
     margin-top: 0;
 }
 
@@ -453,4 +480,7 @@ body.humata-help-modal-open {
     opacity: 0.92;
 }
 
-
+/* Hide floating help when mobile keyboard is open */
+.humata-keyboard-open .humata-floating-help {
+    display: none;
+}

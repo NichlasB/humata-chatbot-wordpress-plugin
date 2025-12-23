@@ -84,6 +84,122 @@ import { setAvatarContent } from './avatars.js';
         }
 
         updateScrollToggleState();
+
+        // Initialize mobile keyboard handling
+        initMobileKeyboardHandler();
+    }
+
+    /**
+     * Initialize mobile keyboard handler using visualViewport API.
+     * Adjusts the input container position when the virtual keyboard appears.
+     * Detaches from fixed positioning when input container reaches trigger-pages/footer.
+     */
+    function initMobileKeyboardHandler() {
+        if (!window.visualViewport) {
+            return;
+        }
+
+        const inputContainer = document.getElementById('humata-chat-input-container');
+        if (!inputContainer) {
+            return;
+        }
+
+        const triggerPages = document.querySelector('.humata-trigger-pages');
+        const pageFooter = document.getElementById('humata-chat-page-footer');
+        const stopElement = triggerPages || pageFooter;
+
+        const initialViewportHeight = window.visualViewport.height;
+        let isKeyboardVisible = false;
+        let isDetached = false;
+        let pendingUpdate = false;
+
+        function updateInputPosition() {
+            if (pendingUpdate) {
+                return;
+            }
+            pendingUpdate = true;
+
+            requestAnimationFrame(function() {
+                pendingUpdate = false;
+
+                const vv = window.visualViewport;
+                const viewportBottom = vv.offsetTop + vv.height;
+                const layoutBottom = window.innerHeight;
+                const bottomOffset = layoutBottom - viewportBottom;
+                const heightReduction = initialViewportHeight - vv.height;
+                const keyboardOpen = heightReduction > 150;
+
+                if (keyboardOpen) {
+                    if (!isKeyboardVisible) {
+                        isKeyboardVisible = true;
+                        document.body.classList.add('humata-keyboard-open');
+                    }
+
+                    // Check if we should detach (input container would overlap stop element)
+                    let shouldDetach = false;
+                    if (stopElement) {
+                        const stopRect = stopElement.getBoundingClientRect();
+                        const inputHeight = inputContainer.offsetHeight;
+                        const keyboardTop = vv.height + vv.offsetTop;
+                        const inputFixedBottom = keyboardTop - inputHeight;
+
+                        // If the stop element's top is within or above where the input would be fixed
+                        if (stopRect.top <= keyboardTop && stopRect.top > 0) {
+                            shouldDetach = true;
+                        }
+                    }
+
+                    if (shouldDetach) {
+                        // Detach: let input container scroll with content
+                        if (!isDetached) {
+                            isDetached = true;
+                            inputContainer.classList.add('humata-input-detached');
+                        }
+                        inputContainer.style.position = '';
+                        inputContainer.style.bottom = '';
+                        inputContainer.style.left = '';
+                        inputContainer.style.right = '';
+                        inputContainer.style.transform = '';
+                    } else {
+                        // Attach: fix input container above keyboard
+                        if (isDetached) {
+                            isDetached = false;
+                            inputContainer.classList.remove('humata-input-detached');
+                        }
+                        inputContainer.style.position = 'fixed';
+                        inputContainer.style.bottom = '0';
+                        inputContainer.style.left = '0';
+                        inputContainer.style.right = '0';
+                        inputContainer.style.transform = 'translateY(' + (-bottomOffset) + 'px)';
+                    }
+                } else {
+                    if (isKeyboardVisible) {
+                        isKeyboardVisible = false;
+                        isDetached = false;
+                        document.body.classList.remove('humata-keyboard-open');
+                        inputContainer.classList.remove('humata-input-detached');
+                    }
+                    inputContainer.style.position = '';
+                    inputContainer.style.bottom = '';
+                    inputContainer.style.left = '';
+                    inputContainer.style.right = '';
+                    inputContainer.style.transform = '';
+                }
+            });
+        }
+
+        window.visualViewport.addEventListener('resize', updateInputPosition);
+        window.visualViewport.addEventListener('scroll', updateInputPosition);
+        window.addEventListener('scroll', updateInputPosition, { passive: true });
+
+        if (elements.input) {
+            elements.input.addEventListener('focus', function() {
+                setTimeout(updateInputPosition, 300);
+            });
+            elements.input.addEventListener('blur', function() {
+                setTimeout(updateInputPosition, 100);
+            });
+        }
     }
 
     /**
@@ -1083,6 +1199,9 @@ import { setAvatarContent } from './avatars.js';
         // Render Markdown blocks into HTML.
         let html = renderMarkdownBlocks(formatted);
 
+        // Merge consecutive ordered lists that were split by intervening content.
+        html = mergeConsecutiveOrderedLists(html);
+
         // Restore code blocks.
         html = html.replace(/%%HUMATA_CODEBLOCK_(\d+)%%/g, function(match, idx) {
             const i = parseInt(idx, 10);
@@ -1090,6 +1209,42 @@ import { setAvatarContent } from './avatars.js';
         });
 
         return html;
+    }
+
+    /**
+     * Merge consecutive <ol> elements that are separated by other content.
+     * This handles AI responses that generate numbered lists with explanatory
+     * paragraphs or other content between numbered items.
+     *
+     * @param {string} html - The HTML string to process.
+     * @returns {string} HTML with consecutive ordered lists merged.
+     */
+    function mergeConsecutiveOrderedLists(html) {
+        if (!html || typeof html !== 'string') {
+            return html;
+        }
+
+        // Pattern: </ol> followed by content (not containing <ol or </ol>) followed by <ol>
+        // We merge by removing the </ol> and <ol> tags, keeping the content between.
+        // The content becomes part of the list (after the previous </li> and before the next <li>).
+        const pattern = /<\/ol>(\s*(?:<p>[\s\S]*?<\/p>|<ul>[\s\S]*?<\/ul>|<blockquote>[\s\S]*?<\/blockquote>|<hr>)+\s*)<ol>/g;
+
+        let result = html;
+        let prevResult = '';
+
+        // Keep merging until no more matches (handles multiple consecutive splits).
+        while (result !== prevResult) {
+            prevResult = result;
+            result = result.replace(pattern, function(match, betweenContent) {
+                // Insert the between content inside the list, after the last </li>.
+                return betweenContent + '</ol><ol>';
+            });
+        }
+
+        // Now remove empty </ol><ol> pairs that resulted from the merge.
+        result = result.replace(/<\/ol>\s*<ol>/g, '');
+
+        return result;
     }
 
     let humataHtmlEntityDecoder = null;
