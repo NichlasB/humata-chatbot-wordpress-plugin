@@ -88,6 +88,30 @@ class Humata_Chatbot_Settings_Tab_Display extends Humata_Chatbot_Settings_Tab_Ba
             'humata_disclaimer_section'
         );
 
+        // Logo Settings Section.
+        add_settings_section(
+            'humata_logo_section',
+            __( 'Logo Settings', 'humata-chatbot' ),
+            array( $this->admin, 'render_logo_section' ),
+            $page_id
+        );
+
+        add_settings_field(
+            'humata_logo_url',
+            __( 'Logo (Light Theme)', 'humata-chatbot' ),
+            array( $this->admin, 'render_logo_field' ),
+            $page_id,
+            'humata_logo_section'
+        );
+
+        add_settings_field(
+            'humata_logo_url_dark',
+            __( 'Logo (Dark Theme)', 'humata-chatbot' ),
+            array( $this->admin, 'render_logo_dark_field' ),
+            $page_id,
+            'humata_logo_section'
+        );
+
         // Avatar Settings Section.
         add_settings_section(
             'humata_avatar_section',

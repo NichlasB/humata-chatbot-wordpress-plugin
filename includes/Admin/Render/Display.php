@@ -220,6 +220,52 @@ trait Humata_Chatbot_Admin_Settings_Render_Display_Trait {
     }
 
     /**
+     * Render logo image field for light theme.
+     *
+     * @since 1.0.0
+     * @return void
+     */
+    public function render_logo_field() {
+        $url = get_option( 'humata_logo_url', '' );
+        ?>
+        <div class="humata-logo-uploader">
+            <input type="hidden" id="humata_logo_url" name="humata_logo_url" value="<?php echo esc_attr( $url ); ?>" />
+            <button type="button" class="button humata-upload-avatar" data-target="humata_logo_url"><?php esc_html_e( 'Select Image', 'humata-chatbot' ); ?></button>
+            <button type="button" class="button humata-remove-avatar" data-target="humata_logo_url" <?php echo empty( $url ) ? 'style="display:none;"' : ''; ?>><?php esc_html_e( 'Remove', 'humata-chatbot' ); ?></button>
+            <div class="humata-logo-preview humata-logo-preview--light" id="humata_logo_url_preview">
+                <?php if ( ! empty( $url ) ) : ?>
+                    <img src="<?php echo esc_url( $url ); ?>" alt="<?php esc_attr_e( 'Logo Preview', 'humata-chatbot' ); ?>" />
+                <?php endif; ?>
+            </div>
+        </div>
+        <p class="description"><?php esc_html_e( 'Logo shown when the chat interface is in light mode. Use a dark-colored logo for best contrast.', 'humata-chatbot' ); ?></p>
+        <?php
+    }
+
+    /**
+     * Render logo image field for dark theme.
+     *
+     * @since 1.0.0
+     * @return void
+     */
+    public function render_logo_dark_field() {
+        $url = get_option( 'humata_logo_url_dark', '' );
+        ?>
+        <div class="humata-logo-uploader">
+            <input type="hidden" id="humata_logo_url_dark" name="humata_logo_url_dark" value="<?php echo esc_attr( $url ); ?>" />
+            <button type="button" class="button humata-upload-avatar" data-target="humata_logo_url_dark"><?php esc_html_e( 'Select Image', 'humata-chatbot' ); ?></button>
+            <button type="button" class="button humata-remove-avatar" data-target="humata_logo_url_dark" <?php echo empty( $url ) ? 'style="display:none;"' : ''; ?>><?php esc_html_e( 'Remove', 'humata-chatbot' ); ?></button>
+            <div class="humata-logo-preview humata-logo-preview--dark" id="humata_logo_url_dark_preview">
+                <?php if ( ! empty( $url ) ) : ?>
+                    <img src="<?php echo esc_url( $url ); ?>" alt="<?php esc_attr_e( 'Logo Preview', 'humata-chatbot' ); ?>" />
+                <?php endif; ?>
+            </div>
+        </div>
+        <p class="description"><?php esc_html_e( 'Logo shown when the chat interface is in dark mode. Use a light-colored or white logo for best contrast.', 'humata-chatbot' ); ?></p>
+        <?php
+    }
+
+    /**
      * Render user avatar image field.
      *
      * @since 1.0.0

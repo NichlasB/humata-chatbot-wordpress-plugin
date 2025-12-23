@@ -63,6 +63,10 @@ foreach ( $trigger_pages as $page ) {
 }
 $has_trigger_pages = ! empty( $trigger_pages_clean );
 
+// Logo settings.
+$logo_url      = get_option( 'humata_logo_url', '' );
+$logo_url_dark = get_option( 'humata_logo_url_dark', '' );
+
 // Avatar settings.
 $bot_avatar_url = get_option( 'humata_bot_avatar_url', '' );
 $avatar_size    = absint( get_option( 'humata_avatar_size', 40 ) );
@@ -97,10 +101,19 @@ $should_noindex     = ! ( $is_homepage_mode && $allow_seo_indexing );
     <div id="humata-chat-wrapper">
         <header id="humata-chat-header">
             <div class="humata-header-left">
+                <?php if ( ! empty( $logo_url ) || ! empty( $logo_url_dark ) ) : ?>
+                    <?php if ( ! empty( $logo_url ) ) : ?>
+                        <img class="humata-header-logo humata-header-logo--light" src="<?php echo esc_url( $logo_url ); ?>" alt="<?php echo esc_attr( get_bloginfo( 'name' ) ); ?>" />
+                    <?php endif; ?>
+                    <?php if ( ! empty( $logo_url_dark ) ) : ?>
+                        <img class="humata-header-logo humata-header-logo--dark" src="<?php echo esc_url( $logo_url_dark ); ?>" alt="<?php echo esc_attr( get_bloginfo( 'name' ) ); ?>" />
+                    <?php endif; ?>
+                <?php else : ?>
                     <svg class="humata-logo" xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round">
                         <path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z"></path>
                     </svg>
                     <span class="humata-chat-title"><?php echo esc_html( get_bloginfo( 'name' ) ); ?></span>
+                <?php endif; ?>
             </div>
             <div class="humata-header-center"></div>
             <div class="humata-header-right">
@@ -187,7 +200,7 @@ $should_noindex     = ! ( $is_homepage_mode && $allow_seo_indexing );
                 <p class="humata-disclaimer">
                     <?php esc_html_e( 'AI responses may not always be accurate. Please verify important information.', 'humata-chatbot' ); ?>
                     <?php if ( '' !== $medical_disclaimer_text ) : ?>
-                        <a class="humata-chat-footer-link" href="#humata-chat-page-footer"><?php esc_html_e( 'Medical disclaimer', 'humata-chatbot' ); ?></a>
+                        <button type="button" id="humata-medical-disclaimer-link" class="humata-chat-footer-link"><?php esc_html_e( 'Medical disclaimer', 'humata-chatbot' ); ?></button>
                     <?php endif; ?>
                 </p>
             </footer>
@@ -206,17 +219,29 @@ $should_noindex     = ! ( $is_homepage_mode && $allow_seo_indexing );
             </ul>
         </nav>
     <?php endif; ?>
-    <?php if ( '' !== $medical_disclaimer_text || '' !== $footer_copyright_text ) : ?>
+    <?php if ( '' !== $footer_copyright_text ) : ?>
         <footer id="humata-chat-page-footer">
             <div id="humata-chat-page-footer-inner">
-                <?php if ( '' !== $medical_disclaimer_text ) : ?>
-                    <?php echo wp_kses_post( wpautop( esc_html( $medical_disclaimer_text ) ) ); ?>
-                <?php endif; ?>
-                <?php if ( '' !== $footer_copyright_text ) : ?>
-                    <p><?php echo esc_html( $footer_copyright_text ); ?></p>
-                <?php endif; ?>
+                <p><?php echo esc_html( $footer_copyright_text ); ?></p>
             </div>
         </footer>
+    <?php endif; ?>
+    <?php if ( '' !== $medical_disclaimer_text ) : ?>
+        <div id="humata-medical-disclaimer-modal" class="humata-help-modal" hidden aria-hidden="true">
+            <div class="humata-help-modal__overlay" data-humata-disclaimer-close></div>
+            <div class="humata-help-modal__dialog" role="dialog" aria-modal="true" aria-labelledby="humata-medical-disclaimer-title">
+                <button type="button" class="humata-help-modal__close" data-humata-disclaimer-close aria-label="<?php esc_attr_e( 'Close', 'humata-chatbot' ); ?>">
+                    <svg xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round">
+                        <path d="M18 6 6 18"></path>
+                        <path d="m6 6 12 12"></path>
+                    </svg>
+                </button>
+                <h2 id="humata-medical-disclaimer-title" class="humata-help-modal__title"><?php esc_html_e( 'Medical Disclaimer', 'humata-chatbot' ); ?></h2>
+                <div class="humata-help-modal__content">
+                    <?php echo wp_kses_post( wpautop( esc_html( $medical_disclaimer_text ) ) ); ?>
+                </div>
+            </div>
+        </div>
     <?php endif; ?>
     <?php if ( $has_trigger_pages ) : ?>
         <?php foreach ( $trigger_pages_clean as $idx => $tpage ) : ?>

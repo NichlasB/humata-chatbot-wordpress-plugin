@@ -77,6 +77,10 @@ function humata_chatbot_activate() {
     // Trigger pages (empty by default).
     add_option( 'humata_trigger_pages', array() );
 
+    // Logo URLs (empty by default).
+    add_option( 'humata_logo_url', '' );
+    add_option( 'humata_logo_url_dark', '' );
+
     // Add rewrite rules for dedicated page
     humata_chatbot_add_rewrite_rules();
     flush_rewrite_rules();

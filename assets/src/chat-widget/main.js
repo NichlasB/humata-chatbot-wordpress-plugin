@@ -104,9 +104,12 @@ import { setAvatarContent } from './avatars.js';
             return;
         }
 
-        const triggerPages = document.querySelector('.humata-trigger-pages');
         const pageFooter = document.getElementById('humata-chat-page-footer');
-        const stopElement = triggerPages || pageFooter;
+
+        function getStopElement() {
+            const triggerPages = document.querySelector('.humata-trigger-pages:not(.humata-trigger-pages--hidden)');
+            return triggerPages || pageFooter;
+        }
 
         const initialViewportHeight = window.visualViewport.height;
         let isKeyboardVisible = false;
@@ -137,6 +140,7 @@ import { setAvatarContent } from './avatars.js';
 
                     // Check if we should detach (input container would overlap stop element)
                     let shouldDetach = false;
+                    const stopElement = getStopElement();
                     if (stopElement) {
                         const stopRect = stopElement.getBoundingClientRect();
                         const inputHeight = inputContainer.offsetHeight;
@@ -475,6 +479,34 @@ import { setAvatarContent } from './avatars.js';
 
         // Trigger page modals
         initTriggerPageModals();
+
+        // Medical disclaimer modal
+        initMedicalDisclaimerModal();
+    }
+
+    /**
+     * Initialize medical disclaimer modal behavior.
+     */
+    function initMedicalDisclaimerModal() {
+        const disclaimerLink = document.getElementById('humata-medical-disclaimer-link');
+        const disclaimerModal = document.getElementById('humata-medical-disclaimer-modal');
+
+        if (!disclaimerLink || !disclaimerModal) {
+            return;
+        }
+
+        disclaimerLink.addEventListener('click', function(e) {
+            e.preventDefault();
+            openPageModal(disclaimerModal, disclaimerLink);
+        });
+
+        // Close on overlay or close button click
+        disclaimerModal.addEventListener('click', function(e) {
+            if (e.target.closest('[data-humata-disclaimer-close]')) {
+                e.preventDefault();
+                closePageModal(disclaimerModal);
+            }
+        });
     }
 
     /**
@@ -1109,6 +1141,16 @@ import { setAvatarContent } from './avatars.js';
     }
 
     /**
+     * Hide trigger pages after first user message.
+     */
+    function hideTriggerPages() {
+        const triggerPages = document.querySelector('.humata-trigger-pages');
+        if (triggerPages && !triggerPages.classList.contains('humata-trigger-pages--hidden')) {
+            triggerPages.classList.add('humata-trigger-pages--hidden');
+        }
+    }
+
+    /**
      * Add a message to the chat.
      *
      * @param {string} content - Message content.
@@ -1120,6 +1162,11 @@ import { setAvatarContent } from './avatars.js';
         // Hide welcome message when first message is added
         if (elements.welcomeMessage) {
             elements.welcomeMessage.style.display = 'none';
+        }
+
+        // Hide trigger pages after first user message
+        if (type === 'user') {
+            hideTriggerPages();
         }
 
         const messageDiv = document.createElement('div');

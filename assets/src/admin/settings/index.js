@@ -806,20 +806,25 @@
                 humataInitRepeaterSortable($(this));
             });
 
-            // Avatar uploader handlers.
+            // Avatar/Logo uploader handlers.
             $(document).on("click", ".humata-upload-avatar", function(e) {
                 e.preventDefault();
                 var targetId = $(this).data("target");
+                var isLogo = targetId.indexOf("logo") !== -1;
+                var title = isLogo ? "Select Logo Image" : "Select Avatar Image";
                 var frame = wp.media({
-                    title: "Select Avatar Image",
+                    title: title,
                     button: { text: "Use this image" },
                     multiple: false,
-                    library: { type: ["image/jpeg", "image/png"] }
+                    library: { type: ["image/jpeg", "image/png", "image/gif", "image/webp"] }
                 });
                 frame.on("select", function() {
                     var attachment = frame.state().get("selection").first().toJSON();
                     $("#" + targetId).val(attachment.url);
-                    $("#" + targetId + "_preview").html("<img src=\"" + attachment.url + "\" style=\"max-width:64px;max-height:64px;border-radius:6px;\" />");
+                    var imgHtml = isLogo
+                        ? "<img src=\"" + attachment.url + "\" alt=\"Logo Preview\" />"
+                        : "<img src=\"" + attachment.url + "\" style=\"max-width:64px;max-height:64px;border-radius:6px;\" />";
+                    $("#" + targetId + "_preview").html(imgHtml);
                     $(".humata-remove-avatar[data-target=\"" + targetId + "\"]").show();
                 });
                 frame.open();

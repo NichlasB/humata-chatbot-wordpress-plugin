@@ -252,6 +252,26 @@ trait Humata_Chatbot_Admin_Settings_Register_Trait {
 
         register_setting(
             'humata_chatbot_settings',
+            'humata_logo_url',
+            array(
+                'type'              => 'string',
+                'sanitize_callback' => 'esc_url_raw',
+                'default'           => '',
+            )
+        );
+
+        register_setting(
+            'humata_chatbot_settings',
+            'humata_logo_url_dark',
+            array(
+                'type'              => 'string',
+                'sanitize_callback' => 'esc_url_raw',
+                'default'           => '',
+            )
+        );
+
+        register_setting(
+            'humata_chatbot_settings',
             'humata_user_avatar_url',
             array(
                 'type'              => 'string',
@@ -339,6 +359,7 @@ trait Humata_Chatbot_Admin_Settings_Register_Trait {
         }
     }
 }
+
 
 
 

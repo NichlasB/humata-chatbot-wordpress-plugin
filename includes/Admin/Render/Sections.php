@@ -108,6 +108,16 @@ trait Humata_Chatbot_Admin_Settings_Render_Sections_Trait {
     }
 
     /**
+     * Render logo settings section description.
+     *
+     * @since 1.0.0
+     * @return void
+     */
+    public function render_logo_section() {
+        echo '<p>' . esc_html__( 'Upload custom logos for the chat header. You can provide separate logos optimized for light and dark themes. Leave both empty to show the default chat icon with site name.', 'humata-chatbot' ) . '</p>';
+    }
+
+    /**
      * Render avatar settings section description.
      *
      * @since 1.0.0
