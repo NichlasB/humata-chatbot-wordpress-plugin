@@ -67,6 +67,9 @@ final class Humata_Chatbot_Admin_Settings_Schema {
             'pages'         => array(
                 'humata_trigger_pages',
             ),
+            'suggested_questions' => array(
+                'humata_suggested_questions',
+            ),
         );
     }
 

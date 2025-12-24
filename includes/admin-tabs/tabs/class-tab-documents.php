@@ -149,38 +149,11 @@ class Humata_Chatbot_Settings_Tab_Documents extends Humata_Chatbot_Settings_Tab_
 			return;
 		}
 
-		if ( empty( $_FILES['humata_document'] ) || empty( $_FILES['humata_document']['tmp_name'] ) ) {
+		if ( empty( $_FILES['humata_documents'] ) || empty( $_FILES['humata_documents']['tmp_name'][0] ) ) {
 			add_settings_error(
 				'humata_documents',
 				'no_file',
-				__( 'No file was uploaded.', 'humata-chatbot' ),
-				'error'
-			);
-			return;
-		}
-
-		$file = $_FILES['humata_document'];
-
-		// Check for upload errors.
-		if ( UPLOAD_ERR_OK !== $file['error'] ) {
-			add_settings_error(
-				'humata_documents',
-				'upload_error',
-				__( 'File upload failed. Please try again.', 'humata-chatbot' ),
-				'error'
-			);
-			return;
-		}
-
-		// Validate file type.
-		$filename = sanitize_file_name( $file['name'] );
-		$ext = strtolower( pathinfo( $filename, PATHINFO_EXTENSION ) );
-
-		if ( 'txt' !== $ext ) {
-			add_settings_error(
-				'humata_documents',
-				'invalid_type',
-				__( 'Only .txt files are allowed.', 'humata-chatbot' ),
+				__( 'No files were uploaded.', 'humata-chatbot' ),
 				'error'
 			);
 			return;
@@ -202,7 +175,7 @@ class Humata_Chatbot_Settings_Tab_Documents extends Humata_Chatbot_Settings_Tab_
 			return;
 		}
 
-		// Move file to uploads directory.
+		// Prepare upload directory.
 		$upload_dir = wp_upload_dir();
 		$dest_dir   = $upload_dir['basedir'] . '/humata-search/documents';
 
@@ -210,52 +183,101 @@ class Humata_Chatbot_Settings_Tab_Documents extends Humata_Chatbot_Settings_Tab_
 			wp_mkdir_p( $dest_dir );
 		}
 
-		$dest_path = $dest_dir . '/' . $filename;
+		$indexer         = new Humata_Chatbot_Rest_Document_Indexer( $database );
+		$files           = $_FILES['humata_documents'];
+		$file_count      = count( $files['name'] );
+		$success_count   = 0;
+		$failed_files    = array();
 
-		// Handle existing file with same name.
-		if ( file_exists( $dest_path ) ) {
-			unlink( $dest_path );
+		for ( $i = 0; $i < $file_count; $i++ ) {
+			$tmp_name = $files['tmp_name'][ $i ];
+			$name     = $files['name'][ $i ];
+			$error    = $files['error'][ $i ];
+
+			// Skip empty slots.
+			if ( empty( $tmp_name ) ) {
+				continue;
+			}
+
+			$filename = sanitize_file_name( $name );
+			$ext      = strtolower( pathinfo( $filename, PATHINFO_EXTENSION ) );
+
+			// Check for upload errors.
+			if ( UPLOAD_ERR_OK !== $error ) {
+				$failed_files[] = $filename . ' (' . __( 'upload error', 'humata-chatbot' ) . ')';
+				continue;
+			}
+
+			// Validate file type.
+			if ( 'txt' !== $ext ) {
+				$failed_files[] = $filename . ' (' . __( 'invalid type', 'humata-chatbot' ) . ')';
+				continue;
+			}
+
+			$dest_path = $dest_dir . '/' . $filename;
+
+			// Handle existing file with same name.
+			if ( file_exists( $dest_path ) ) {
+				unlink( $dest_path );
+			}
+
+			if ( ! move_uploaded_file( $tmp_name, $dest_path ) ) {
+				$failed_files[] = $filename . ' (' . __( 'save failed', 'humata-chatbot' ) . ')';
+				continue;
+			}
+
+			// Index the document.
+			$result = $indexer->index_document( $dest_path );
+
+			if ( is_wp_error( $result ) ) {
+				unlink( $dest_path );
+				$failed_files[] = $filename . ' (' . $result->get_error_message() . ')';
+				continue;
+			}
+
+			$success_count++;
 		}
 
-		if ( ! move_uploaded_file( $file['tmp_name'], $dest_path ) ) {
+		// Report results.
+		if ( $success_count > 0 ) {
 			add_settings_error(
 				'humata_documents',
-				'move_error',
-				__( 'Failed to save uploaded file.', 'humata-chatbot' ),
-				'error'
-			);
-			return;
-		}
-
-		// Index the document.
-		$indexer = new Humata_Chatbot_Rest_Document_Indexer( $database );
-		$result  = $indexer->index_document( $dest_path );
-
-		if ( is_wp_error( $result ) ) {
-			unlink( $dest_path );
-			add_settings_error(
-				'humata_documents',
-				'index_error',
+				'upload_success',
 				sprintf(
-					/* translators: %s: error message */
-					__( 'Failed to index document: %s', 'humata-chatbot' ),
-					$result->get_error_message()
+					/* translators: %d: number of files */
+					_n(
+						'%d document uploaded and indexed successfully.',
+						'%d documents uploaded and indexed successfully.',
+						$success_count,
+						'humata-chatbot'
+					),
+					$success_count
+				),
+				'success'
+			);
+		}
+
+		if ( ! empty( $failed_files ) ) {
+			add_settings_error(
+				'humata_documents',
+				'upload_failures',
+				sprintf(
+					/* translators: %s: list of failed files */
+					__( 'Failed to upload: %s', 'humata-chatbot' ),
+					implode( ', ', $failed_files )
 				),
 				'error'
 			);
-			return;
 		}
 
-		add_settings_error(
-			'humata_documents',
-			'upload_success',
-			sprintf(
-				/* translators: %s: filename */
-				__( 'Document "%s" uploaded and indexed successfully.', 'humata-chatbot' ),
-				esc_html( $filename )
-			),
-			'success'
-		);
+		if ( 0 === $success_count && empty( $failed_files ) ) {
+			add_settings_error(
+				'humata_documents',
+				'no_valid_files',
+				__( 'No valid files were uploaded.', 'humata-chatbot' ),
+				'error'
+			);
+		}
 	}
 
 	/**
@@ -473,14 +495,14 @@ class Humata_Chatbot_Settings_Tab_Documents extends Humata_Chatbot_Settings_Tab_
 	private function render_upload_form() {
 		?>
 		<div class="card">
-			<h2><?php esc_html_e( 'Upload Document', 'humata-chatbot' ); ?></h2>
+			<h2><?php esc_html_e( 'Upload Documents', 'humata-chatbot' ); ?></h2>
 			<p class="description">
-				<?php esc_html_e( 'Upload .txt files formatted with ### section headers. Documents will be chunked and indexed for local search.', 'humata-chatbot' ); ?>
+				<?php esc_html_e( 'Upload .txt files formatted with ### section headers. Documents will be chunked and indexed for local search. You can select multiple files at once.', 'humata-chatbot' ); ?>
 			</p>
 			<form method="post" enctype="multipart/form-data">
 				<?php wp_nonce_field( 'humata_upload_document', 'humata_upload_nonce' ); ?>
 				<p>
-					<input type="file" name="humata_document" accept=".txt" required />
+					<input type="file" name="humata_documents[]" accept=".txt" multiple required />
 				</p>
 				<p>
 					<button type="submit" name="humata_upload_document" class="button button-primary">

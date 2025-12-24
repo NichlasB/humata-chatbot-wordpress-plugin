@@ -115,6 +115,11 @@ class Humata_Chatbot_Settings_Tabs {
                 'page_id'  => 'humata-chatbot-tab-documents',
                 'has_form' => false,
             ),
+            'suggested_questions' => array(
+                'label'    => __( 'Suggested Questions', 'humata-chatbot' ),
+                'page_id'  => 'humata-chatbot-tab-suggested-questions',
+                'has_form' => true,
+            ),
         );
 
         /**

@@ -204,6 +204,7 @@ class Humata_Chatbot_Template_Loader {
                 'botAvatarUrl'  => esc_url( $bot_avatar_url ),
                 'avatarSize'    => $avatar_size,
                 'botResponseDisclaimer' => $bot_response_disclaimer,
+                'suggestedQuestions' => $this->get_suggested_questions_for_frontend(),
                 'i18n'     => array(
                     'placeholder'    => __( 'Ask a question...', 'humata-chatbot' ),
                     'send'           => __( 'Send', 'humata-chatbot' ),
@@ -379,6 +380,88 @@ class Humata_Chatbot_Template_Loader {
         }
 
         return $intents;
+    }
+
+    /**
+     * Get suggested questions configuration for frontend.
+     *
+     * @since 1.0.0
+     * @return array
+     */
+    private function get_suggested_questions_for_frontend() {
+        $value = get_option( 'humata_suggested_questions', array() );
+        if ( ! is_array( $value ) ) {
+            return array( 'enabled' => false );
+        }
+
+        $enabled = ! empty( $value['enabled'] );
+        if ( ! $enabled ) {
+            return array( 'enabled' => false );
+        }
+
+        $mode = isset( $value['mode'] ) ? sanitize_key( $value['mode'] ) : 'fixed';
+        if ( ! in_array( $mode, array( 'fixed', 'randomized' ), true ) ) {
+            $mode = 'fixed';
+        }
+
+        $result = array(
+            'enabled' => true,
+            'mode'    => $mode,
+        );
+
+        if ( 'fixed' === $mode ) {
+            $fixed = isset( $value['fixed_questions'] ) && is_array( $value['fixed_questions'] )
+                ? $value['fixed_questions']
+                : array();
+
+            $questions = array();
+            foreach ( $fixed as $q ) {
+                if ( ! is_array( $q ) ) {
+                    continue;
+                }
+                $text = isset( $q['text'] ) ? sanitize_text_field( trim( (string) $q['text'] ) ) : '';
+                if ( '' !== $text ) {
+                    $questions[] = array( 'text' => $text );
+                }
+            }
+
+            $result['fixedQuestions'] = array_slice( $questions, 0, 4 );
+        } else {
+            $categories_raw = isset( $value['categories'] ) && is_array( $value['categories'] )
+                ? $value['categories']
+                : array();
+
+            $categories = array();
+            foreach ( $categories_raw as $cat ) {
+                if ( ! is_array( $cat ) ) {
+                    continue;
+                }
+
+                $name = isset( $cat['name'] ) ? sanitize_text_field( trim( (string) $cat['name'] ) ) : '';
+                $questions_raw = isset( $cat['questions'] ) && is_array( $cat['questions'] )
+                    ? $cat['questions']
+                    : array();
+
+                $questions = array();
+                foreach ( $questions_raw as $q ) {
+                    $q_text = is_string( $q ) ? sanitize_text_field( trim( $q ) ) : '';
+                    if ( '' !== $q_text ) {
+                        $questions[] = $q_text;
+                    }
+                }
+
+                if ( ! empty( $questions ) ) {
+                    $categories[] = array(
+                        'name'      => $name,
+                        'questions' => $questions,
+                    );
+                }
+            }
+
+            $result['categories'] = array_slice( $categories, 0, 4 );
+        }
+
+        return $result;
     }
 
     /**
@@ -781,6 +864,7 @@ class Humata_Chatbot_Template_Loader {
                         <polyline points="6 9 12 15 18 9"></polyline>
                     </svg>
                 </button>
+                <div id="humata-suggested-questions" class="humata-suggested-questions" style="display: none;"></div>
                 <div class="humata-input-wrapper">
                     <textarea
                         id="humata-chat-input"

@@ -371,6 +371,21 @@ trait Humata_Chatbot_Admin_Settings_Register_Trait {
             )
         );
 
+        register_setting(
+            'humata_chatbot_settings',
+            'humata_suggested_questions',
+            array(
+                'type'              => 'array',
+                'sanitize_callback' => array( $this, 'sanitize_suggested_questions' ),
+                'default'           => array(
+                    'enabled'         => false,
+                    'mode'            => 'fixed',
+                    'fixed_questions' => array(),
+                    'categories'      => array(),
+                ),
+            )
+        );
+
         // Register per-tab sections/fields.
         foreach ( $this->get_tab_modules() as $module ) {
             if ( is_object( $module ) && method_exists( $module, 'register' ) ) {

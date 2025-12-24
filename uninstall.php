@@ -45,6 +45,7 @@ delete_option( 'humata_user_avatar_url' );
 delete_option( 'humata_bot_avatar_url' );
 delete_option( 'humata_avatar_size' );
 delete_option( 'humata_trigger_pages' );
+delete_option( 'humata_suggested_questions' );
 
 // Delete local search options.
 delete_option( 'humata_search_provider' );

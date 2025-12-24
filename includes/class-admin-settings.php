@@ -22,6 +22,7 @@ require_once __DIR__ . '/admin-tabs/tabs/class-tab-auto-links.php';
 require_once __DIR__ . '/admin-tabs/tabs/class-tab-pages.php';
 require_once __DIR__ . '/admin-tabs/tabs/class-tab-usage.php';
 require_once __DIR__ . '/admin-tabs/tabs/class-tab-documents.php';
+require_once __DIR__ . '/admin-tabs/tabs/class-tab-suggested-questions.php';
 // Admin settings schema/helpers.
 require_once __DIR__ . '/Admin/Settings/Schema.php';
 // Admin AJAX handlers.
@@ -37,6 +38,7 @@ require_once __DIR__ . '/Admin/Settings/Sanitize/Links.php';
 require_once __DIR__ . '/Admin/Settings/Sanitize/Providers.php';
 require_once __DIR__ . '/Admin/Settings/Sanitize/Security.php';
 require_once __DIR__ . '/Admin/Settings/Sanitize/TriggerPages.php';
+require_once __DIR__ . '/Admin/Settings/Sanitize/SuggestedQuestions.php';
 // Render helpers.
 require_once __DIR__ . '/Admin/Render/Sections.php';
 require_once __DIR__ . '/Admin/Render/Providers.php';
@@ -47,6 +49,7 @@ require_once __DIR__ . '/Admin/Render/Display.php';
 require_once __DIR__ . '/Admin/Render/Links.php';
 require_once __DIR__ . '/Admin/Render/FloatingHelp.php';
 require_once __DIR__ . '/Admin/Render/TriggerPages.php';
+require_once __DIR__ . '/Admin/Render/SuggestedQuestions.php';
 
 /**
  * Class Humata_Chatbot_Admin_Settings
@@ -72,6 +75,8 @@ class Humata_Chatbot_Admin_Settings {
     use Humata_Chatbot_Admin_Settings_Render_FloatingHelp_Trait;
     use Humata_Chatbot_Admin_Settings_Sanitize_TriggerPages_Trait;
     use Humata_Chatbot_Admin_Settings_Render_TriggerPages_Trait;
+    use Humata_Chatbot_Admin_Settings_Sanitize_SuggestedQuestions_Trait;
+    use Humata_Chatbot_Admin_Settings_Render_SuggestedQuestions_Trait;
 
     /**
      * Humata API base URL.
@@ -244,7 +249,8 @@ class Humata_Chatbot_Admin_Settings {
             'auto_links'    => new Humata_Chatbot_Settings_Tab_Auto_Links( $this ),
             'pages'         => new Humata_Chatbot_Settings_Tab_Pages( $this ),
             'usage'         => new Humata_Chatbot_Settings_Tab_Usage( $this ),
-            'documents'     => new Humata_Chatbot_Settings_Tab_Documents( $this ),
+            'documents'           => new Humata_Chatbot_Settings_Tab_Documents( $this ),
+            'suggested_questions' => new Humata_Chatbot_Settings_Tab_Suggested_Questions( $this ),
         );
 
         return $this->tab_modules;
@@ -429,6 +435,7 @@ class Humata_Chatbot_Admin_Settings {
             'humata_turnstile_secret_key',
             'humata_turnstile_appearance',
             'humata_trigger_pages',
+            'humata_suggested_questions',
         );
 
         if ( ! in_array( (string) $option, $plugin_options, true ) ) {

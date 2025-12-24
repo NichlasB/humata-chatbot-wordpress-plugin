@@ -17,6 +17,12 @@
         // Prefer configured ajax URL, fallback to WP admin global.
         var ajaxurl = String(config.ajaxUrl || window.ajaxurl || '');
 
+        // Shared utility: safely parse integer with fallback.
+        function humataSafeInt(value, fallback) {
+            var n = parseInt(value, 10);
+            return (isFinite(n) && n >= 0) ? n : (fallback || 0);
+        }
+
         // ---------------------------
         // Document IDs UI + API tests
         // ---------------------------
@@ -738,11 +744,6 @@
         // -----------------------------------------------
 
         (function() {
-            function humataSafeInt(value, fallback) {
-                var n = parseInt(value, 10);
-                return (isFinite(n) && n >= 0) ? n : (fallback || 0);
-            }
-
             function humataBuildExternalLinkRow(idx) {
                 return "" +
                     "<tr class=\"humata-repeater-row\">" +
@@ -1274,6 +1275,199 @@
                 }
                 humataSaveCollapsedIntents(collapsed);
             });
+        })();
+
+        // ------------------------------------------
+        // Suggested Questions Tab Handlers
+        // ------------------------------------------
+        (function() {
+            // Mode toggle: show/hide sections based on selected mode
+            function humataUpdateSqSections() {
+                var mode = $('input[name="humata_suggested_questions[mode]"]:checked').val() || 'fixed';
+                var $fixedSection = $('#humata_sq_fixed_questions').closest('tr').parent().closest('table').prev('h2').addBack().add($('#humata_sq_fixed_questions').closest('tr'));
+                var $randomizedSection = $('#humata_sq_randomized_categories').closest('tr').parent().closest('table').prev('h2').addBack().add($('#humata_sq_randomized_categories').closest('tr'));
+
+                // Simple approach: toggle visibility of the section wrappers
+                $('.humata-sq-fixed-section').closest('tr').toggle(mode === 'fixed');
+                $('.humata-sq-randomized-section').closest('tr').toggle(mode === 'randomized');
+            }
+
+            $(document).on('change', '.humata-sq-mode-radio', humataUpdateSqSections);
+            humataUpdateSqSections();
+
+            // Fixed mode: Add question
+            $(document).on('click', '.humata-sq-fixed-add', function() {
+                var $section = $(this).closest('.humata-sq-fixed-section');
+                var $tbody = $section.find('tbody');
+                var rowCount = $tbody.find('tr').length;
+
+                // Max 4 questions
+                if (rowCount >= 4) {
+                    return;
+                }
+
+                var nextIdx = humataSafeInt($section.attr('data-next-index'), rowCount);
+                var html = '' +
+                    '<tr class="humata-repeater-row humata-sq-fixed-row">' +
+                        '<td class="humata-repeater-handle-cell">' +
+                            '<span class="dashicons dashicons-move humata-repeater-handle" aria-hidden="true"></span>' +
+                            '<span class="screen-reader-text">Drag to reorder</span>' +
+                        '</td>' +
+                        '<td>' +
+                            '<input type="text" class="large-text" name="humata_suggested_questions[fixed_questions][' + nextIdx + '][text]" value="" placeholder="e.g., What are your business hours?" maxlength="150">' +
+                        '</td>' +
+                        '<td>' +
+                            '<button type="button" class="button link-delete humata-repeater-remove">Remove</button>' +
+                        '</td>' +
+                    '</tr>';
+
+                $tbody.append(html);
+                $section.attr('data-next-index', String(nextIdx + 1));
+            });
+
+            // Fixed mode: Remove question
+            $(document).on('click', '.humata-sq-fixed-section .humata-repeater-remove', function() {
+                $(this).closest('tr').remove();
+            });
+
+            // Fixed mode: Sortable
+            if ($.fn.sortable) {
+                $('.humata-sq-fixed-section tbody').sortable({
+                    handle: '.humata-repeater-handle',
+                    axis: 'y',
+                    cursor: 'move',
+                    opacity: 0.7
+                });
+            }
+
+            // Randomized mode: Add category
+            $(document).on('click', '.humata-sq-category-add', function() {
+                var $section = $(this).closest('.humata-sq-randomized-section');
+                var $container = $section.find('.humata-sq-categories-container');
+                var catCount = $container.find('.humata-sq-category-card').length;
+
+                // Max 4 categories
+                if (catCount >= 4) {
+                    return;
+                }
+
+                var nextIdx = humataSafeInt($section.attr('data-next-cat-index'), catCount);
+                var html = humataBuildSqCategoryCard(nextIdx);
+
+                $container.append(html);
+                $section.attr('data-next-cat-index', String(nextIdx + 1));
+            });
+
+            // Randomized mode: Remove category
+            $(document).on('click', '.humata-sq-category-remove', function() {
+                $(this).closest('.humata-sq-category-card').remove();
+            });
+
+            // Randomized mode: Add question within category
+            $(document).on('click', '.humata-sq-question-add', function() {
+                var $sub = $(this).closest('.humata-sq-questions-sub');
+                var $tbody = $sub.find('tbody');
+                var $card = $(this).closest('.humata-sq-category-card');
+                var catIdx = humataSafeInt($card.attr('data-cat-index'), 0);
+                var qIdx = humataSafeInt($sub.attr('data-next-q-index'), $tbody.find('tr').length);
+
+                // Max 20 questions per category
+                if ($tbody.find('tr').length >= 20) {
+                    return;
+                }
+
+                var html = humataBuildSqQuestionRow(catIdx, qIdx);
+                $tbody.append(html);
+                $sub.attr('data-next-q-index', String(qIdx + 1));
+            });
+
+            // Randomized mode: Remove question within category
+            $(document).on('click', '.humata-sq-question-remove', function() {
+                var $tbody = $(this).closest('tbody');
+                $(this).closest('tr').remove();
+
+                // Ensure at least one row remains
+                if ($tbody.find('tr').length === 0) {
+                    var $card = $tbody.closest('.humata-sq-category-card');
+                    var $sub = $tbody.closest('.humata-sq-questions-sub');
+                    var catIdx = humataSafeInt($card.attr('data-cat-index'), 0);
+                    $tbody.append(humataBuildSqQuestionRow(catIdx, 0));
+                    $sub.attr('data-next-q-index', '1');
+                }
+            });
+
+            // Randomized mode: Toggle category collapse/expand
+            $(document).on('click', '.humata-sq-category-toggle', function() {
+                var $btn = $(this);
+                var $card = $btn.closest('.humata-sq-category-card');
+                var isExpanded = $btn.attr('aria-expanded') === 'true';
+
+                if (isExpanded) {
+                    $card.addClass('humata-sq-category-collapsed');
+                    $btn.attr('aria-expanded', 'false');
+                    $btn.find('.dashicons').removeClass('dashicons-arrow-down-alt2').addClass('dashicons-arrow-right-alt2');
+                } else {
+                    $card.removeClass('humata-sq-category-collapsed');
+                    $btn.attr('aria-expanded', 'true');
+                    $btn.find('.dashicons').removeClass('dashicons-arrow-right-alt2').addClass('dashicons-arrow-down-alt2');
+                }
+            });
+
+            function humataBuildSqQuestionRow(catIdx, qIdx) {
+                return '' +
+                    '<tr class="humata-sq-question-row">' +
+                        '<td>' +
+                            '<input type="text" class="large-text" name="humata_suggested_questions[categories][' + catIdx + '][questions][' + qIdx + ']" value="" placeholder="e.g., How do I track my order?" maxlength="150">' +
+                        '</td>' +
+                        '<td>' +
+                            '<button type="button" class="button link-delete humata-sq-question-remove">Remove</button>' +
+                        '</td>' +
+                    '</tr>';
+            }
+
+            function humataBuildSqCategoryCard(catIdx) {
+                return '' +
+                    '<div class="humata-sq-category-card" data-cat-index="' + catIdx + '">' +
+                        '<div class="humata-sq-category-header">' +
+                            '<button type="button" class="humata-sq-category-toggle" aria-expanded="true" aria-label="Toggle category">' +
+                                '<span class="dashicons dashicons-arrow-down-alt2"></span>' +
+                            '</button>' +
+                            '<span class="humata-sq-category-title">Category #' + (catIdx + 1) + '</span>' +
+                            '<button type="button" class="button link-delete humata-sq-category-remove">Remove Category</button>' +
+                        '</div>' +
+                        '<div class="humata-sq-category-body">' +
+                            '<p>' +
+                                '<label><strong>Category Name</strong> <span class="description">(optional)</span></label><br>' +
+                                '<input type="text" class="regular-text" name="humata_suggested_questions[categories][' + catIdx + '][name]" value="" placeholder="e.g., Product Questions" maxlength="50">' +
+                            '</p>' +
+                            '<div class="humata-sq-questions-sub" data-next-q-index="1">' +
+                                '<label><strong>Questions</strong></label>' +
+                                '<p class="description">At least 1 question required per category.</p>' +
+                                '<table class="widefat striped humata-sq-questions-table" style="max-width: 650px; margin-top: 6px;">' +
+                                    '<thead>' +
+                                        '<tr>' +
+                                            '<th>Question Text</th>' +
+                                            '<th style="width: 80px;">Actions</th>' +
+                                        '</tr>' +
+                                    '</thead>' +
+                                    '<tbody>' +
+                                        '<tr class="humata-sq-question-row">' +
+                                            '<td>' +
+                                                '<input type="text" class="large-text" name="humata_suggested_questions[categories][' + catIdx + '][questions][0]" value="" placeholder="e.g., How do I track my order?" maxlength="150">' +
+                                            '</td>' +
+                                            '<td>' +
+                                                '<button type="button" class="button link-delete humata-sq-question-remove">Remove</button>' +
+                                            '</td>' +
+                                        '</tr>' +
+                                    '</tbody>' +
+                                '</table>' +
+                                '<p style="margin-top: 8px;">' +
+                                    '<button type="button" class="button button-secondary humata-sq-question-add">Add Question</button>' +
+                                '</p>' +
+                            '</div>' +
+                        '</div>' +
+                    '</div>';
+            }
         })();
     });
 })(jQuery);

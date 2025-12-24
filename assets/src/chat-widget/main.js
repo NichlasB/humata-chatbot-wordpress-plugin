@@ -9,6 +9,7 @@
 
 import { config, STORAGE_KEY, CONVERSATION_KEY, THEME_KEY, TURNSTILE_VERIFIED_KEY } from './config.js';
 import { setAvatarContent } from './avatars.js';
+import { initSuggestedQuestions, hideSuggestedQuestions } from './suggested-questions.js';
 
 (function() {
     'use strict';
@@ -87,6 +88,45 @@ import { setAvatarContent } from './avatars.js';
 
         // Initialize mobile keyboard handling
         initMobileKeyboardHandler();
+
+        // Initialize suggested questions (only if no history loaded)
+        initSuggestedQuestionsIfEmpty();
+    }
+
+    /**
+     * Initialize suggested questions if chat is empty.
+     */
+    function initSuggestedQuestionsIfEmpty() {
+        const hasHistory = elements.messages &&
+            elements.messages.querySelectorAll('.humata-message-user').length > 0;
+
+        if (!hasHistory) {
+            initSuggestedQuestions(handleSuggestedQuestionClick);
+        }
+    }
+
+    /**
+     * Handle click on a suggested question - send it immediately.
+     *
+     * @param {string} question The question text.
+     */
+    function handleSuggestedQuestionClick(question) {
+        if (!question || isLoading) {
+            return;
+        }
+
+        // Hide suggested questions
+        hideSuggestedQuestions();
+
+        // Store user message for intent link matching
+        lastUserMessageForIntents = question;
+
+        // Add user message to chat
+        addMessage(question, 'user');
+
+        // Get history and send
+        const history = getChatHistoryForRequest();
+        sendMessage(question, history);
     }
 
     /**
@@ -1076,6 +1116,9 @@ import { setAvatarContent } from './avatars.js';
         if (!message || isLoading) {
             return;
         }
+
+        // Hide suggested questions on first send
+        hideSuggestedQuestions();
 
         if (rawMessage.length > maxPromptChars) {
             const errorMessage = config.i18n?.errorPromptTooLong || ('Message is too long. Maximum is ' + maxPromptChars + ' characters.');
@@ -2775,6 +2818,39 @@ import { setAvatarContent } from './avatars.js';
     }
 
     /**
+     * Scroll to a specific message element (to its top).
+     *
+     * @param {HTMLElement} messageEl - The message element to scroll to.
+     */
+    function scrollToMessage(messageEl) {
+        if (!messageEl) {
+            scrollToBottom();
+            return;
+        }
+
+        if (isEmbedded && elements.messages) {
+            // For embedded mode, scroll within the messages container
+            const containerRect = elements.messages.getBoundingClientRect();
+            const messageRect = messageEl.getBoundingClientRect();
+            const offsetTop = messageRect.top - containerRect.top + elements.messages.scrollTop;
+            elements.messages.scrollTo({
+                top: offsetTop,
+                behavior: 'smooth'
+            });
+        } else {
+            // For full-page mode, scroll the window
+            const rect = messageEl.getBoundingClientRect();
+            const scrollTop = window.scrollY || document.documentElement.scrollTop;
+            const targetTop = rect.top + scrollTop - 80; // 80px offset from top for better visibility
+            window.scrollTo({
+                top: Math.max(0, targetTop),
+                behavior: 'smooth'
+            });
+        }
+        updateScrollToggleState();
+    }
+
+    /**
      * Send message to API.
      *
      * @param {string} message - User message.
@@ -2866,6 +2942,8 @@ import { setAvatarContent } from './avatars.js';
                     appendIntentLinksToMessage(botMessageEl, lastUserMessageForIntents);
                     saveHistory(); // Re-save to include intent links
                 }
+                // Scroll to the beginning of the bot's response
+                scrollToMessage(botMessageEl);
             } else {
                 addMessage(config.i18n?.errorGeneric || 'An error occurred. Please try again.', 'bot', true);
             }
@@ -3180,6 +3258,9 @@ import { setAvatarContent } from './avatars.js';
         if (elements.input) {
             elements.input.focus();
         }
+
+        // Re-initialize suggested questions since chat is now empty
+        initSuggestedQuestionsIfEmpty();
     }
 
     /**

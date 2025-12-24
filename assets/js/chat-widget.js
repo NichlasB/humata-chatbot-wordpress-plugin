@@ -2597,6 +2597,39 @@
     }
 
     /**
+     * Scroll to a specific message element (to its top).
+     *
+     * @param {HTMLElement} messageEl - The message element to scroll to.
+     */
+    function scrollToMessage(messageEl) {
+        if (!messageEl) {
+            scrollToBottom();
+            return;
+        }
+
+        if (isEmbedded && elements.messages) {
+            // For embedded mode, scroll within the messages container
+            const containerRect = elements.messages.getBoundingClientRect();
+            const messageRect = messageEl.getBoundingClientRect();
+            const offsetTop = messageRect.top - containerRect.top + elements.messages.scrollTop;
+            elements.messages.scrollTo({
+                top: offsetTop,
+                behavior: 'smooth'
+            });
+        } else {
+            // For full-page mode, scroll the window
+            const rect = messageEl.getBoundingClientRect();
+            const scrollTop = window.scrollY || document.documentElement.scrollTop;
+            const targetTop = rect.top + scrollTop - 80; // 80px offset from top for better visibility
+            window.scrollTo({
+                top: Math.max(0, targetTop),
+                behavior: 'smooth'
+            });
+        }
+        updateScrollToggleState();
+    }
+
+    /**
      * Send message to API.
      *
      * @param {string} message - User message.
@@ -2688,6 +2721,8 @@
                     appendIntentLinksToMessage(botMessageEl, lastUserMessageForIntents);
                     saveHistory(); // Re-save to include intent links
                 }
+                // Scroll to the beginning of the bot's response
+                scrollToMessage(botMessageEl);
             } else {
                 addMessage(config.i18n?.errorGeneric || 'An error occurred. Please try again.', 'bot', true);
             }
