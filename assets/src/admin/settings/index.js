@@ -647,6 +647,61 @@
         })();
 
         // ---------------------------
+        // Search provider toggle (General tab)
+        // ---------------------------
+
+        (function() {
+            function humataGetSearchProvider() {
+                var $selected = $("input[name=\"humata_search_provider\"]:checked");
+                var val = $selected.length ? String($selected.val() || "") : "";
+                val = $.trim(val);
+                if (!val) {
+                    val = "humata";
+                }
+                return val;
+            }
+
+            function humataToggleSearchProviderSections() {
+                var provider = humataGetSearchProvider();
+                var isHumata = provider === "humata";
+                var isLocal = provider === "local";
+
+                // Humata API sections (API config, Humata system prompt, Second-stage prompt)
+                $("#humata_api_key").closest("table").closest("tbody").parent().closest("table").prev("h2:contains('Humata API')").toggle(isHumata);
+                
+                // Find sections by their heading text and toggle visibility
+                $(".form-table").each(function() {
+                    var $table = $(this);
+                    var $heading = $table.prev("h2, p").prev("h2");
+                    if (!$heading.length) {
+                        $heading = $table.prev("h2");
+                    }
+                    var headingText = $heading.text() || "";
+
+                    // Humata-specific sections
+                    if (headingText.indexOf("Humata API") !== -1 ||
+                        headingText.indexOf("Humata System Prompt") !== -1 ||
+                        headingText.indexOf("Second-Stage LLM") !== -1) {
+                        $heading.toggle(isHumata);
+                        $heading.next("p").toggle(isHumata);
+                        $table.toggle(isHumata);
+                    }
+
+                    // Local Search sections
+                    if (headingText.indexOf("Local Search System Prompt") !== -1) {
+                        $heading.toggle(isLocal);
+                        $heading.next("p").toggle(isLocal);
+                        $table.toggle(isLocal);
+                    }
+                });
+            }
+
+            $(document).on("change", "input[name=\"humata_search_provider\"]", humataToggleSearchProviderSections);
+            // Run on page load
+            setTimeout(humataToggleSearchProviderSections, 100);
+        })();
+
+        // ---------------------------
         // Second-stage provider toggle
         // ---------------------------
 
@@ -665,7 +720,6 @@
                 var provider = humataGetSecondLlmProvider();
                 var showStraico = provider === "straico";
                 var showAnthropic = provider === "anthropic";
-                var showAny = provider !== "none";
 
                 $("#humata_straico_api_key").closest("tr").toggle(showStraico);
                 $("#humata_straico_model").closest("tr").toggle(showStraico);
@@ -673,8 +727,6 @@
                 $("#humata_anthropic_api_key").closest("tr").toggle(showAnthropic);
                 $("#humata_anthropic_model").closest("tr").toggle(showAnthropic);
                 $("#humata_anthropic_extended_thinking").closest("tr").toggle(showAnthropic);
-
-                $("#humata_straico_system_prompt").closest("tr").toggle(showAny);
             }
 
             $(document).on("change", "input[name=\"humata_second_llm_provider\"]", humataToggleSecondLlmFields);

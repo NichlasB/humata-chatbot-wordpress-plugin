@@ -41,6 +41,16 @@ trait Humata_Chatbot_Admin_Settings_Render_Sections_Trait {
     }
 
     /**
+     * Render search provider section description.
+     *
+     * @since 1.0.0
+     * @return void
+     */
+    public function render_search_provider_section() {
+        echo '<p>' . esc_html__( 'Choose how the chatbot retrieves and processes documents for answering questions.', 'humata-chatbot' ) . '</p>';
+    }
+
+    /**
      * Render API section description.
      *
      * @since 1.0.0
@@ -125,6 +135,26 @@ trait Humata_Chatbot_Admin_Settings_Render_Sections_Trait {
      */
     public function render_avatar_section() {
         echo '<p>' . esc_html__( 'Customize the avatar images displayed for user and bot messages. Upload square images (e.g., 512×512) for best results.', 'humata-chatbot' ) . '</p>';
+    }
+
+    /**
+     * Render local search system prompt section description.
+     *
+     * @since 1.0.0
+     * @return void
+     */
+    public function render_local_search_prompt_section() {
+        echo '<p>' . esc_html__( 'Configure the system prompt used when answering questions from local documents.', 'humata-chatbot' ) . '</p>';
+    }
+
+    /**
+     * Render second-stage LLM system prompt section description.
+     *
+     * @since 1.0.0
+     * @return void
+     */
+    public function render_second_stage_prompt_section() {
+        echo '<p>' . esc_html__( 'Optional system prompt for the second-stage LLM review. Only used when Humata API is selected and a second-stage provider is enabled.', 'humata-chatbot' ) . '</p>';
     }
 }
 

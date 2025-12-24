@@ -79,14 +79,6 @@ class Humata_Chatbot_Settings_Tab_Providers extends Humata_Chatbot_Settings_Tab_
             $page_id,
             'humata_straico_section'
         );
-
-        add_settings_field(
-            'humata_straico_system_prompt',
-            __( 'System Prompt', 'humata-chatbot' ),
-            array( $this->admin, 'render_straico_system_prompt_field' ),
-            $page_id,
-            'humata_straico_section'
-        );
     }
 }
 

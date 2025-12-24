@@ -119,7 +119,22 @@ trait Humata_Chatbot_Admin_Settings_Sanitize_Core_Trait {
         $valid = array( 'none', 'straico', 'anthropic' );
         return in_array( $value, $valid, true ) ? $value : 'none';
     }
+
+    /**
+     * Sanitize search provider selection.
+     *
+     * @since 1.0.0
+     * @param string $value Input value.
+     * @return string Sanitized provider value ('humata' or 'local').
+     */
+    public function sanitize_search_provider( $value ) {
+        $value = sanitize_text_field( (string) $value );
+        $valid = array( 'humata', 'local' );
+        return in_array( $value, $valid, true ) ? $value : 'humata';
+    }
 }
+
+
 
 
 

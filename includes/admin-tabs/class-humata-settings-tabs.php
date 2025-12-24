@@ -110,6 +110,11 @@ class Humata_Chatbot_Settings_Tabs {
                 'page_id'  => 'humata-chatbot-tab-usage',
                 'has_form' => false,
             ),
+            'documents'     => array(
+                'label'    => __( 'Local Documents', 'humata-chatbot' ),
+                'page_id'  => 'humata-chatbot-tab-documents',
+                'has_form' => false,
+            ),
         );
 
         /**

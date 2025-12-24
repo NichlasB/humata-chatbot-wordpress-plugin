@@ -152,6 +152,16 @@ trait Humata_Chatbot_Admin_Settings_Register_Trait {
 
         register_setting(
             'humata_chatbot_settings',
+            'humata_search_provider',
+            array(
+                'type'              => 'string',
+                'sanitize_callback' => array( $this, 'sanitize_search_provider' ),
+                'default'           => 'humata',
+            )
+        );
+
+        register_setting(
+            'humata_chatbot_settings',
             'humata_straico_review_enabled',
             array(
                 'type'              => 'integer',
@@ -183,6 +193,16 @@ trait Humata_Chatbot_Admin_Settings_Register_Trait {
         register_setting(
             'humata_chatbot_settings',
             'humata_straico_system_prompt',
+            array(
+                'type'              => 'string',
+                'sanitize_callback' => 'sanitize_textarea_field',
+                'default'           => '',
+            )
+        );
+
+        register_setting(
+            'humata_chatbot_settings',
+            'humata_local_search_system_prompt',
             array(
                 'type'              => 'string',
                 'sanitize_callback' => 'sanitize_textarea_field',
@@ -359,6 +379,8 @@ trait Humata_Chatbot_Admin_Settings_Register_Trait {
         }
     }
 }
+
+
 
 
 

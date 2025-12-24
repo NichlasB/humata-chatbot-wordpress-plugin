@@ -81,6 +81,11 @@ function humata_chatbot_activate() {
     add_option( 'humata_logo_url', '' );
     add_option( 'humata_logo_url_dark', '' );
 
+    // Local search options (Humata API is default).
+    add_option( 'humata_search_provider', 'humata' );
+    add_option( 'humata_search_db_version', '' );
+    add_option( 'humata_local_search_system_prompt', 'You are a helpful assistant. Answer questions based only on the provided reference materials. If the information is not in the materials, say so clearly. Be concise and accurate.' );
+
     // Add rewrite rules for dedicated page
     humata_chatbot_add_rewrite_rules();
     flush_rewrite_rules();

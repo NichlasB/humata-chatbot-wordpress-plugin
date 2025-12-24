@@ -21,9 +21,12 @@ final class Humata_Chatbot_Admin_Settings_Schema {
     public static function get_tab_to_options() {
         return array(
             'general'       => array(
+                'humata_search_provider',
                 'humata_api_key',
                 'humata_document_ids',
                 'humata_system_prompt',
+                'humata_straico_system_prompt',
+                'humata_local_search_system_prompt',
             ),
             'providers'     => array(
                 'humata_second_llm_provider',
@@ -32,12 +35,13 @@ final class Humata_Chatbot_Admin_Settings_Schema {
                 'humata_anthropic_api_key',
                 'humata_anthropic_model',
                 'humata_anthropic_extended_thinking',
-                'humata_straico_system_prompt',
             ),
             'display'       => array(
                 'humata_chat_location',
                 'humata_chat_page_slug',
                 'humata_chat_theme',
+                'humata_logo_url',
+                'humata_logo_url_dark',
                 'humata_medical_disclaimer_text',
                 'humata_footer_copyright_text',
                 'humata_bot_response_disclaimer',
@@ -92,6 +96,8 @@ final class Humata_Chatbot_Admin_Settings_Schema {
         return in_array( $option, self::get_options_for_tab( $tab ), true );
     }
 }
+
+
 
 
 

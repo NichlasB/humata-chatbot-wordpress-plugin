@@ -10,6 +10,93 @@ defined( 'ABSPATH' ) || exit;
 
 trait Humata_Chatbot_Admin_Settings_Render_Providers_Trait {
 
+    /**
+     * Render search provider selection field.
+     *
+     * @since 1.0.0
+     * @return void
+     */
+    public function render_search_provider_field() {
+        $provider = get_option( 'humata_search_provider', 'humata' );
+        if ( ! is_string( $provider ) ) {
+            $provider = 'humata';
+        }
+        $provider = $this->sanitize_search_provider( $provider );
+
+        // Check SQLite availability.
+        $sqlite_available = class_exists( 'SQLite3' );
+
+        // Check if local docs are indexed.
+        $local_docs_count = 0;
+        if ( $sqlite_available ) {
+            require_once HUMATA_CHATBOT_PATH . 'includes/Rest/SearchDatabase.php';
+            $db = new Humata_Chatbot_Rest_Search_Database();
+            $stats = $db->get_stats();
+            if ( ! is_wp_error( $stats ) ) {
+                $local_docs_count = $stats['document_count'];
+            }
+        }
+        ?>
+        <fieldset class="radio-group">
+            <label>
+                <input
+                    type="radio"
+                    id="humata_search_provider_humata"
+                    name="humata_search_provider"
+                    value="humata"
+                    <?php checked( $provider, 'humata' ); ?>
+                />
+                <?php esc_html_e( 'Humata API', 'humata-chatbot' ); ?>
+            </label>
+
+            <label>
+                <input
+                    type="radio"
+                    id="humata_search_provider_local"
+                    name="humata_search_provider"
+                    value="local"
+                    <?php checked( $provider, 'local' ); ?>
+                    <?php disabled( ! $sqlite_available ); ?>
+                />
+                <?php esc_html_e( 'Local Search (SQLite FTS5)', 'humata-chatbot' ); ?>
+                <?php if ( ! $sqlite_available ) : ?>
+                    <span style="color: #d63638; margin-left: 5px;">
+                        <?php esc_html_e( '(SQLite3 not available)', 'humata-chatbot' ); ?>
+                    </span>
+                <?php endif; ?>
+            </label>
+        </fieldset>
+
+        <p class="description">
+            <?php esc_html_e( 'Choose between Humata AI cloud API or local SQLite-based document search.', 'humata-chatbot' ); ?>
+        </p>
+
+        <?php if ( 'local' === $provider && $sqlite_available && 0 === $local_docs_count ) : ?>
+            <p class="description" style="color: #dba617;">
+                <span class="dashicons dashicons-warning"></span>
+                <?php
+                printf(
+                    /* translators: %s: URL to documents tab */
+                    esc_html__( 'Warning: No local documents indexed. Please %s to upload documents.', 'humata-chatbot' ),
+                    '<a href="' . esc_url( admin_url( 'options-general.php?page=humata-chatbot&tab=documents' ) ) . '">' . esc_html__( 'go to Local Documents', 'humata-chatbot' ) . '</a>'
+                );
+                ?>
+            </p>
+        <?php elseif ( 'local' === $provider && $sqlite_available && $local_docs_count > 0 ) : ?>
+            <p class="description" style="color: #00a32a;">
+                <span class="dashicons dashicons-yes-alt"></span>
+                <?php
+                printf(
+                    /* translators: %d: number of documents */
+                    esc_html( _n( '%d document indexed for local search.', '%d documents indexed for local search.', $local_docs_count, 'humata-chatbot' ) ),
+                    $local_docs_count
+                );
+                ?>
+            </p>
+        <?php endif; ?>
+        <?php
+    }
+
     public function render_second_llm_provider_field() {
         $provider = get_option( 'humata_second_llm_provider', '' );
         if ( ! is_string( $provider ) ) {

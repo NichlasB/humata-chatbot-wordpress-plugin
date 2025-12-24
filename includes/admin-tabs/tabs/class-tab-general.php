@@ -24,10 +24,30 @@ class Humata_Chatbot_Settings_Tab_General extends Humata_Chatbot_Settings_Tab_Ba
     public function register() {
         $page_id = $this->get_page_id();
 
+        // Search Provider Section.
+        add_settings_section(
+            'humata_search_provider_section',
+            __( 'Search Provider', 'humata-chatbot' ),
+            array( $this->admin, 'render_search_provider_section' ),
+            $page_id
+        );
+
+        add_settings_field(
+            'humata_search_provider',
+            __( 'Search Provider', 'humata-chatbot' ),
+            array( $this->admin, 'render_search_provider_field' ),
+            $page_id,
+            'humata_search_provider_section'
+        );
+
+        // =====================================================
+        // HUMATA API SECTIONS (shown when Search Provider = Humata)
+        // =====================================================
+
         // API Settings Section.
         add_settings_section(
             'humata_api_section',
-            __( 'API Configuration', 'humata-chatbot' ),
+            __( 'Humata API Configuration', 'humata-chatbot' ),
             array( $this->admin, 'render_api_section' ),
             $page_id
         );
@@ -48,10 +68,10 @@ class Humata_Chatbot_Settings_Tab_General extends Humata_Chatbot_Settings_Tab_Ba
             'humata_api_section'
         );
 
-        // System Prompt Section.
+        // Humata System Prompt Section.
         add_settings_section(
             'humata_prompt_section',
-            __( 'System Prompt', 'humata-chatbot' ),
+            __( 'Humata System Prompt', 'humata-chatbot' ),
             array( $this->admin, 'render_prompt_section' ),
             $page_id
         );
@@ -62,6 +82,42 @@ class Humata_Chatbot_Settings_Tab_General extends Humata_Chatbot_Settings_Tab_Ba
             array( $this->admin, 'render_system_prompt_field' ),
             $page_id,
             'humata_prompt_section'
+        );
+
+        // Second-Stage LLM System Prompt Section (Humata only).
+        add_settings_section(
+            'humata_second_stage_prompt_section',
+            __( 'Second-Stage LLM System Prompt', 'humata-chatbot' ),
+            array( $this->admin, 'render_second_stage_prompt_section' ),
+            $page_id
+        );
+
+        add_settings_field(
+            'humata_straico_system_prompt',
+            __( 'System Prompt', 'humata-chatbot' ),
+            array( $this->admin, 'render_straico_system_prompt_field' ),
+            $page_id,
+            'humata_second_stage_prompt_section'
+        );
+
+        // =====================================================
+        // LOCAL SEARCH SECTIONS (shown when Search Provider = Local)
+        // =====================================================
+
+        // Local Search System Prompt Section.
+        add_settings_section(
+            'humata_local_search_prompt_section',
+            __( 'Local Search System Prompt', 'humata-chatbot' ),
+            array( $this->admin, 'render_local_search_prompt_section' ),
+            $page_id
+        );
+
+        add_settings_field(
+            'humata_local_search_system_prompt',
+            __( 'System Prompt', 'humata-chatbot' ),
+            array( $this->admin, 'render_local_search_system_prompt_field' ),
+            $page_id,
+            'humata_local_search_prompt_section'
         );
     }
 }

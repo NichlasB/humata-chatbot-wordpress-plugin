@@ -215,6 +215,27 @@ trait Humata_Chatbot_Admin_Settings_Render_Api_Trait {
         </p>
         <?php
     }
+
+    /**
+     * Render local search system prompt field.
+     *
+     * @since 1.0.0
+     * @return void
+     */
+    public function render_local_search_system_prompt_field() {
+        $value = get_option( 'humata_local_search_system_prompt', '' );
+        ?>
+        <textarea
+            id="humata_local_search_system_prompt"
+            name="humata_local_search_system_prompt"
+            rows="4"
+            class="large-text"
+        ><?php echo esc_textarea( $value ); ?></textarea>
+        <p class="description">
+            <?php esc_html_e( 'Instructions for the LLM when answering questions from local documents. This is prepended to the RAG prompt containing matched document sections.', 'humata-chatbot' ); ?>
+        </p>
+        <?php
+    }
 }
 
 

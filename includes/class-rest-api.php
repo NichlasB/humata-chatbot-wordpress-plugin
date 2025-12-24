@@ -220,6 +220,14 @@ class Humata_Chatbot_REST_API {
      * @return WP_REST_Response|WP_Error Response object or error.
      */
     public function handle_ask_request( $request ) {
+        // Check search provider setting.
+        $search_provider = get_option( 'humata_search_provider', 'humata' );
+
+        if ( 'local' === $search_provider ) {
+            return $this->handle_local_search_request( $request );
+        }
+
+        // Continue with Humata API flow.
         // Get API credentials
         $api_key      = get_option( 'humata_api_key', '' );
         $document_ids = get_option( 'humata_document_ids', '' );
@@ -494,6 +502,157 @@ class Humata_Chatbot_REST_API {
                 'success'        => true,
                 'answer'         => $answer,
                 'conversationId' => $conversation_id,
+            )
+        );
+    }
+
+    /**
+     * Handle local search request.
+     *
+     * Uses SQLite FTS5 for document retrieval and sends context to LLM.
+     *
+     * @since 1.0.0
+     * @param WP_REST_Request $request Request object.
+     * @return WP_REST_Response|WP_Error Response object or error.
+     */
+    private function handle_local_search_request( $request ) {
+        // Load local search classes.
+        require_once __DIR__ . '/Rest/SearchDatabase.php';
+        require_once __DIR__ . '/Rest/SearchEngine.php';
+
+        $db = new Humata_Chatbot_Rest_Search_Database();
+
+        if ( ! $db->is_available() ) {
+            return new WP_Error(
+                'sqlite_unavailable',
+                $this->get_request_failed_message(),
+                array( 'status' => 500 )
+            );
+        }
+
+        // Get message from request.
+        $message = (string) $request->get_param( 'message' );
+
+        // Validate message length.
+        $max_prompt_chars = absint( get_option( 'humata_max_prompt_chars', 3000 ) );
+        if ( $max_prompt_chars <= 0 ) {
+            $max_prompt_chars = 3000;
+        }
+        if ( $max_prompt_chars > 100000 ) {
+            $max_prompt_chars = 100000;
+        }
+
+        $message_len = function_exists( 'wp_strlen' )
+            ? wp_strlen( $message )
+            : ( function_exists( 'mb_strlen' ) ? mb_strlen( $message, '8bit' ) : strlen( $message ) );
+
+        if ( $message_len > $max_prompt_chars ) {
+            return new WP_Error(
+                'prompt_too_long',
+                sprintf( __( 'Message is too long. Maximum is %d characters.', 'humata-chatbot' ), $max_prompt_chars ),
+                array( 'status' => 413 )
+            );
+        }
+
+        // Search for relevant context.
+        $engine  = new Humata_Chatbot_Rest_Search_Engine( $db );
+        $context = $engine->search_with_context( $message, 5 );
+
+        if ( is_wp_error( $context ) ) {
+            error_log( '[Humata Chatbot] Local search error: ' . $context->get_error_message() );
+            return new WP_Error(
+                'search_error',
+                $this->get_request_failed_message(),
+                array( 'status' => 500 )
+            );
+        }
+
+        if ( empty( trim( $context ) ) ) {
+            return new WP_Error(
+                'no_local_results',
+                __( 'Sorry. Your question is outside the scope of my documentation material.', 'humata-chatbot' ),
+                array( 'status' => 404 )
+            );
+        }
+
+        // Build RAG prompt.
+        $system_prompt = get_option( 'humata_local_search_system_prompt', '' );
+        if ( ! is_string( $system_prompt ) ) {
+            $system_prompt = '';
+        }
+        $system_prompt = trim( sanitize_textarea_field( $system_prompt ) );
+
+        $rag_prompt = "Use ONLY the following reference materials to answer. If the answer is not in the provided materials, say so clearly.\n\n=== REFERENCE MATERIALS ===\n" . $context . "\n=== END REFERENCE MATERIALS ===";
+
+        $full_prompt = '';
+        if ( ! empty( $system_prompt ) ) {
+            $full_prompt .= $system_prompt . "\n\n";
+        }
+        $full_prompt .= $rag_prompt . "\n\nUser Question: " . $message;
+
+        // Determine which LLM to use.
+        $second_llm_provider = get_option( 'humata_second_llm_provider', 'straico' );
+        if ( ! is_string( $second_llm_provider ) ) {
+            $second_llm_provider = 'straico';
+        }
+
+        // For local search, we MUST have an LLM provider (no Humata to fall back on).
+        if ( 'none' === $second_llm_provider || empty( $second_llm_provider ) ) {
+            $second_llm_provider = 'straico';
+        }
+
+        // Call the appropriate LLM.
+        if ( 'anthropic' === $second_llm_provider ) {
+            $anthropic_api_key = get_option( 'humata_anthropic_api_key', '' );
+            $anthropic_model   = get_option( 'humata_anthropic_model', '' );
+            $extended_thinking = (int) get_option( 'humata_anthropic_extended_thinking', 0 );
+
+            if ( empty( $anthropic_api_key ) ) {
+                return new WP_Error(
+                    'configuration_error',
+                    __( 'The chatbot is not properly configured. Please contact the site administrator.', 'humata-chatbot' ),
+                    array( 'status' => 500 )
+                );
+            }
+
+            $answer = $this->anthropic_client->review(
+                $anthropic_api_key,
+                $anthropic_model,
+                '',
+                $extended_thinking,
+                $full_prompt,
+                ''
+            );
+        } else {
+            $straico_api_key = get_option( 'humata_straico_api_key', '' );
+            $straico_model   = get_option( 'humata_straico_model', '' );
+
+            if ( empty( $straico_api_key ) ) {
+                return new WP_Error(
+                    'configuration_error',
+                    __( 'The chatbot is not properly configured. Please contact the site administrator.', 'humata-chatbot' ),
+                    array( 'status' => 500 )
+                );
+            }
+
+            $answer = $this->straico_client->review(
+                $straico_api_key,
+                $straico_model,
+                '',
+                $full_prompt,
+                ''
+            );
+        }
+
+        if ( is_wp_error( $answer ) ) {
+            return $answer;
+        }
+
+        return rest_ensure_response(
+            array(
+                'success'        => true,
+                'answer'         => $answer,
+                'conversationId' => 'local-' . wp_generate_uuid4(),
             )
         );
     }

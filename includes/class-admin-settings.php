@@ -21,6 +21,7 @@ require_once __DIR__ . '/admin-tabs/tabs/class-tab-floating-help.php';
 require_once __DIR__ . '/admin-tabs/tabs/class-tab-auto-links.php';
 require_once __DIR__ . '/admin-tabs/tabs/class-tab-pages.php';
 require_once __DIR__ . '/admin-tabs/tabs/class-tab-usage.php';
+require_once __DIR__ . '/admin-tabs/tabs/class-tab-documents.php';
 // Admin settings schema/helpers.
 require_once __DIR__ . '/Admin/Settings/Schema.php';
 // Admin AJAX handlers.
@@ -115,6 +116,22 @@ class Humata_Chatbot_Admin_Settings {
         add_action( 'wp_ajax_humata_test_ask', array( $this, 'ajax_test_ask' ) );
         add_action( 'wp_ajax_humata_fetch_titles', array( $this, 'ajax_fetch_titles' ) );
         add_action( 'wp_ajax_humata_clear_cache', array( $this, 'ajax_clear_cache' ) );
+
+        // Initialize documents tab early for admin_init form handling.
+        $this->init_documents_tab();
+    }
+
+    /**
+     * Initialize the documents tab for early form handling.
+     *
+     * @since 1.0.0
+     * @return void
+     */
+    private function init_documents_tab() {
+        $documents_tab = new Humata_Chatbot_Settings_Tab_Documents( $this );
+        if ( method_exists( $documents_tab, 'init' ) ) {
+            $documents_tab->init();
+        }
     }
 
     /**
@@ -227,6 +244,7 @@ class Humata_Chatbot_Admin_Settings {
             'auto_links'    => new Humata_Chatbot_Settings_Tab_Auto_Links( $this ),
             'pages'         => new Humata_Chatbot_Settings_Tab_Pages( $this ),
             'usage'         => new Humata_Chatbot_Settings_Tab_Usage( $this ),
+            'documents'     => new Humata_Chatbot_Settings_Tab_Documents( $this ),
         );
 
         return $this->tab_modules;
@@ -375,6 +393,7 @@ class Humata_Chatbot_Admin_Settings {
 
         // Only apply to this plugin's option names.
         $plugin_options = array(
+            'humata_search_provider',
             'humata_api_key',
             'humata_document_ids',
             'humata_document_titles',
@@ -382,6 +401,8 @@ class Humata_Chatbot_Admin_Settings {
             'humata_chat_location',
             'humata_chat_page_slug',
             'humata_chat_theme',
+            'humata_logo_url',
+            'humata_logo_url_dark',
             'humata_system_prompt',
             'humata_rate_limit',
             'humata_max_prompt_chars',
@@ -392,6 +413,7 @@ class Humata_Chatbot_Admin_Settings {
             'humata_straico_api_key',
             'humata_straico_model',
             'humata_straico_system_prompt',
+            'humata_local_search_system_prompt',
             'humata_anthropic_api_key',
             'humata_anthropic_model',
             'humata_anthropic_extended_thinking',

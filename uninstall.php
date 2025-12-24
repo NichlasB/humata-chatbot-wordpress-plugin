@@ -46,6 +46,55 @@ delete_option( 'humata_bot_avatar_url' );
 delete_option( 'humata_avatar_size' );
 delete_option( 'humata_trigger_pages' );
 
+// Delete local search options.
+delete_option( 'humata_search_provider' );
+delete_option( 'humata_search_db_version' );
+delete_option( 'humata_local_search_system_prompt' );
+
+// Delete SQLite database file and directory.
+$upload_dir = wp_upload_dir();
+$db_dir     = $upload_dir['basedir'] . '/humata-search';
+$db_path    = $db_dir . '/index.db';
+$docs_dir   = $db_dir . '/documents';
+
+// Delete database file.
+if ( file_exists( $db_path ) ) {
+    @unlink( $db_path );
+}
+// Delete WAL and SHM files if they exist (SQLite journal files).
+if ( file_exists( $db_path . '-wal' ) ) {
+    @unlink( $db_path . '-wal' );
+}
+if ( file_exists( $db_path . '-shm' ) ) {
+    @unlink( $db_path . '-shm' );
+}
+
+// Delete uploaded document files.
+if ( is_dir( $docs_dir ) ) {
+    $files = glob( $docs_dir . '/*' );
+    if ( $files ) {
+        foreach ( $files as $file ) {
+            if ( is_file( $file ) ) {
+                @unlink( $file );
+            }
+        }
+    }
+    @rmdir( $docs_dir );
+}
+
+// Delete security files in db directory.
+if ( file_exists( $db_dir . '/.htaccess' ) ) {
+    @unlink( $db_dir . '/.htaccess' );
+}
+if ( file_exists( $db_dir . '/index.php' ) ) {
+    @unlink( $db_dir . '/index.php' );
+}
+
+// Remove database directory.
+if ( is_dir( $db_dir ) ) {
+    @rmdir( $db_dir );
+}
+
 // Delete rate limit and conversation transients
 global $wpdb;
 $wpdb->query(
