@@ -132,7 +132,37 @@ trait Humata_Chatbot_Admin_Settings_Sanitize_Core_Trait {
         $valid = array( 'humata', 'local' );
         return in_array( $value, $valid, true ) ? $value : 'humata';
     }
+
+    /**
+     * Sanitize Local Search first-stage LLM provider selection.
+     *
+     * First-stage requires an LLM, so 'none' is not valid.
+     *
+     * @since 1.0.0
+     * @param string $value Input value.
+     * @return string Sanitized provider value ('straico' or 'anthropic').
+     */
+    public function sanitize_local_first_llm_provider( $value ) {
+        $value = sanitize_text_field( (string) $value );
+        $valid = array( 'straico', 'anthropic' );
+        return in_array( $value, $valid, true ) ? $value : 'straico';
+    }
+
+    /**
+     * Sanitize Local Search second-stage LLM provider selection.
+     *
+     * @since 1.0.0
+     * @param string $value Input value.
+     * @return string Sanitized provider value ('none', 'straico', or 'anthropic').
+     */
+    public function sanitize_local_second_llm_provider( $value ) {
+        $value = sanitize_text_field( (string) $value );
+        $valid = array( 'none', 'straico', 'anthropic' );
+        return in_array( $value, $valid, true ) ? $value : 'none';
+    }
 }
+
+
 
 
 

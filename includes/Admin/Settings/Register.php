@@ -240,6 +240,139 @@ trait Humata_Chatbot_Admin_Settings_Register_Trait {
             )
         );
 
+        // Local Search Mode first-stage provider settings.
+        register_setting(
+            'humata_chatbot_settings',
+            'humata_local_first_llm_provider',
+            array(
+                'type'              => 'string',
+                'sanitize_callback' => array( $this, 'sanitize_local_first_llm_provider' ),
+                'default'           => 'straico',
+            )
+        );
+
+        register_setting(
+            'humata_chatbot_settings',
+            'humata_local_first_straico_api_key',
+            array(
+                'type'              => 'string',
+                'sanitize_callback' => 'sanitize_text_field',
+                'default'           => '',
+            )
+        );
+
+        register_setting(
+            'humata_chatbot_settings',
+            'humata_local_first_straico_model',
+            array(
+                'type'              => 'string',
+                'sanitize_callback' => 'sanitize_text_field',
+                'default'           => '',
+            )
+        );
+
+        register_setting(
+            'humata_chatbot_settings',
+            'humata_local_first_anthropic_api_key',
+            array(
+                'type'              => 'string',
+                'sanitize_callback' => 'sanitize_text_field',
+                'default'           => '',
+            )
+        );
+
+        register_setting(
+            'humata_chatbot_settings',
+            'humata_local_first_anthropic_model',
+            array(
+                'type'              => 'string',
+                'sanitize_callback' => array( $this, 'sanitize_anthropic_model' ),
+                'default'           => 'claude-3-5-sonnet-20241022',
+            )
+        );
+
+        register_setting(
+            'humata_chatbot_settings',
+            'humata_local_first_anthropic_extended_thinking',
+            array(
+                'type'              => 'integer',
+                'sanitize_callback' => array( $this, 'sanitize_checkbox' ),
+                'default'           => 0,
+            )
+        );
+
+        // Local Search Mode second-stage provider settings.
+        register_setting(
+            'humata_chatbot_settings',
+            'humata_local_second_llm_provider',
+            array(
+                'type'              => 'string',
+                'sanitize_callback' => array( $this, 'sanitize_local_second_llm_provider' ),
+                'default'           => 'none',
+            )
+        );
+
+        register_setting(
+            'humata_chatbot_settings',
+            'humata_local_second_straico_api_key',
+            array(
+                'type'              => 'string',
+                'sanitize_callback' => 'sanitize_text_field',
+                'default'           => '',
+            )
+        );
+
+        register_setting(
+            'humata_chatbot_settings',
+            'humata_local_second_straico_model',
+            array(
+                'type'              => 'string',
+                'sanitize_callback' => 'sanitize_text_field',
+                'default'           => '',
+            )
+        );
+
+        register_setting(
+            'humata_chatbot_settings',
+            'humata_local_second_anthropic_api_key',
+            array(
+                'type'              => 'string',
+                'sanitize_callback' => 'sanitize_text_field',
+                'default'           => '',
+            )
+        );
+
+        register_setting(
+            'humata_chatbot_settings',
+            'humata_local_second_anthropic_model',
+            array(
+                'type'              => 'string',
+                'sanitize_callback' => array( $this, 'sanitize_anthropic_model' ),
+                'default'           => 'claude-3-5-sonnet-20241022',
+            )
+        );
+
+        register_setting(
+            'humata_chatbot_settings',
+            'humata_local_second_anthropic_extended_thinking',
+            array(
+                'type'              => 'integer',
+                'sanitize_callback' => array( $this, 'sanitize_checkbox' ),
+                'default'           => 0,
+            )
+        );
+
+        // Local Search Mode second-stage system prompt.
+        register_setting(
+            'humata_chatbot_settings',
+            'humata_local_second_stage_system_prompt',
+            array(
+                'type'              => 'string',
+                'sanitize_callback' => 'sanitize_textarea_field',
+                'default'           => '',
+            )
+        );
+
         register_setting(
             'humata_chatbot_settings',
             'humata_floating_help',
@@ -394,6 +527,8 @@ trait Humata_Chatbot_Admin_Settings_Register_Trait {
         }
     }
 }
+
+
 
 
 

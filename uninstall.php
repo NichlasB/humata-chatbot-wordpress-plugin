@@ -51,6 +51,23 @@ delete_option( 'humata_suggested_questions' );
 delete_option( 'humata_search_provider' );
 delete_option( 'humata_search_db_version' );
 delete_option( 'humata_local_search_system_prompt' );
+delete_option( 'humata_local_second_stage_system_prompt' );
+
+// Delete Local Search first-stage provider options.
+delete_option( 'humata_local_first_llm_provider' );
+delete_option( 'humata_local_first_straico_api_key' );
+delete_option( 'humata_local_first_straico_model' );
+delete_option( 'humata_local_first_anthropic_api_key' );
+delete_option( 'humata_local_first_anthropic_model' );
+delete_option( 'humata_local_first_anthropic_extended_thinking' );
+
+// Delete Local Search second-stage provider options.
+delete_option( 'humata_local_second_llm_provider' );
+delete_option( 'humata_local_second_straico_api_key' );
+delete_option( 'humata_local_second_straico_model' );
+delete_option( 'humata_local_second_anthropic_api_key' );
+delete_option( 'humata_local_second_anthropic_model' );
+delete_option( 'humata_local_second_anthropic_extended_thinking' );
 
 // Delete SQLite database file and directory.
 $upload_dir = wp_upload_dir();

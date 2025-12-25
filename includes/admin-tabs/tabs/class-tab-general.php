@@ -104,10 +104,10 @@ class Humata_Chatbot_Settings_Tab_General extends Humata_Chatbot_Settings_Tab_Ba
         // LOCAL SEARCH SECTIONS (shown when Search Provider = Local)
         // =====================================================
 
-        // Local Search System Prompt Section.
+        // Local Search System Prompt Section (First-Stage).
         add_settings_section(
             'humata_local_search_prompt_section',
-            __( 'Local Search System Prompt', 'humata-chatbot' ),
+            __( 'Local Search System Prompt (First-Stage)', 'humata-chatbot' ),
             array( $this->admin, 'render_local_search_prompt_section' ),
             $page_id
         );
@@ -118,6 +118,22 @@ class Humata_Chatbot_Settings_Tab_General extends Humata_Chatbot_Settings_Tab_Ba
             array( $this->admin, 'render_local_search_system_prompt_field' ),
             $page_id,
             'humata_local_search_prompt_section'
+        );
+
+        // Local Search Second-Stage System Prompt Section.
+        add_settings_section(
+            'humata_local_second_stage_prompt_section',
+            __( 'Local Search System Prompt (Second-Stage)', 'humata-chatbot' ),
+            array( $this->admin, 'render_local_second_stage_prompt_section' ),
+            $page_id
+        );
+
+        add_settings_field(
+            'humata_local_second_stage_system_prompt',
+            __( 'System Prompt', 'humata-chatbot' ),
+            array( $this->admin, 'render_local_second_stage_system_prompt_field' ),
+            $page_id,
+            'humata_local_second_stage_prompt_section'
         );
     }
 }

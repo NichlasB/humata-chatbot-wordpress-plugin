@@ -156,6 +156,36 @@ trait Humata_Chatbot_Admin_Settings_Render_Sections_Trait {
     public function render_second_stage_prompt_section() {
         echo '<p>' . esc_html__( 'Optional system prompt for the second-stage LLM review. Only used when Humata API is selected and a second-stage provider is enabled.', 'humata-chatbot' ) . '</p>';
     }
+
+    /**
+     * Render Local Search second-stage system prompt section description.
+     *
+     * @since 1.0.0
+     * @return void
+     */
+    public function render_local_second_stage_prompt_section() {
+        echo '<p>' . esc_html__( 'Optional system prompt for the second-stage LLM review. Only used when Local Search is selected and a second-stage provider is enabled.', 'humata-chatbot' ) . '</p>';
+    }
+
+    /**
+     * Render Local Search first-stage provider section description.
+     *
+     * @since 1.0.0
+     * @return void
+     */
+    public function render_local_first_section() {
+        echo '<p>' . esc_html__( 'Configure the LLM provider that generates the initial response from local document search results. These settings apply when Local Search is selected as the search provider.', 'humata-chatbot' ) . '</p>';
+    }
+
+    /**
+     * Render Local Search second-stage provider section description.
+     *
+     * @since 1.0.0
+     * @return void
+     */
+    public function render_local_second_section() {
+        echo '<p>' . esc_html__( 'Optionally send the first-stage response to a second LLM for additional processing before returning to users. These settings apply when Local Search is selected as the search provider.', 'humata-chatbot' ) . '</p>';
+    }
 }
 
 

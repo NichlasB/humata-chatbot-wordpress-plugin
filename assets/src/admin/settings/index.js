@@ -668,6 +668,11 @@
             }
 
             function humataToggleSearchProviderSections() {
+                // Only run on pages that have the search provider radio buttons (General tab)
+                if (!$("input[name=\"humata_search_provider\"]").length) {
+                    return;
+                }
+
                 var provider = humataGetSearchProvider();
                 var isHumata = provider === "humata";
                 var isLocal = provider === "local";
@@ -684,17 +689,18 @@
                     }
                     var headingText = $heading.text() || "";
 
-                    // Humata-specific sections
-                    if (headingText.indexOf("Humata API") !== -1 ||
+                    // Humata-specific sections (exclude Local Search sections)
+                    if ((headingText.indexOf("Humata API") !== -1 ||
                         headingText.indexOf("Humata System Prompt") !== -1 ||
-                        headingText.indexOf("Second-Stage LLM") !== -1) {
+                        headingText.indexOf("Second-Stage LLM System Prompt") !== -1) &&
+                        headingText.indexOf("Local Search") === -1) {
                         $heading.toggle(isHumata);
                         $heading.next("p").toggle(isHumata);
                         $table.toggle(isHumata);
                     }
 
-                    // Local Search sections
-                    if (headingText.indexOf("Local Search System Prompt") !== -1) {
+                    // Local Search sections (first-stage and second-stage prompts)
+                    if (headingText.indexOf("Local Search") !== -1) {
                         $heading.toggle(isLocal);
                         $heading.next("p").toggle(isLocal);
                         $table.toggle(isLocal);
@@ -708,7 +714,7 @@
         })();
 
         // ---------------------------
-        // Second-stage provider toggle
+        // Second-stage provider toggle (Humata Mode)
         // ---------------------------
 
         (function() {
@@ -737,6 +743,70 @@
 
             $(document).on("change", "input[name=\"humata_second_llm_provider\"]", humataToggleSecondLlmFields);
             humataToggleSecondLlmFields();
+        })();
+
+        // ---------------------------
+        // Local Search first-stage provider toggle
+        // ---------------------------
+
+        (function() {
+            function humataGetLocalFirstProvider() {
+                var $selected = $("input[name=\"humata_local_first_llm_provider\"]:checked");
+                var val = $selected.length ? String($selected.val() || "") : "";
+                val = $.trim(val);
+                if (!val) {
+                    val = "straico";
+                }
+                return val;
+            }
+
+            function humataToggleLocalFirstFields() {
+                var provider = humataGetLocalFirstProvider();
+                var showStraico = provider === "straico";
+                var showAnthropic = provider === "anthropic";
+
+                $("#humata_local_first_straico_api_key").closest("tr").toggle(showStraico);
+                $("#humata_local_first_straico_model").closest("tr").toggle(showStraico);
+
+                $("#humata_local_first_anthropic_api_key").closest("tr").toggle(showAnthropic);
+                $("#humata_local_first_anthropic_model").closest("tr").toggle(showAnthropic);
+                $("#humata_local_first_anthropic_extended_thinking").closest("tr").toggle(showAnthropic);
+            }
+
+            $(document).on("change", "input[name=\"humata_local_first_llm_provider\"]", humataToggleLocalFirstFields);
+            humataToggleLocalFirstFields();
+        })();
+
+        // ---------------------------
+        // Local Search second-stage provider toggle
+        // ---------------------------
+
+        (function() {
+            function humataGetLocalSecondProvider() {
+                var $selected = $("input[name=\"humata_local_second_llm_provider\"]:checked");
+                var val = $selected.length ? String($selected.val() || "") : "";
+                val = $.trim(val);
+                if (!val) {
+                    val = "none";
+                }
+                return val;
+            }
+
+            function humataToggleLocalSecondFields() {
+                var provider = humataGetLocalSecondProvider();
+                var showStraico = provider === "straico";
+                var showAnthropic = provider === "anthropic";
+
+                $("#humata_local_second_straico_api_key").closest("tr").toggle(showStraico);
+                $("#humata_local_second_straico_model").closest("tr").toggle(showStraico);
+
+                $("#humata_local_second_anthropic_api_key").closest("tr").toggle(showAnthropic);
+                $("#humata_local_second_anthropic_model").closest("tr").toggle(showAnthropic);
+                $("#humata_local_second_anthropic_extended_thinking").closest("tr").toggle(showAnthropic);
+            }
+
+            $(document).on("change", "input[name=\"humata_local_second_llm_provider\"]", humataToggleLocalSecondFields);
+            humataToggleLocalSecondFields();
         })();
 
         // -----------------------------------------------

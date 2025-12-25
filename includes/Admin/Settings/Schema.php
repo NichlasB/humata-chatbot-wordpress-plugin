@@ -27,14 +27,30 @@ final class Humata_Chatbot_Admin_Settings_Schema {
                 'humata_system_prompt',
                 'humata_straico_system_prompt',
                 'humata_local_search_system_prompt',
+                'humata_local_second_stage_system_prompt',
             ),
             'providers'     => array(
+                // Humata Mode second-stage.
                 'humata_second_llm_provider',
                 'humata_straico_api_key',
                 'humata_straico_model',
                 'humata_anthropic_api_key',
                 'humata_anthropic_model',
                 'humata_anthropic_extended_thinking',
+                // Local Search Mode first-stage.
+                'humata_local_first_llm_provider',
+                'humata_local_first_straico_api_key',
+                'humata_local_first_straico_model',
+                'humata_local_first_anthropic_api_key',
+                'humata_local_first_anthropic_model',
+                'humata_local_first_anthropic_extended_thinking',
+                // Local Search Mode second-stage.
+                'humata_local_second_llm_provider',
+                'humata_local_second_straico_api_key',
+                'humata_local_second_straico_model',
+                'humata_local_second_anthropic_api_key',
+                'humata_local_second_anthropic_model',
+                'humata_local_second_anthropic_extended_thinking',
             ),
             'display'       => array(
                 'humata_chat_location',
@@ -99,6 +115,8 @@ final class Humata_Chatbot_Admin_Settings_Schema {
         return in_array( $option, self::get_options_for_tab( $tab ), true );
     }
 }
+
+
 
 
 

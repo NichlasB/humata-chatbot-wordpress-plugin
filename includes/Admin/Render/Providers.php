@@ -305,6 +305,374 @@ trait Humata_Chatbot_Admin_Settings_Render_Providers_Trait {
         </p>
         <?php
     }
+
+    /**
+     * Render Local Search second-stage system prompt field.
+     *
+     * @since 1.0.0
+     * @return void
+     */
+    public function render_local_second_stage_system_prompt_field() {
+        $value = get_option( 'humata_local_second_stage_system_prompt', '' );
+        ?>
+        <textarea
+            id="humata_local_second_stage_system_prompt"
+            name="humata_local_second_stage_system_prompt"
+            rows="6"
+            class="large-text"
+        ><?php echo esc_textarea( $value ); ?></textarea>
+        <p class="description">
+            <?php esc_html_e( 'Optional instructions for the second-stage model. This prompt is sent as the system message alongside the first-stage answer.', 'humata-chatbot' ); ?>
+        </p>
+        <?php
+    }
+
+    /**
+     * Render Local Search first-stage LLM provider field.
+     *
+     * @since 1.0.0
+     * @return void
+     */
+    public function render_local_first_llm_provider_field() {
+        $provider = get_option( 'humata_local_first_llm_provider', 'straico' );
+        if ( ! is_string( $provider ) ) {
+            $provider = 'straico';
+        }
+        $provider = $this->sanitize_local_first_llm_provider( $provider );
+        ?>
+        <fieldset class="radio-group">
+            <label>
+                <input
+                    type="radio"
+                    id="humata_local_first_llm_provider_straico"
+                    name="humata_local_first_llm_provider"
+                    value="straico"
+                    <?php checked( $provider, 'straico' ); ?>
+                />
+                <?php esc_html_e( 'Straico', 'humata-chatbot' ); ?>
+            </label>
+
+            <label>
+                <input
+                    type="radio"
+                    id="humata_local_first_llm_provider_anthropic"
+                    name="humata_local_first_llm_provider"
+                    value="anthropic"
+                    <?php checked( $provider, 'anthropic' ); ?>
+                />
+                <?php esc_html_e( 'Anthropic Claude', 'humata-chatbot' ); ?>
+            </label>
+        </fieldset>
+        <p class="description">
+            <?php esc_html_e( 'Select the LLM provider to generate the initial response from local document search results.', 'humata-chatbot' ); ?>
+        </p>
+        <?php
+    }
+
+    /**
+     * Render Local Search first-stage Straico API key field.
+     *
+     * @since 1.0.0
+     * @return void
+     */
+    public function render_local_first_straico_api_key_field() {
+        $value = get_option( 'humata_local_first_straico_api_key', '' );
+        ?>
+        <input
+            type="password"
+            id="humata_local_first_straico_api_key"
+            name="humata_local_first_straico_api_key"
+            value="<?php echo esc_attr( $value ); ?>"
+            class="regular-text"
+            autocomplete="off"
+        />
+        <p class="description">
+            <?php esc_html_e( 'Your Straico API key for first-stage processing.', 'humata-chatbot' ); ?>
+        </p>
+        <?php
+    }
+
+    /**
+     * Render Local Search first-stage Straico model field.
+     *
+     * @since 1.0.0
+     * @return void
+     */
+    public function render_local_first_straico_model_field() {
+        $value = get_option( 'humata_local_first_straico_model', '' );
+        ?>
+        <input
+            type="text"
+            id="humata_local_first_straico_model"
+            name="humata_local_first_straico_model"
+            value="<?php echo esc_attr( $value ); ?>"
+            class="regular-text"
+            placeholder="<?php esc_attr_e( 'e.g., anthropic/claude-sonnet-4.5', 'humata-chatbot' ); ?>"
+            autocomplete="off"
+        />
+        <p class="description">
+            <?php esc_html_e( 'Enter the Straico model identifier to use for first-stage processing.', 'humata-chatbot' ); ?>
+        </p>
+        <?php
+    }
+
+    /**
+     * Render Local Search first-stage Anthropic API key field.
+     *
+     * @since 1.0.0
+     * @return void
+     */
+    public function render_local_first_anthropic_api_key_field() {
+        $value = get_option( 'humata_local_first_anthropic_api_key', '' );
+        ?>
+        <input
+            type="password"
+            id="humata_local_first_anthropic_api_key"
+            name="humata_local_first_anthropic_api_key"
+            value="<?php echo esc_attr( $value ); ?>"
+            class="regular-text"
+            autocomplete="off"
+        />
+        <p class="description">
+            <?php esc_html_e( 'Your Anthropic API key for first-stage processing.', 'humata-chatbot' ); ?>
+        </p>
+        <?php
+    }
+
+    /**
+     * Render Local Search first-stage Anthropic model field.
+     *
+     * @since 1.0.0
+     * @return void
+     */
+    public function render_local_first_anthropic_model_field() {
+        $value = get_option( 'humata_local_first_anthropic_model', '' );
+        if ( ! is_string( $value ) ) {
+            $value = '';
+        }
+
+        $models = $this->get_anthropic_model_options();
+        if ( '' === $value || ! isset( $models[ $value ] ) ) {
+            $keys  = array_keys( $models );
+            $value = isset( $keys[0] ) ? $keys[0] : '';
+        }
+        ?>
+        <select id="humata_local_first_anthropic_model" name="humata_local_first_anthropic_model" class="regular-text">
+            <?php foreach ( $models as $model_id => $label ) : ?>
+                <option value="<?php echo esc_attr( $model_id ); ?>" <?php selected( $value, $model_id ); ?>>
+                    <?php echo esc_html( $label ); ?>
+                </option>
+            <?php endforeach; ?>
+        </select>
+        <p class="description">
+            <?php esc_html_e( 'Select the Claude model to use for first-stage processing.', 'humata-chatbot' ); ?>
+        </p>
+        <?php
+    }
+
+    /**
+     * Render Local Search first-stage Anthropic extended thinking field.
+     *
+     * @since 1.0.0
+     * @return void
+     */
+    public function render_local_first_anthropic_extended_thinking_field() {
+        $enabled = (int) get_option( 'humata_local_first_anthropic_extended_thinking', 0 );
+        ?>
+        <label>
+            <input
+                type="checkbox"
+                id="humata_local_first_anthropic_extended_thinking"
+                name="humata_local_first_anthropic_extended_thinking"
+                value="1"
+                <?php checked( $enabled, 1 ); ?>
+            />
+            <?php esc_html_e( 'Enable Extended Thinking Mode', 'humata-chatbot' ); ?>
+        </label>
+        <p class="description">
+            <?php esc_html_e( 'Uses more tokens but significantly improves instruction adherence.', 'humata-chatbot' ); ?>
+        </p>
+        <?php
+    }
+
+    /**
+     * Render Local Search second-stage LLM provider field.
+     *
+     * @since 1.0.0
+     * @return void
+     */
+    public function render_local_second_llm_provider_field() {
+        $provider = get_option( 'humata_local_second_llm_provider', 'none' );
+        if ( ! is_string( $provider ) ) {
+            $provider = 'none';
+        }
+        $provider = $this->sanitize_local_second_llm_provider( $provider );
+        ?>
+        <fieldset class="radio-group">
+            <label>
+                <input
+                    type="radio"
+                    id="humata_local_second_llm_provider_none"
+                    name="humata_local_second_llm_provider"
+                    value="none"
+                    <?php checked( $provider, 'none' ); ?>
+                />
+                <?php esc_html_e( 'None (skip second processing)', 'humata-chatbot' ); ?>
+            </label>
+
+            <label>
+                <input
+                    type="radio"
+                    id="humata_local_second_llm_provider_straico"
+                    name="humata_local_second_llm_provider"
+                    value="straico"
+                    <?php checked( $provider, 'straico' ); ?>
+                />
+                <?php esc_html_e( 'Straico', 'humata-chatbot' ); ?>
+            </label>
+
+            <label>
+                <input
+                    type="radio"
+                    id="humata_local_second_llm_provider_anthropic"
+                    name="humata_local_second_llm_provider"
+                    value="anthropic"
+                    <?php checked( $provider, 'anthropic' ); ?>
+                />
+                <?php esc_html_e( 'Anthropic Claude', 'humata-chatbot' ); ?>
+            </label>
+        </fieldset>
+        <p class="description">
+            <?php esc_html_e( 'When enabled, the first-stage response is sent to a second LLM for additional processing.', 'humata-chatbot' ); ?>
+        </p>
+        <?php
+    }
+
+    /**
+     * Render Local Search second-stage Straico API key field.
+     *
+     * @since 1.0.0
+     * @return void
+     */
+    public function render_local_second_straico_api_key_field() {
+        $value = get_option( 'humata_local_second_straico_api_key', '' );
+        ?>
+        <input
+            type="password"
+            id="humata_local_second_straico_api_key"
+            name="humata_local_second_straico_api_key"
+            value="<?php echo esc_attr( $value ); ?>"
+            class="regular-text"
+            autocomplete="off"
+        />
+        <p class="description">
+            <?php esc_html_e( 'Your Straico API key for second-stage processing.', 'humata-chatbot' ); ?>
+        </p>
+        <?php
+    }
+
+    /**
+     * Render Local Search second-stage Straico model field.
+     *
+     * @since 1.0.0
+     * @return void
+     */
+    public function render_local_second_straico_model_field() {
+        $value = get_option( 'humata_local_second_straico_model', '' );
+        ?>
+        <input
+            type="text"
+            id="humata_local_second_straico_model"
+            name="humata_local_second_straico_model"
+            value="<?php echo esc_attr( $value ); ?>"
+            class="regular-text"
+            placeholder="<?php esc_attr_e( 'e.g., anthropic/claude-sonnet-4.5', 'humata-chatbot' ); ?>"
+            autocomplete="off"
+        />
+        <p class="description">
+            <?php esc_html_e( 'Enter the Straico model identifier to use for second-stage processing.', 'humata-chatbot' ); ?>
+        </p>
+        <?php
+    }
+
+    /**
+     * Render Local Search second-stage Anthropic API key field.
+     *
+     * @since 1.0.0
+     * @return void
+     */
+    public function render_local_second_anthropic_api_key_field() {
+        $value = get_option( 'humata_local_second_anthropic_api_key', '' );
+        ?>
+        <input
+            type="password"
+            id="humata_local_second_anthropic_api_key"
+            name="humata_local_second_anthropic_api_key"
+            value="<?php echo esc_attr( $value ); ?>"
+            class="regular-text"
+            autocomplete="off"
+        />
+        <p class="description">
+            <?php esc_html_e( 'Your Anthropic API key for second-stage processing.', 'humata-chatbot' ); ?>
+        </p>
+        <?php
+    }
+
+    /**
+     * Render Local Search second-stage Anthropic model field.
+     *
+     * @since 1.0.0
+     * @return void
+     */
+    public function render_local_second_anthropic_model_field() {
+        $value = get_option( 'humata_local_second_anthropic_model', '' );
+        if ( ! is_string( $value ) ) {
+            $value = '';
+        }
+
+        $models = $this->get_anthropic_model_options();
+        if ( '' === $value || ! isset( $models[ $value ] ) ) {
+            $keys  = array_keys( $models );
+            $value = isset( $keys[0] ) ? $keys[0] : '';
+        }
+        ?>
+        <select id="humata_local_second_anthropic_model" name="humata_local_second_anthropic_model" class="regular-text">
+            <?php foreach ( $models as $model_id => $label ) : ?>
+                <option value="<?php echo esc_attr( $model_id ); ?>" <?php selected( $value, $model_id ); ?>>
+                    <?php echo esc_html( $label ); ?>
+                </option>
+            <?php endforeach; ?>
+        </select>
+        <p class="description">
+            <?php esc_html_e( 'Select the Claude model to use for second-stage processing.', 'humata-chatbot' ); ?>
+        </p>
+        <?php
+    }
+
+    /**
+     * Render Local Search second-stage Anthropic extended thinking field.
+     *
+     * @since 1.0.0
+     * @return void
+     */
+    public function render_local_second_anthropic_extended_thinking_field() {
+        $enabled = (int) get_option( 'humata_local_second_anthropic_extended_thinking', 0 );
+        ?>
+        <label>
+            <input
+                type="checkbox"
+                id="humata_local_second_anthropic_extended_thinking"
+                name="humata_local_second_anthropic_extended_thinking"
+                value="1"
+                <?php checked( $enabled, 1 ); ?>
+            />
+            <?php esc_html_e( 'Enable Extended Thinking Mode', 'humata-chatbot' ); ?>
+        </label>
+        <p class="description">
+            <?php esc_html_e( 'Uses more tokens but significantly improves instruction adherence.', 'humata-chatbot' ); ?>
+        </p>
+        <?php
+    }
 }
 
 
