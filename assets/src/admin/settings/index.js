@@ -733,10 +733,10 @@
                 var showStraico = provider === "straico";
                 var showAnthropic = provider === "anthropic";
 
-                $("#humata_straico_api_key").closest("tr").toggle(showStraico);
+                $(".humata-api-key-pool[data-option='humata_straico_api_key']").closest("tr").toggle(showStraico);
                 $("#humata_straico_model").closest("tr").toggle(showStraico);
 
-                $("#humata_anthropic_api_key").closest("tr").toggle(showAnthropic);
+                $(".humata-api-key-pool[data-option='humata_anthropic_api_key']").closest("tr").toggle(showAnthropic);
                 $("#humata_anthropic_model").closest("tr").toggle(showAnthropic);
                 $("#humata_anthropic_extended_thinking").closest("tr").toggle(showAnthropic);
             }
@@ -765,10 +765,10 @@
                 var showStraico = provider === "straico";
                 var showAnthropic = provider === "anthropic";
 
-                $("#humata_local_first_straico_api_key").closest("tr").toggle(showStraico);
+                $(".humata-api-key-pool[data-option='humata_local_first_straico_api_key']").closest("tr").toggle(showStraico);
                 $("#humata_local_first_straico_model").closest("tr").toggle(showStraico);
 
-                $("#humata_local_first_anthropic_api_key").closest("tr").toggle(showAnthropic);
+                $(".humata-api-key-pool[data-option='humata_local_first_anthropic_api_key']").closest("tr").toggle(showAnthropic);
                 $("#humata_local_first_anthropic_model").closest("tr").toggle(showAnthropic);
                 $("#humata_local_first_anthropic_extended_thinking").closest("tr").toggle(showAnthropic);
             }
@@ -797,10 +797,10 @@
                 var showStraico = provider === "straico";
                 var showAnthropic = provider === "anthropic";
 
-                $("#humata_local_second_straico_api_key").closest("tr").toggle(showStraico);
+                $(".humata-api-key-pool[data-option='humata_local_second_straico_api_key']").closest("tr").toggle(showStraico);
                 $("#humata_local_second_straico_model").closest("tr").toggle(showStraico);
 
-                $("#humata_local_second_anthropic_api_key").closest("tr").toggle(showAnthropic);
+                $(".humata-api-key-pool[data-option='humata_local_second_anthropic_api_key']").closest("tr").toggle(showAnthropic);
                 $("#humata_local_second_anthropic_model").closest("tr").toggle(showAnthropic);
                 $("#humata_local_second_anthropic_extended_thinking").closest("tr").toggle(showAnthropic);
             }
@@ -1538,6 +1538,100 @@
                         '</div>' +
                     '</div>';
             }
+        })();
+
+        // ---------------------------
+        // API Key Pool Repeater Handlers
+        // ---------------------------
+
+        (function() {
+            /**
+             * Build a new API key row HTML.
+             *
+             * @param {string} optionName The option name for the field.
+             * @param {number} index The row index.
+             * @returns {string} HTML string.
+             */
+            function buildApiKeyRow(optionName, index) {
+                return '' +
+                    '<div class="humata-api-key-pool__row">' +
+                        '<input' +
+                            ' type="password"' +
+                            ' id="' + optionName + '_' + index + '"' +
+                            ' name="' + optionName + '[]"' +
+                            ' value=""' +
+                            ' class="regular-text humata-api-key-pool__input"' +
+                            ' autocomplete="off"' +
+                            ' placeholder="API Key"' +
+                        '/>' +
+                        '<button type="button" class="button humata-api-key-pool__remove" title="Remove">' +
+                            '<span class="dashicons dashicons-trash"></span>' +
+                        '</button>' +
+                    '</div>';
+            }
+
+            /**
+             * Update the key count display for a pool.
+             *
+             * @param {jQuery} $pool The pool container element.
+             */
+            function updateKeyCount($pool) {
+                var $count = $pool.find('.humata-api-key-pool__count');
+                var filledKeys = $pool.find('.humata-api-key-pool__input').filter(function() {
+                    return $.trim($(this).val()) !== '';
+                }).length;
+
+                if (filledKeys > 1) {
+                    if (!$count.length) {
+                        $count = $('<span class="humata-api-key-pool__count"></span>');
+                        $pool.find('.humata-api-key-pool__add').after($count);
+                    }
+                    $count.text(filledKeys + ' keys configured (rotation enabled)').show();
+                } else {
+                    $count.hide();
+                }
+            }
+
+            // Add new API key row.
+            $(document).on('click', '.humata-api-key-pool__add', function() {
+                var $pool = $(this).closest('.humata-api-key-pool');
+                var optionName = $pool.data('option') || '';
+                var $keys = $pool.find('.humata-api-key-pool__keys');
+                var nextIndex = $keys.find('.humata-api-key-pool__row').length;
+
+                $keys.append(buildApiKeyRow(optionName, nextIndex));
+                updateKeyCount($pool);
+
+                // Focus the new input.
+                $keys.find('.humata-api-key-pool__row').last().find('input').focus();
+            });
+
+            // Remove API key row.
+            $(document).on('click', '.humata-api-key-pool__remove', function() {
+                var $pool = $(this).closest('.humata-api-key-pool');
+                var $row = $(this).closest('.humata-api-key-pool__row');
+                var $rows = $pool.find('.humata-api-key-pool__row');
+
+                // Keep at least one empty row.
+                if ($rows.length <= 1) {
+                    $row.find('input').val('');
+                } else {
+                    $row.remove();
+                }
+
+                updateKeyCount($pool);
+            });
+
+            // Update count on input change.
+            $(document).on('input', '.humata-api-key-pool__input', function() {
+                var $pool = $(this).closest('.humata-api-key-pool');
+                updateKeyCount($pool);
+            });
+
+            // Initialize counts on page load.
+            $('.humata-api-key-pool').each(function() {
+                updateKeyCount($(this));
+            });
         })();
     });
 })(jQuery);

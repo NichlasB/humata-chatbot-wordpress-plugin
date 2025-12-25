@@ -476,3 +476,76 @@
     width: 100%;
 }
 
+/* API Key Pool Repeater Styles */
+.humata-api-key-pool {
+    max-width: 500px;
+}
+
+.humata-api-key-pool__keys {
+    display: flex;
+    flex-direction: column;
+    gap: 8px;
+    margin-bottom: 10px;
+}
+
+.humata-api-key-pool__row {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+}
+
+.humata-api-key-pool__input {
+    flex: 1;
+}
+
+.humata-api-key-pool__remove {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    min-width: 36px;
+    padding: 0 8px;
+    color: #646970;
+}
+
+.humata-api-key-pool__remove:hover {
+    color: #d63638;
+    border-color: #d63638;
+}
+
+.humata-api-key-pool__remove .dashicons {
+    font-size: 16px;
+    width: 16px;
+    height: 16px;
+    line-height: 16px;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+}
+
+.humata-api-key-pool__add {
+    display: inline-flex;
+    align-items: center;
+    gap: 4px;
+}
+
+.humata-api-key-pool__add .dashicons {
+    font-size: 16px;
+    width: 16px;
+    height: 16px;
+    line-height: 16px;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+}
+
+.humata-api-key-pool__count {
+    display: inline-block;
+    margin-left: 12px;
+    padding: 4px 10px;
+    background: #e7f3e8;
+    border-radius: 12px;
+    font-size: 12px;
+    color: #1d6f42;
+    font-weight: 500;
+}
+

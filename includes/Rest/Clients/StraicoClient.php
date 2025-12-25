@@ -17,29 +17,65 @@ class Humata_Chatbot_Rest_Straico_Client {
      */
     const STRAICO_API_BASE = 'https://api.straico.com/v2';
 
+    /**
+     * HTTP status codes that trigger key failover.
+     *
+     * @var array
+     */
+    const FAILOVER_STATUS_CODES = array( 401, 403, 429 );
+
+    /**
+     * Key rotator instance.
+     *
+     * @var Humata_Chatbot_Rest_Key_Rotator|null
+     */
+    private $key_rotator = null;
+
+    /**
+     * Set the key rotator instance.
+     *
+     * @since 1.0.0
+     * @param Humata_Chatbot_Rest_Key_Rotator $rotator Key rotator instance.
+     * @return void
+     */
+    public function set_key_rotator( $rotator ) {
+        $this->key_rotator = $rotator;
+    }
+
     private function get_request_failed_message() {
         return __( 'Your message request failed. Try again. If problem persists, please contact us.', 'humata-chatbot' );
     }
 
     /**
-     * Call Straico to review a Humata answer.
+     * Call Straico to review a Humata answer with key rotation support.
      *
      * @since 1.0.0
-     * @param string $straico_api_key Straico API key.
-     * @param string $model Straico model ID.
-     * @param string $system_prompt Optional system prompt.
-     * @param string $user_question User's original question.
-     * @param string $humata_answer Humata's generated answer.
+     * @param array|string $api_keys      API key(s) - array for rotation, string for single key.
+     * @param string       $model         Straico model ID.
+     * @param string       $system_prompt Optional system prompt.
+     * @param string       $user_question User's original question.
+     * @param string       $humata_answer Humata's generated answer.
+     * @param string       $pool_name     Optional pool name for rotation tracking.
      * @return string|WP_Error Reviewed answer or error.
      */
-    public function review( $straico_api_key, $model, $system_prompt, $user_question, $humata_answer ) {
-        $straico_api_key = trim( (string) $straico_api_key );
-        $model           = trim( (string) $model );
-        $system_prompt   = trim( (string) $system_prompt );
-        $user_question   = trim( (string) $user_question );
-        $humata_answer   = trim( (string) $humata_answer );
+    public function review( $api_keys, $model, $system_prompt, $user_question, $humata_answer, $pool_name = 'straico' ) {
+        $model         = trim( (string) $model );
+        $system_prompt = trim( (string) $system_prompt );
+        $user_question = trim( (string) $user_question );
+        $humata_answer = trim( (string) $humata_answer );
 
-        if ( '' === $straico_api_key || '' === $model ) {
+        // Normalize keys to array.
+        if ( is_string( $api_keys ) ) {
+            $api_keys = '' !== trim( $api_keys ) ? array( trim( $api_keys ) ) : array();
+        }
+        if ( ! is_array( $api_keys ) ) {
+            $api_keys = array();
+        }
+        $api_keys = array_values( array_filter( $api_keys, function( $k ) {
+            return is_string( $k ) && '' !== trim( $k );
+        } ) );
+
+        if ( empty( $api_keys ) || '' === $model ) {
             return new WP_Error(
                 'configuration_error',
                 $this->get_request_failed_message(),
@@ -47,6 +83,7 @@ class Humata_Chatbot_Rest_Straico_Client {
             );
         }
 
+        // Build request payload.
         $messages = array();
         if ( '' !== $system_prompt ) {
             $messages[] = array(
@@ -75,24 +112,75 @@ class Humata_Chatbot_Rest_Straico_Client {
             'messages' => $messages,
         );
 
+        // Get starting index for rotation.
+        $key_count   = count( $api_keys );
+        $start_index = 0;
+        if ( $this->key_rotator && $key_count > 1 ) {
+            $start_index = $this->key_rotator->get_current_index( $pool_name ) % $key_count;
+        }
+
+        // Try keys with failover.
+        $last_error = null;
+        for ( $i = 0; $i < $key_count; $i++ ) {
+            $key_index = ( $start_index + $i ) % $key_count;
+            $api_key   = trim( $api_keys[ $key_index ] );
+
+            if ( $key_count > 1 ) {
+                $this->log_key_usage( $pool_name, $key_index, $key_count );
+            }
+
+            $result = $this->make_request( $api_key, $payload );
+
+            // Check if we should failover to next key.
+            if ( is_wp_error( $result ) ) {
+                $error_data = $result->get_error_data();
+                $status     = isset( $error_data['status'] ) ? (int) $error_data['status'] : 0;
+
+                if ( in_array( $status, self::FAILOVER_STATUS_CODES, true ) && $i < $key_count - 1 ) {
+                    $this->log_failover( $pool_name, $key_index, $status, $key_count );
+                    $last_error = $result;
+                    continue;
+                }
+
+                return $result;
+            }
+
+            // Success - increment rotation index for next request.
+            if ( $this->key_rotator && $key_count > 1 ) {
+                $this->key_rotator->increment_index( $pool_name, $key_count );
+            }
+
+            return $result;
+        }
+
+        return $last_error ? $last_error : new WP_Error(
+            'straico_api_error',
+            $this->get_request_failed_message(),
+            array( 'status' => 502 )
+        );
+    }
+
+    /**
+     * Make the actual API request with a single key.
+     *
+     * @since 1.0.0
+     * @param string $api_key API key.
+     * @param array  $payload Request payload.
+     * @return string|WP_Error Response content or error.
+     */
+    private function make_request( $api_key, $payload ) {
         $headers = array(
-            'Authorization' => 'Bearer ' . $straico_api_key,
+            'Authorization' => 'Bearer ' . $api_key,
             'Content-Type'  => 'application/json',
             'Accept'        => 'application/json',
         );
 
-        // Straico API docs show chat completions at /v2/chat/completions.
         $endpoints = array(
             trailingslashit( self::STRAICO_API_BASE ) . 'chat/completions',
             'https://api.straico.com/v0/chat/completions',
         );
 
-        /**
-         * Allow overriding the Straico endpoints (in order) to try.
-         *
-         * @since 1.0.0
-         * @param array $endpoints List of endpoint URLs.
-         */
+        /** @see humata_chatbot_straico_endpoints filter */
         $endpoints = apply_filters( 'humata_chatbot_straico_endpoints', $endpoints );
 
         if ( ! is_array( $endpoints ) || empty( $endpoints ) ) {
@@ -144,12 +232,11 @@ class Humata_Chatbot_Rest_Straico_Client {
             }
 
             if ( $code >= 400 ) {
-                $last_error = new WP_Error(
+                return new WP_Error(
                     'straico_api_error',
                     $this->get_request_failed_message(),
                     array( 'status' => $code )
                 );
-                break;
             }
 
             $data    = json_decode( $body, true );
@@ -170,7 +257,6 @@ class Humata_Chatbot_Rest_Straico_Client {
                     $content = $data['output'];
                 }
             } elseif ( is_string( $body ) ) {
-                // Some APIs may return plain text.
                 $content = $body;
             }
 
@@ -188,15 +274,57 @@ class Humata_Chatbot_Rest_Straico_Client {
             return $content;
         }
 
-        if ( is_wp_error( $last_error ) ) {
-            return $last_error;
-        }
-
-        return new WP_Error(
+        return $last_error ? $last_error : new WP_Error(
             'straico_api_error',
             $this->get_request_failed_message(),
             array( 'status' => 502 )
         );
+    }
+
+    /**
+     * Log key usage for debugging.
+     *
+     * @since 1.0.0
+     * @param string $pool_name Pool identifier.
+     * @param int    $index     Key index used.
+     * @param int    $count     Total keys in pool.
+     * @return void
+     */
+    private function log_key_usage( $pool_name, $index, $count ) {
+        if ( defined( 'WP_DEBUG' ) && WP_DEBUG ) {
+            error_log(
+                sprintf(
+                    '[Humata Chatbot] Straico API key rotation: pool=%s, using key %d/%d',
+                    $pool_name,
+                    $index + 1,
+                    $count
+                )
+            );
+        }
+    }
+
+    /**
+     * Log failover attempt for debugging.
+     *
+     * @since 1.0.0
+     * @param string $pool_name    Pool identifier.
+     * @param int    $failed_index Index of the failed key.
+     * @param int    $status_code  HTTP status code that caused failover.
+     * @param int    $count        Total keys in pool.
+     * @return void
+     */
+    private function log_failover( $pool_name, $failed_index, $status_code, $count ) {
+        if ( defined( 'WP_DEBUG' ) && WP_DEBUG ) {
+            error_log(
+                sprintf(
+                    '[Humata Chatbot] Straico API key failover: pool=%s, key %d/%d failed with status %d, trying next key',
+                    $pool_name,
+                    $failed_index + 1,
+                    $count,
+                    $status_code
+                )
+            );
+        }
     }
 }
 

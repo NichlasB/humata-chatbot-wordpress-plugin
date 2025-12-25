@@ -15,6 +15,7 @@ require_once __DIR__ . '/Rest/RateLimiter.php';
 require_once __DIR__ . '/Rest/TurnstileVerifier.php';
 require_once __DIR__ . '/Rest/HistoryBuilder.php';
 require_once __DIR__ . '/Rest/SseParser.php';
+require_once __DIR__ . '/Rest/KeyRotator.php';
 require_once __DIR__ . '/Rest/Clients/StraicoClient.php';
 require_once __DIR__ . '/Rest/Clients/AnthropicClient.php';
 
@@ -88,6 +89,14 @@ class Humata_Chatbot_REST_API {
     private $anthropic_client;
 
     /**
+     * Key rotator for API key rotation.
+     *
+     * @since 1.0.0
+     * @var Humata_Chatbot_Rest_Key_Rotator
+     */
+    private $key_rotator;
+
+    /**
      * Constructor.
      *
      * @since 1.0.0
@@ -97,8 +106,13 @@ class Humata_Chatbot_REST_API {
         $this->turnstile_verifier = new Humata_Chatbot_Rest_Turnstile_Verifier();
         $this->history_builder    = new Humata_Chatbot_Rest_History_Builder();
         $this->sse_parser         = new Humata_Chatbot_Rest_Sse_Parser();
+        $this->key_rotator        = new Humata_Chatbot_Rest_Key_Rotator();
         $this->straico_client     = new Humata_Chatbot_Rest_Straico_Client();
         $this->anthropic_client   = new Humata_Chatbot_Rest_Anthropic_Client();
+
+        // Inject key rotator into clients.
+        $this->straico_client->set_key_rotator( $this->key_rotator );
+        $this->anthropic_client->set_key_rotator( $this->key_rotator );
 
         add_action( 'rest_api_init', array( $this, 'register_routes' ) );
         add_filter( 'rest_authentication_errors', array( $this, 'maybe_bypass_cookie_check' ), 101 );
@@ -437,12 +451,12 @@ class Humata_Chatbot_REST_API {
         }
 
         if ( 'straico' === $second_llm_provider ) {
-            $straico_api_key = get_option( 'humata_straico_api_key', '' );
-            $straico_model   = get_option( 'humata_straico_model', '' );
-            $system_prompt   = get_option( 'humata_straico_system_prompt', '' );
+            $straico_api_keys = get_option( 'humata_straico_api_key', array() );
+            $straico_model    = get_option( 'humata_straico_model', '' );
+            $system_prompt    = get_option( 'humata_straico_system_prompt', '' );
 
-            if ( ! is_string( $straico_api_key ) ) {
-                $straico_api_key = '';
+            if ( ! is_array( $straico_api_keys ) ) {
+                $straico_api_keys = is_string( $straico_api_keys ) && '' !== $straico_api_keys ? array( $straico_api_keys ) : array();
             }
             if ( ! is_string( $straico_model ) ) {
                 $straico_model = '';
@@ -452,11 +466,12 @@ class Humata_Chatbot_REST_API {
             }
 
             $reviewed = $this->straico_client->review(
-                $straico_api_key,
+                $straico_api_keys,
                 $straico_model,
                 $system_prompt,
                 $message,
-                $answer
+                $answer,
+                'straico_second_stage'
             );
 
             if ( is_wp_error( $reviewed ) ) {
@@ -465,13 +480,13 @@ class Humata_Chatbot_REST_API {
 
             $answer = $reviewed;
         } elseif ( 'anthropic' === $second_llm_provider ) {
-            $anthropic_api_key         = get_option( 'humata_anthropic_api_key', '' );
+            $anthropic_api_keys        = get_option( 'humata_anthropic_api_key', array() );
             $anthropic_model           = get_option( 'humata_anthropic_model', '' );
             $anthropic_extended_thinking = (int) get_option( 'humata_anthropic_extended_thinking', 0 );
             $system_prompt             = get_option( 'humata_straico_system_prompt', '' );
 
-            if ( ! is_string( $anthropic_api_key ) ) {
-                $anthropic_api_key = '';
+            if ( ! is_array( $anthropic_api_keys ) ) {
+                $anthropic_api_keys = is_string( $anthropic_api_keys ) && '' !== $anthropic_api_keys ? array( $anthropic_api_keys ) : array();
             }
             if ( ! is_string( $anthropic_model ) ) {
                 $anthropic_model = '';
@@ -481,12 +496,13 @@ class Humata_Chatbot_REST_API {
             }
 
             $reviewed = $this->anthropic_client->review(
-                $anthropic_api_key,
+                $anthropic_api_keys,
                 $anthropic_model,
                 $system_prompt,
                 $anthropic_extended_thinking,
                 $message,
-                $answer
+                $answer,
+                'anthropic_second_stage'
             );
 
             if ( is_wp_error( $reviewed ) ) {
@@ -520,6 +536,7 @@ class Humata_Chatbot_REST_API {
         // Load local search classes.
         require_once __DIR__ . '/Rest/SearchDatabase.php';
         require_once __DIR__ . '/Rest/SearchEngine.php';
+        require_once __DIR__ . '/Rest/QueryExpander.php';
 
         $db = new Humata_Chatbot_Rest_Search_Database();
 
@@ -555,9 +572,64 @@ class Humata_Chatbot_REST_API {
             );
         }
 
-        // Search for relevant context.
+        // Get first-stage LLM provider config for query reformulation.
+        $first_llm_provider = get_option( 'humata_local_first_llm_provider', 'straico' );
+        if ( ! is_string( $first_llm_provider ) ) {
+            $first_llm_provider = 'straico';
+        }
+        if ( ! in_array( $first_llm_provider, array( 'straico', 'anthropic' ), true ) ) {
+            $first_llm_provider = 'straico';
+        }
+
+        // Prepare LLM client and config for query reformulation.
+        $llm_client = null;
+        $llm_config = array();
+
+        if ( 'anthropic' === $first_llm_provider ) {
+            $anthropic_api_keys = get_option( 'humata_local_first_anthropic_api_key', array() );
+            $anthropic_model    = get_option( 'humata_local_first_anthropic_model', '' );
+            $extended_thinking  = (int) get_option( 'humata_local_first_anthropic_extended_thinking', 0 );
+
+            if ( ! is_array( $anthropic_api_keys ) ) {
+                $anthropic_api_keys = is_string( $anthropic_api_keys ) && '' !== $anthropic_api_keys ? array( $anthropic_api_keys ) : array();
+            }
+
+            if ( ! empty( $anthropic_api_keys ) && ! empty( $anthropic_model ) ) {
+                $llm_client = $this->anthropic_client;
+                $llm_config = array(
+                    'provider'          => 'anthropic',
+                    'api_keys'          => $anthropic_api_keys,
+                    'model'             => $anthropic_model,
+                    'extended_thinking' => $extended_thinking,
+                );
+            }
+        } else {
+            $straico_api_keys = get_option( 'humata_local_first_straico_api_key', array() );
+            $straico_model    = get_option( 'humata_local_first_straico_model', '' );
+
+            if ( ! is_array( $straico_api_keys ) ) {
+                $straico_api_keys = is_string( $straico_api_keys ) && '' !== $straico_api_keys ? array( $straico_api_keys ) : array();
+            }
+
+            if ( ! empty( $straico_api_keys ) && ! empty( $straico_model ) ) {
+                $llm_client = $this->straico_client;
+                $llm_config = array(
+                    'provider' => 'straico',
+                    'api_keys' => $straico_api_keys,
+                    'model'    => $straico_model,
+                );
+            }
+        }
+
+        // Expand query with conversation history for better contextual search.
+        // Uses LLM reformulation for follow-up questions when available.
+        $history = $request->get_param( 'history' );
+        $query_expander = new Humata_Chatbot_Rest_Query_Expander();
+        $search_query = $query_expander->expand( $message, $history, $llm_client, $llm_config );
+
+        // Search for relevant context using expanded query.
         $engine  = new Humata_Chatbot_Rest_Search_Engine( $db );
-        $context = $engine->search_with_context( $message, 5 );
+        $context = $engine->search_with_context( $search_query, 5 );
 
         if ( is_wp_error( $context ) ) {
             error_log( '[Humata Chatbot] Local search error: ' . $context->get_error_message() );
@@ -594,54 +666,36 @@ class Humata_Chatbot_REST_API {
         // =====================================================
         // FIRST-STAGE LLM (Local Search Mode)
         // =====================================================
-        $first_llm_provider = get_option( 'humata_local_first_llm_provider', 'straico' );
-        if ( ! is_string( $first_llm_provider ) ) {
-            $first_llm_provider = 'straico';
-        }
-        if ( ! in_array( $first_llm_provider, array( 'straico', 'anthropic' ), true ) ) {
-            $first_llm_provider = 'straico';
+        // Reuses $first_llm_provider and config from query reformulation setup above.
+
+        // Validate configuration before calling LLM.
+        if ( null === $llm_client || empty( $llm_config ) ) {
+            return new WP_Error(
+                'configuration_error',
+                __( 'The chatbot is not properly configured. Please contact the site administrator.', 'humata-chatbot' ),
+                array( 'status' => 500 )
+            );
         }
 
         // Call the first-stage LLM.
         if ( 'anthropic' === $first_llm_provider ) {
-            $anthropic_api_key = get_option( 'humata_local_first_anthropic_api_key', '' );
-            $anthropic_model   = get_option( 'humata_local_first_anthropic_model', '' );
-            $extended_thinking = (int) get_option( 'humata_local_first_anthropic_extended_thinking', 0 );
-
-            if ( empty( $anthropic_api_key ) ) {
-                return new WP_Error(
-                    'configuration_error',
-                    __( 'The chatbot is not properly configured. Please contact the site administrator.', 'humata-chatbot' ),
-                    array( 'status' => 500 )
-                );
-            }
-
             $first_stage_answer = $this->anthropic_client->review(
-                $anthropic_api_key,
-                $anthropic_model,
+                $llm_config['api_keys'],
+                $llm_config['model'],
                 '',
-                $extended_thinking,
+                $llm_config['extended_thinking'],
                 $full_prompt,
-                ''
+                '',
+                'local_first_anthropic'
             );
         } else {
-            $straico_api_key = get_option( 'humata_local_first_straico_api_key', '' );
-            $straico_model   = get_option( 'humata_local_first_straico_model', '' );
-
-            if ( empty( $straico_api_key ) ) {
-                return new WP_Error(
-                    'configuration_error',
-                    __( 'The chatbot is not properly configured. Please contact the site administrator.', 'humata-chatbot' ),
-                    array( 'status' => 500 )
-                );
-            }
-
             $first_stage_answer = $this->straico_client->review(
-                $straico_api_key,
-                $straico_model,
+                $llm_config['api_keys'],
+                $llm_config['model'],
                 '',
                 $full_prompt,
-                ''
+                '',
+                'local_first_straico'
             );
         }
 
@@ -670,16 +724,21 @@ class Humata_Chatbot_REST_API {
             $second_stage_system_prompt = trim( sanitize_textarea_field( $second_stage_system_prompt ) );
 
             if ( 'straico' === $second_llm_provider ) {
-                $straico_api_key = get_option( 'humata_local_second_straico_api_key', '' );
-                $straico_model   = get_option( 'humata_local_second_straico_model', '' );
+                $straico_api_keys = get_option( 'humata_local_second_straico_api_key', array() );
+                $straico_model    = get_option( 'humata_local_second_straico_model', '' );
 
-                if ( ! empty( $straico_api_key ) && ! empty( $straico_model ) ) {
+                if ( ! is_array( $straico_api_keys ) ) {
+                    $straico_api_keys = is_string( $straico_api_keys ) && '' !== $straico_api_keys ? array( $straico_api_keys ) : array();
+                }
+
+                if ( ! empty( $straico_api_keys ) && ! empty( $straico_model ) ) {
                     $reviewed = $this->straico_client->review(
-                        $straico_api_key,
+                        $straico_api_keys,
                         $straico_model,
                         $second_stage_system_prompt,
                         $message,
-                        $first_stage_answer
+                        $first_stage_answer,
+                        'local_second_straico'
                     );
 
                     if ( ! is_wp_error( $reviewed ) ) {
@@ -687,18 +746,23 @@ class Humata_Chatbot_REST_API {
                     }
                 }
             } elseif ( 'anthropic' === $second_llm_provider ) {
-                $anthropic_api_key = get_option( 'humata_local_second_anthropic_api_key', '' );
-                $anthropic_model   = get_option( 'humata_local_second_anthropic_model', '' );
-                $extended_thinking = (int) get_option( 'humata_local_second_anthropic_extended_thinking', 0 );
+                $anthropic_api_keys = get_option( 'humata_local_second_anthropic_api_key', array() );
+                $anthropic_model    = get_option( 'humata_local_second_anthropic_model', '' );
+                $extended_thinking  = (int) get_option( 'humata_local_second_anthropic_extended_thinking', 0 );
 
-                if ( ! empty( $anthropic_api_key ) && ! empty( $anthropic_model ) ) {
+                if ( ! is_array( $anthropic_api_keys ) ) {
+                    $anthropic_api_keys = is_string( $anthropic_api_keys ) && '' !== $anthropic_api_keys ? array( $anthropic_api_keys ) : array();
+                }
+
+                if ( ! empty( $anthropic_api_keys ) && ! empty( $anthropic_model ) ) {
                     $reviewed = $this->anthropic_client->review(
-                        $anthropic_api_key,
+                        $anthropic_api_keys,
                         $anthropic_model,
                         $second_stage_system_prompt,
                         $extended_thinking,
                         $message,
-                        $first_stage_answer
+                        $first_stage_answer,
+                        'local_second_anthropic'
                     );
 
                     if ( ! is_wp_error( $reviewed ) ) {

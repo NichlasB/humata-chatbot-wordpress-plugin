@@ -69,6 +69,14 @@ delete_option( 'humata_local_second_anthropic_api_key' );
 delete_option( 'humata_local_second_anthropic_model' );
 delete_option( 'humata_local_second_anthropic_extended_thinking' );
 
+// Delete API key rotation counter options.
+delete_option( 'humata_straico_second_stage_key_index' );
+delete_option( 'humata_anthropic_second_stage_key_index' );
+delete_option( 'humata_local_first_straico_key_index' );
+delete_option( 'humata_local_first_anthropic_key_index' );
+delete_option( 'humata_local_second_straico_key_index' );
+delete_option( 'humata_local_second_anthropic_key_index' );
+
 // Delete SQLite database file and directory.
 $upload_dir = wp_upload_dir();
 $db_dir     = $upload_dir['basedir'] . '/humata-search';

@@ -60,12 +60,20 @@ function humata_chatbot_activate() {
     add_option( 'humata_rate_limit', 50 );
     add_option( 'humata_second_llm_provider', 'none' );
     add_option( 'humata_straico_review_enabled', 0 );
-    add_option( 'humata_straico_api_key', '' );
+    add_option( 'humata_straico_api_key', array() );
     add_option( 'humata_straico_model', '' );
     add_option( 'humata_straico_system_prompt', '' );
-    add_option( 'humata_anthropic_api_key', '' );
+    add_option( 'humata_anthropic_api_key', array() );
     add_option( 'humata_anthropic_model', 'claude-3-5-sonnet-20241022' );
     add_option( 'humata_anthropic_extended_thinking', 0 );
+
+    // Local Search first-stage API keys (arrays for rotation).
+    add_option( 'humata_local_first_straico_api_key', array() );
+    add_option( 'humata_local_first_anthropic_api_key', array() );
+
+    // Local Search second-stage API keys (arrays for rotation).
+    add_option( 'humata_local_second_straico_api_key', array() );
+    add_option( 'humata_local_second_anthropic_api_key', array() );
 
     // Floating help menu (disabled by default, with seeded FAQ + Contact content).
     if ( class_exists( 'Humata_Chatbot_Admin_Settings' ) ) {

@@ -39,6 +39,7 @@ require_once __DIR__ . '/Admin/Settings/Sanitize/Providers.php';
 require_once __DIR__ . '/Admin/Settings/Sanitize/Security.php';
 require_once __DIR__ . '/Admin/Settings/Sanitize/TriggerPages.php';
 require_once __DIR__ . '/Admin/Settings/Sanitize/SuggestedQuestions.php';
+require_once __DIR__ . '/Admin/Settings/Sanitize/ApiKeyPool.php';
 // Render helpers.
 require_once __DIR__ . '/Admin/Render/Sections.php';
 require_once __DIR__ . '/Admin/Render/Providers.php';
@@ -77,6 +78,7 @@ class Humata_Chatbot_Admin_Settings {
     use Humata_Chatbot_Admin_Settings_Render_TriggerPages_Trait;
     use Humata_Chatbot_Admin_Settings_Sanitize_SuggestedQuestions_Trait;
     use Humata_Chatbot_Admin_Settings_Render_SuggestedQuestions_Trait;
+    use Humata_Chatbot_Admin_Settings_Sanitize_Api_Key_Pool_Trait;
 
     /**
      * Humata API base URL.

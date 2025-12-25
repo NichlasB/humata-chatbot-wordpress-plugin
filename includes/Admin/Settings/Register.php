@@ -174,9 +174,9 @@ trait Humata_Chatbot_Admin_Settings_Register_Trait {
             'humata_chatbot_settings',
             'humata_straico_api_key',
             array(
-                'type'              => 'string',
-                'sanitize_callback' => 'sanitize_text_field',
-                'default'           => '',
+                'type'              => 'array',
+                'sanitize_callback' => array( $this, 'sanitize_api_key_pool' ),
+                'default'           => array(),
             )
         );
 
@@ -214,9 +214,9 @@ trait Humata_Chatbot_Admin_Settings_Register_Trait {
             'humata_chatbot_settings',
             'humata_anthropic_api_key',
             array(
-                'type'              => 'string',
-                'sanitize_callback' => 'sanitize_text_field',
-                'default'           => '',
+                'type'              => 'array',
+                'sanitize_callback' => array( $this, 'sanitize_api_key_pool' ),
+                'default'           => array(),
             )
         );
 
@@ -255,9 +255,9 @@ trait Humata_Chatbot_Admin_Settings_Register_Trait {
             'humata_chatbot_settings',
             'humata_local_first_straico_api_key',
             array(
-                'type'              => 'string',
-                'sanitize_callback' => 'sanitize_text_field',
-                'default'           => '',
+                'type'              => 'array',
+                'sanitize_callback' => array( $this, 'sanitize_api_key_pool' ),
+                'default'           => array(),
             )
         );
 
@@ -275,9 +275,9 @@ trait Humata_Chatbot_Admin_Settings_Register_Trait {
             'humata_chatbot_settings',
             'humata_local_first_anthropic_api_key',
             array(
-                'type'              => 'string',
-                'sanitize_callback' => 'sanitize_text_field',
-                'default'           => '',
+                'type'              => 'array',
+                'sanitize_callback' => array( $this, 'sanitize_api_key_pool' ),
+                'default'           => array(),
             )
         );
 
@@ -316,9 +316,9 @@ trait Humata_Chatbot_Admin_Settings_Register_Trait {
             'humata_chatbot_settings',
             'humata_local_second_straico_api_key',
             array(
-                'type'              => 'string',
-                'sanitize_callback' => 'sanitize_text_field',
-                'default'           => '',
+                'type'              => 'array',
+                'sanitize_callback' => array( $this, 'sanitize_api_key_pool' ),
+                'default'           => array(),
             )
         );
 
@@ -336,9 +336,9 @@ trait Humata_Chatbot_Admin_Settings_Register_Trait {
             'humata_chatbot_settings',
             'humata_local_second_anthropic_api_key',
             array(
-                'type'              => 'string',
-                'sanitize_callback' => 'sanitize_text_field',
-                'default'           => '',
+                'type'              => 'array',
+                'sanitize_callback' => array( $this, 'sanitize_api_key_pool' ),
+                'default'           => array(),
             )
         );
 
@@ -527,6 +527,7 @@ trait Humata_Chatbot_Admin_Settings_Register_Trait {
         }
     }
 }
+
 
 
 

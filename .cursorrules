@@ -61,6 +61,11 @@ This is a WordPress plugin. Follow these conventions when adding features or mod
 3. Add sanitizer in `includes/Admin/Settings/Sanitize/`
 4. Add render method in `includes/Admin/Render/`
 5. Wire up in appropriate tab class
+6. **Add to Schema.php** – Map option to its tab in `get_tab_to_options()` (`includes/Admin/Settings/Schema.php`)
+7. **Add to cross-tab guard** – Add option name to the `$plugin_options` array in `prevent_cross_tab_option_wipe()` (`includes/class-admin-settings.php`)
+8. Add cleanup in `uninstall.php`
+
+> **Important**: Steps 6-7 prevent settings from resetting when saving on a different tab. Missing these causes cross-tab wipe issues.
 
 ### New REST Endpoint
 1. Create service class in `includes/Rest/` if needed

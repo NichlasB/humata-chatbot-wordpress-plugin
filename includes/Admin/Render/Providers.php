@@ -11,6 +11,77 @@ defined( 'ABSPATH' ) || exit;
 trait Humata_Chatbot_Admin_Settings_Render_Providers_Trait {
 
     /**
+     * Render an API key pool repeater field.
+     *
+     * @since 1.0.0
+     * @param string $option_name The option name.
+     * @param string $field_id    Base ID for the field.
+     * @param string $description Field description.
+     * @return void
+     */
+    private function render_api_key_pool_field( $option_name, $field_id, $description ) {
+        $value = get_option( $option_name, array() );
+
+        // Backward compatibility: convert string to array.
+        if ( is_string( $value ) ) {
+            $value = '' !== trim( $value ) ? array( trim( $value ) ) : array();
+        }
+        if ( ! is_array( $value ) ) {
+            $value = array();
+        }
+
+        // Ensure at least one empty row.
+        if ( empty( $value ) ) {
+            $value = array( '' );
+        }
+
+        $key_count = count( array_filter( $value, function( $k ) {
+            return is_string( $k ) && '' !== trim( $k );
+        } ) );
+        ?>
+        <div class="humata-api-key-pool" data-option="<?php echo esc_attr( $option_name ); ?>">
+            <div class="humata-api-key-pool__keys">
+                <?php foreach ( $value as $index => $key ) : ?>
+                    <div class="humata-api-key-pool__row">
+                        <input
+                            type="password"
+                            id="<?php echo esc_attr( $field_id . '_' . $index ); ?>"
+                            name="<?php echo esc_attr( $option_name ); ?>[]"
+                            value="<?php echo esc_attr( $key ); ?>"
+                            class="regular-text humata-api-key-pool__input"
+                            autocomplete="off"
+                            placeholder="<?php esc_attr_e( 'API Key', 'humata-chatbot' ); ?>"
+                        />
+                        <button type="button" class="button humata-api-key-pool__remove" title="<?php esc_attr_e( 'Remove', 'humata-chatbot' ); ?>">
+                            <span class="dashicons dashicons-trash"></span>
+                        </button>
+                    </div>
+                <?php endforeach; ?>
+            </div>
+            <button type="button" class="button humata-api-key-pool__add">
+                <span class="dashicons dashicons-plus-alt2"></span>
+                <?php esc_html_e( 'Add API Key', 'humata-chatbot' ); ?>
+            </button>
+            <?php if ( $key_count > 1 ) : ?>
+                <span class="humata-api-key-pool__count">
+                    <?php
+                    printf(
+                        /* translators: %d: number of API keys */
+                        esc_html( _n( '%d key configured (rotation enabled)', '%d keys configured (rotation enabled)', $key_count, 'humata-chatbot' ) ),
+                        $key_count
+                    );
+                    ?>
+                </span>
+            <?php endif; ?>
+        </div>
+        <p class="description">
+            <?php echo esc_html( $description ); ?>
+            <?php esc_html_e( ' Add multiple keys to enable round-robin rotation across accounts.', 'humata-chatbot' ); ?>
+        </p>
+        <?php
+    }
+
+    /**
      * Render search provider selection field.
      *
      * @since 1.0.0
@@ -184,20 +255,11 @@ trait Humata_Chatbot_Admin_Settings_Render_Providers_Trait {
      * @return void
      */
     public function render_straico_api_key_field() {
-        $value = get_option( 'humata_straico_api_key', '' );
-        ?>
-        <input
-            type="password"
-            id="humata_straico_api_key"
-            name="humata_straico_api_key"
-            value="<?php echo esc_attr( $value ); ?>"
-            class="regular-text"
-            autocomplete="off"
-        />
-        <p class="description">
-            <?php esc_html_e( 'Your Straico API key. This is stored server-side and never exposed to the frontend.', 'humata-chatbot' ); ?>
-        </p>
-        <?php
+        $this->render_api_key_pool_field(
+            'humata_straico_api_key',
+            'humata_straico_api_key',
+            __( 'Your Straico API key(s). Stored server-side and never exposed to the frontend.', 'humata-chatbot' )
+        );
     }
 
     /**
@@ -225,20 +287,11 @@ trait Humata_Chatbot_Admin_Settings_Render_Providers_Trait {
     }
 
     public function render_anthropic_api_key_field() {
-        $value = get_option( 'humata_anthropic_api_key', '' );
-        ?>
-        <input
-            type="password"
-            id="humata_anthropic_api_key"
-            name="humata_anthropic_api_key"
-            value="<?php echo esc_attr( $value ); ?>"
-            class="regular-text"
-            autocomplete="off"
-        />
-        <p class="description">
-            <?php esc_html_e( 'Your Anthropic API key. This is stored server-side and never exposed to the frontend.', 'humata-chatbot' ); ?>
-        </p>
-        <?php
+        $this->render_api_key_pool_field(
+            'humata_anthropic_api_key',
+            'humata_anthropic_api_key',
+            __( 'Your Anthropic API key(s). Stored server-side and never exposed to the frontend.', 'humata-chatbot' )
+        );
     }
 
     public function render_anthropic_model_field() {
@@ -376,20 +429,11 @@ trait Humata_Chatbot_Admin_Settings_Render_Providers_Trait {
      * @return void
      */
     public function render_local_first_straico_api_key_field() {
-        $value = get_option( 'humata_local_first_straico_api_key', '' );
-        ?>
-        <input
-            type="password"
-            id="humata_local_first_straico_api_key"
-            name="humata_local_first_straico_api_key"
-            value="<?php echo esc_attr( $value ); ?>"
-            class="regular-text"
-            autocomplete="off"
-        />
-        <p class="description">
-            <?php esc_html_e( 'Your Straico API key for first-stage processing.', 'humata-chatbot' ); ?>
-        </p>
-        <?php
+        $this->render_api_key_pool_field(
+            'humata_local_first_straico_api_key',
+            'humata_local_first_straico_api_key',
+            __( 'Your Straico API key(s) for first-stage processing.', 'humata-chatbot' )
+        );
     }
 
     /**
@@ -423,20 +467,11 @@ trait Humata_Chatbot_Admin_Settings_Render_Providers_Trait {
      * @return void
      */
     public function render_local_first_anthropic_api_key_field() {
-        $value = get_option( 'humata_local_first_anthropic_api_key', '' );
-        ?>
-        <input
-            type="password"
-            id="humata_local_first_anthropic_api_key"
-            name="humata_local_first_anthropic_api_key"
-            value="<?php echo esc_attr( $value ); ?>"
-            class="regular-text"
-            autocomplete="off"
-        />
-        <p class="description">
-            <?php esc_html_e( 'Your Anthropic API key for first-stage processing.', 'humata-chatbot' ); ?>
-        </p>
-        <?php
+        $this->render_api_key_pool_field(
+            'humata_local_first_anthropic_api_key',
+            'humata_local_first_anthropic_api_key',
+            __( 'Your Anthropic API key(s) for first-stage processing.', 'humata-chatbot' )
+        );
     }
 
     /**
@@ -555,20 +590,11 @@ trait Humata_Chatbot_Admin_Settings_Render_Providers_Trait {
      * @return void
      */
     public function render_local_second_straico_api_key_field() {
-        $value = get_option( 'humata_local_second_straico_api_key', '' );
-        ?>
-        <input
-            type="password"
-            id="humata_local_second_straico_api_key"
-            name="humata_local_second_straico_api_key"
-            value="<?php echo esc_attr( $value ); ?>"
-            class="regular-text"
-            autocomplete="off"
-        />
-        <p class="description">
-            <?php esc_html_e( 'Your Straico API key for second-stage processing.', 'humata-chatbot' ); ?>
-        </p>
-        <?php
+        $this->render_api_key_pool_field(
+            'humata_local_second_straico_api_key',
+            'humata_local_second_straico_api_key',
+            __( 'Your Straico API key(s) for second-stage processing.', 'humata-chatbot' )
+        );
     }
 
     /**
@@ -602,20 +628,11 @@ trait Humata_Chatbot_Admin_Settings_Render_Providers_Trait {
      * @return void
      */
     public function render_local_second_anthropic_api_key_field() {
-        $value = get_option( 'humata_local_second_anthropic_api_key', '' );
-        ?>
-        <input
-            type="password"
-            id="humata_local_second_anthropic_api_key"
-            name="humata_local_second_anthropic_api_key"
-            value="<?php echo esc_attr( $value ); ?>"
-            class="regular-text"
-            autocomplete="off"
-        />
-        <p class="description">
-            <?php esc_html_e( 'Your Anthropic API key for second-stage processing.', 'humata-chatbot' ); ?>
-        </p>
-        <?php
+        $this->render_api_key_pool_field(
+            'humata_local_second_anthropic_api_key',
+            'humata_local_second_anthropic_api_key',
+            __( 'Your Anthropic API key(s) for second-stage processing.', 'humata-chatbot' )
+        );
     }
 
     /**
