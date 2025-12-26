@@ -1633,6 +1633,37 @@
                 updateKeyCount($(this));
             });
         })();
+
+        // ------------------------------------------
+        // Follow-Up Questions Provider Toggle
+        // ------------------------------------------
+        (function() {
+            var $providerRadios = $('.humata-followup-provider-radio');
+            if (!$providerRadios.length) {
+                return;
+            }
+
+            function updateFollowupProviderFields() {
+                var selectedProvider = $('input[name="humata_followup_questions[provider]"]:checked').val() || 'straico';
+
+                var $straicoFields = $('.humata-followup-straico-fields');
+                var $anthropicFields = $('.humata-followup-anthropic-fields');
+
+                if (selectedProvider === 'straico') {
+                    $straicoFields.closest('tr').show();
+                    $anthropicFields.closest('tr').hide();
+                } else {
+                    $straicoFields.closest('tr').hide();
+                    $anthropicFields.closest('tr').show();
+                }
+            }
+
+            // Bind change event.
+            $providerRadios.on('change', updateFollowupProviderFields);
+
+            // Initialize on page load.
+            updateFollowupProviderFields();
+        })();
     });
 })(jQuery);
 

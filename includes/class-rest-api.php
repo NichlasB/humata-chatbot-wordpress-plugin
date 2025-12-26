@@ -12,7 +12,7 @@ defined( 'ABSPATH' ) || exit;
 
 require_once __DIR__ . '/Rest/ClientIp.php';
 require_once __DIR__ . '/Rest/RateLimiter.php';
-require_once __DIR__ . '/Rest/TurnstileVerifier.php';
+require_once __DIR__ . '/Rest/BotProtection.php';
 require_once __DIR__ . '/Rest/HistoryBuilder.php';
 require_once __DIR__ . '/Rest/SseParser.php';
 require_once __DIR__ . '/Rest/KeyRotator.php';
@@ -47,14 +47,6 @@ class Humata_Chatbot_REST_API {
      * @var Humata_Chatbot_Rest_Rate_Limiter
      */
     private $rate_limiter;
-
-    /**
-     * Turnstile verifier.
-     *
-     * @since 1.0.0
-     * @var Humata_Chatbot_Rest_Turnstile_Verifier
-     */
-    private $turnstile_verifier;
 
     /**
      * History context builder.
@@ -97,13 +89,21 @@ class Humata_Chatbot_REST_API {
     private $key_rotator;
 
     /**
+     * Bot protection service.
+     *
+     * @since 1.0.0
+     * @var Humata_Chatbot_Rest_Bot_Protection
+     */
+    private $bot_protection;
+
+    /**
      * Constructor.
      *
      * @since 1.0.0
      */
     public function __construct() {
-        $this->rate_limiter       = new Humata_Chatbot_Rest_Rate_Limiter();
-        $this->turnstile_verifier = new Humata_Chatbot_Rest_Turnstile_Verifier();
+        $this->rate_limiter   = new Humata_Chatbot_Rest_Rate_Limiter();
+        $this->bot_protection = new Humata_Chatbot_Rest_Bot_Protection();
         $this->history_builder    = new Humata_Chatbot_Rest_History_Builder();
         $this->sse_parser         = new Humata_Chatbot_Rest_Sse_Parser();
         $this->key_rotator        = new Humata_Chatbot_Rest_Key_Rotator();
@@ -217,10 +217,10 @@ class Humata_Chatbot_REST_API {
             return $rate_check;
         }
 
-        // Check Turnstile verification
-        $turnstile_check = $this->turnstile_verifier->check( $request, $ip );
-        if ( is_wp_error( $turnstile_check ) ) {
-            return $turnstile_check;
+        // Check bot protection (honeypot + proof-of-work)
+        $bot_check = $this->bot_protection->check( $request, $ip );
+        if ( is_wp_error( $bot_check ) ) {
+            return $bot_check;
         }
 
         return true;
@@ -234,6 +234,10 @@ class Humata_Chatbot_REST_API {
      * @return WP_REST_Response|WP_Error Response object or error.
      */
     public function handle_ask_request( $request ) {
+        // Apply progressive delays if enabled.
+        $ip = Humata_Chatbot_Rest_Client_Ip::get_client_ip();
+        $this->bot_protection->apply_progressive_delay( $ip );
+
         // Check search provider setting.
         $search_provider = get_option( 'humata_search_provider', 'humata' );
 
@@ -512,12 +516,16 @@ class Humata_Chatbot_REST_API {
             $answer = $reviewed;
         }
 
+        // Generate follow-up questions if enabled.
+        $followup_questions = $this->generate_followup_questions( $message, $answer );
+
         // Return the response
         return rest_ensure_response(
             array(
-                'success'        => true,
-                'answer'         => $answer,
-                'conversationId' => $conversation_id,
+                'success'           => true,
+                'answer'            => $answer,
+                'conversationId'    => $conversation_id,
+                'followUpQuestions' => $followup_questions,
             )
         );
     }
@@ -537,6 +545,7 @@ class Humata_Chatbot_REST_API {
         require_once __DIR__ . '/Rest/SearchDatabase.php';
         require_once __DIR__ . '/Rest/SearchEngine.php';
         require_once __DIR__ . '/Rest/QueryExpander.php';
+        require_once __DIR__ . '/Rest/DefinitionAnswerabilityGate.php';
 
         $db = new Humata_Chatbot_Rest_Search_Database();
 
@@ -640,6 +649,12 @@ class Humata_Chatbot_REST_API {
             );
         }
 
+        $definition_gate   = new Humata_Chatbot_Rest_Definition_Answerability_Gate();
+        $definition_filter = $definition_gate->filter_context( $message, $context, 5 );
+        if ( ! empty( $definition_filter['is_definition'] ) ) {
+            $context = isset( $definition_filter['context'] ) ? (string) $definition_filter['context'] : '';
+        }
+
         if ( empty( trim( $context ) ) ) {
             return new WP_Error(
                 'no_local_results',
@@ -655,7 +670,12 @@ class Humata_Chatbot_REST_API {
         }
         $system_prompt = trim( sanitize_textarea_field( $system_prompt ) );
 
-        $rag_prompt = "Use ONLY the following reference materials to answer. If the answer is not in the provided materials, say so clearly.\n\n=== REFERENCE MATERIALS ===\n" . $context . "\n=== END REFERENCE MATERIALS ===";
+        $rag_prompt = "You are a helpful assistant that ONLY answers questions using the reference materials provided below.\n\n" .
+            "CRITICAL RULES:\n" .
+            "1. If the question is NOT covered by the reference materials, respond with: \"Sorry, your question is outside the scope of my knowledge base.\"\n" .
+            "2. Do NOT use any outside knowledge - only the provided materials.\n" .
+            "3. If the reference materials seem unrelated to the question, that means you cannot answer it.\n\n" .
+            "=== REFERENCE MATERIALS ===\n" . $context . "\n=== END REFERENCE MATERIALS ===";
 
         $full_prompt = '';
         if ( ! empty( $system_prompt ) ) {
@@ -772,13 +792,191 @@ class Humata_Chatbot_REST_API {
             }
         }
 
+        // Generate follow-up questions if enabled.
+        $followup_questions = $this->generate_followup_questions( $message, $answer );
+
         return rest_ensure_response(
             array(
-                'success'        => true,
-                'answer'         => $answer,
-                'conversationId' => 'local-' . wp_generate_uuid4(),
+                'success'           => true,
+                'answer'            => $answer,
+                'conversationId'    => 'local-' . wp_generate_uuid4(),
+                'followUpQuestions' => $followup_questions,
             )
         );
+    }
+
+    /**
+     * Generate follow-up questions using LLM.
+     *
+     * @since 1.0.0
+     * @param string $user_question The user's original question.
+     * @param string $bot_answer    The bot's response.
+     * @return array Array of follow-up question strings (max 4).
+     */
+    private function generate_followup_questions( $user_question, $bot_answer ) {
+        $settings = get_option( 'humata_followup_questions', array() );
+        if ( ! is_array( $settings ) ) {
+            $settings = array();
+        }
+
+        // Check if enabled.
+        if ( empty( $settings['enabled'] ) ) {
+            return array();
+        }
+
+        $provider            = isset( $settings['provider'] ) ? $settings['provider'] : 'straico';
+        $max_question_length = isset( $settings['max_question_length'] ) ? absint( $settings['max_question_length'] ) : 80;
+        $topic_scope         = isset( $settings['topic_scope'] ) ? trim( $settings['topic_scope'] ) : '';
+        $custom_instructions = isset( $settings['custom_instructions'] ) ? trim( $settings['custom_instructions'] ) : '';
+
+        if ( $max_question_length < 30 ) {
+            $max_question_length = 30;
+        }
+        if ( $max_question_length > 150 ) {
+            $max_question_length = 150;
+        }
+
+        // Build the prompt for generating follow-up questions.
+        $prompt = "Based on the following conversation, generate exactly 4 brief follow-up questions that the user might want to ask next.\n\n";
+
+        // Add topic scope guidance at the top if provided.
+        if ( '' !== $topic_scope ) {
+            $prompt .= "TOPIC GUIDANCE:\n" .
+                $topic_scope . "\n\n";
+        }
+
+        $prompt .= "User Question: " . $user_question . "\n\n" .
+            "Assistant Answer: " . mb_substr( $bot_answer, 0, 1500 ) . "\n\n" .
+            "Requirements:\n" .
+            "- Generate exactly 4 questions\n" .
+            "- Each question must be " . $max_question_length . " characters or less\n" .
+            "- Questions should be relevant follow-ups to the conversation\n" .
+            "- Questions should be diverse and explore different aspects\n";
+
+        $prompt .= "- Output ONLY the questions, one per line, numbered 1-4\n" .
+            "- Do not include any other text or explanation\n";
+
+        // Add custom instructions if provided.
+        if ( '' !== $custom_instructions ) {
+            $prompt .= "\nAdditional Instructions:\n" . $custom_instructions . "\n";
+        }
+
+        $prompt .= "\nOutput format:\n" .
+            "1. [question]\n" .
+            "2. [question]\n" .
+            "3. [question]\n" .
+            "4. [question]";
+
+        $result = null;
+
+        if ( 'anthropic' === $provider ) {
+            $api_keys = isset( $settings['anthropic_api_keys'] ) ? $settings['anthropic_api_keys'] : array();
+            $model    = isset( $settings['anthropic_model'] ) ? $settings['anthropic_model'] : 'claude-3-5-sonnet-20241022';
+            $extended_thinking = ! empty( $settings['anthropic_extended_thinking'] ) ? 1 : 0;
+
+            if ( ! is_array( $api_keys ) ) {
+                $api_keys = is_string( $api_keys ) && '' !== $api_keys ? array( $api_keys ) : array();
+            }
+
+            if ( empty( $api_keys ) || empty( $model ) ) {
+                return array();
+            }
+
+            $result = $this->anthropic_client->review(
+                $api_keys,
+                $model,
+                '',
+                $extended_thinking,
+                $prompt,
+                '',
+                'followup_anthropic'
+            );
+        } else {
+            // Straico (default).
+            $api_keys = isset( $settings['straico_api_keys'] ) ? $settings['straico_api_keys'] : array();
+            $model    = isset( $settings['straico_model'] ) ? $settings['straico_model'] : '';
+
+            if ( ! is_array( $api_keys ) ) {
+                $api_keys = is_string( $api_keys ) && '' !== $api_keys ? array( $api_keys ) : array();
+            }
+
+            if ( empty( $api_keys ) || empty( $model ) ) {
+                return array();
+            }
+
+            $result = $this->straico_client->review(
+                $api_keys,
+                $model,
+                '',
+                $prompt,
+                '',
+                'followup_straico'
+            );
+        }
+
+        if ( is_wp_error( $result ) ) {
+            error_log( '[Humata Chatbot] Follow-up questions generation failed: ' . $result->get_error_message() );
+            return array();
+        }
+
+        // Parse the response to extract questions.
+        return $this->parse_followup_questions( $result, $max_question_length );
+    }
+
+    /**
+     * Parse LLM response to extract follow-up questions.
+     *
+     * @since 1.0.0
+     * @param string $response           LLM response text.
+     * @param int    $max_question_length Maximum allowed question length.
+     * @return array Array of question strings (max 4).
+     */
+    private function parse_followup_questions( $response, $max_question_length ) {
+        $questions = array();
+
+        if ( empty( $response ) || ! is_string( $response ) ) {
+            return $questions;
+        }
+
+        // Split by newlines and look for numbered items.
+        $lines = preg_split( '/\r?\n/', trim( $response ) );
+
+        foreach ( $lines as $line ) {
+            $line = trim( $line );
+
+            if ( '' === $line ) {
+                continue;
+            }
+
+            // Remove common prefixes: "1.", "1)", "1:", "- ", "* ", etc.
+            $cleaned = preg_replace( '/^[\d]+[\.\)\:]\s*/', '', $line );
+            $cleaned = preg_replace( '/^[\-\*]\s*/', '', $cleaned );
+            $cleaned = trim( $cleaned );
+
+            if ( '' === $cleaned ) {
+                continue;
+            }
+
+            // Skip if too long (let CSS handle display truncation, but filter out extremely long responses).
+            // The max_question_length is used as a soft guide - questions over 2x the limit are likely LLM errors.
+            if ( mb_strlen( $cleaned ) > $max_question_length * 2 ) {
+                continue;
+            }
+
+            // Ensure it ends with a question mark if it looks like a question.
+            if ( ! preg_match( '/[?!.]$/', $cleaned ) ) {
+                $cleaned .= '?';
+            }
+
+            $questions[] = $cleaned;
+
+            // Max 4 questions.
+            if ( count( $questions ) >= 4 ) {
+                break;
+            }
+        }
+
+        return $questions;
     }
 
     /**

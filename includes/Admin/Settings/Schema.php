@@ -68,10 +68,18 @@ final class Humata_Chatbot_Admin_Settings_Schema {
             'security'      => array(
                 'humata_max_prompt_chars',
                 'humata_rate_limit',
-                'humata_turnstile_enabled',
-                'humata_turnstile_site_key',
-                'humata_turnstile_secret_key',
-                'humata_turnstile_appearance',
+                'humata_bot_protection_enabled',
+                'humata_honeypot_enabled',
+                'humata_pow_enabled',
+                'humata_pow_difficulty',
+                'humata_progressive_delays_enabled',
+                'humata_delay_threshold_1_count',
+                'humata_delay_threshold_1_delay',
+                'humata_delay_threshold_2_count',
+                'humata_delay_threshold_2_delay',
+                'humata_delay_threshold_3_count',
+                'humata_delay_threshold_3_delay',
+                'humata_delay_cooldown_minutes',
             ),
             'floating_help' => array(
                 'humata_floating_help',
@@ -85,6 +93,7 @@ final class Humata_Chatbot_Admin_Settings_Schema {
             ),
             'suggested_questions' => array(
                 'humata_suggested_questions',
+                'humata_followup_questions',
             ),
         );
     }
@@ -115,6 +124,8 @@ final class Humata_Chatbot_Admin_Settings_Schema {
         return in_array( $option, self::get_options_for_tab( $tab ), true );
     }
 }
+
+
 
 
 

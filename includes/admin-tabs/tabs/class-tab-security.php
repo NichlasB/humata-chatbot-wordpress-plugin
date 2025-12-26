@@ -48,44 +48,92 @@ class Humata_Chatbot_Settings_Tab_Security extends Humata_Chatbot_Settings_Tab_B
             'humata_security_section'
         );
 
-        // Cloudflare Turnstile Section.
+        // Bot Protection Section.
         add_settings_section(
-            'humata_turnstile_section',
-            __( 'Cloudflare Turnstile', 'humata-chatbot' ),
-            array( $this->admin, 'render_turnstile_section' ),
+            'humata_bot_protection_section',
+            __( 'Bot Protection', 'humata-chatbot' ),
+            array( $this->admin, 'render_bot_protection_section' ),
             $page_id
         );
 
         add_settings_field(
-            'humata_turnstile_enabled',
-            __( 'Enable Turnstile', 'humata-chatbot' ),
-            array( $this->admin, 'render_turnstile_enabled_field' ),
+            'humata_bot_protection_enabled',
+            __( 'Enable Bot Protection', 'humata-chatbot' ),
+            array( $this->admin, 'render_bot_protection_enabled_field' ),
             $page_id,
-            'humata_turnstile_section'
+            'humata_bot_protection_section'
         );
 
         add_settings_field(
-            'humata_turnstile_site_key',
-            __( 'Site Key', 'humata-chatbot' ),
-            array( $this->admin, 'render_turnstile_site_key_field' ),
+            'humata_honeypot_enabled',
+            __( 'Honeypot Fields', 'humata-chatbot' ),
+            array( $this->admin, 'render_honeypot_enabled_field' ),
             $page_id,
-            'humata_turnstile_section'
+            'humata_bot_protection_section'
         );
 
         add_settings_field(
-            'humata_turnstile_secret_key',
-            __( 'Secret Key', 'humata-chatbot' ),
-            array( $this->admin, 'render_turnstile_secret_key_field' ),
+            'humata_pow_enabled',
+            __( 'Proof-of-Work Challenge', 'humata-chatbot' ),
+            array( $this->admin, 'render_pow_enabled_field' ),
             $page_id,
-            'humata_turnstile_section'
+            'humata_bot_protection_section'
         );
 
         add_settings_field(
-            'humata_turnstile_appearance',
-            __( 'Widget Appearance', 'humata-chatbot' ),
-            array( $this->admin, 'render_turnstile_appearance_field' ),
+            'humata_pow_difficulty',
+            __( 'PoW Difficulty', 'humata-chatbot' ),
+            array( $this->admin, 'render_pow_difficulty_field' ),
             $page_id,
-            'humata_turnstile_section'
+            'humata_bot_protection_section'
+        );
+
+        // Progressive Delays Section.
+        add_settings_section(
+            'humata_progressive_delays_section',
+            __( 'Progressive Delays', 'humata-chatbot' ),
+            array( $this->admin, 'render_progressive_delays_section' ),
+            $page_id
+        );
+
+        add_settings_field(
+            'humata_progressive_delays_enabled',
+            __( 'Enable Progressive Delays', 'humata-chatbot' ),
+            array( $this->admin, 'render_progressive_delays_enabled_field' ),
+            $page_id,
+            'humata_progressive_delays_section'
+        );
+
+        add_settings_field(
+            'humata_delay_threshold_1',
+            __( 'Threshold 1', 'humata-chatbot' ),
+            array( $this->admin, 'render_delay_threshold_1_field' ),
+            $page_id,
+            'humata_progressive_delays_section'
+        );
+
+        add_settings_field(
+            'humata_delay_threshold_2',
+            __( 'Threshold 2', 'humata-chatbot' ),
+            array( $this->admin, 'render_delay_threshold_2_field' ),
+            $page_id,
+            'humata_progressive_delays_section'
+        );
+
+        add_settings_field(
+            'humata_delay_threshold_3',
+            __( 'Threshold 3', 'humata-chatbot' ),
+            array( $this->admin, 'render_delay_threshold_3_field' ),
+            $page_id,
+            'humata_progressive_delays_section'
+        );
+
+        add_settings_field(
+            'humata_delay_cooldown_minutes',
+            __( 'Cooldown Period', 'humata-chatbot' ),
+            array( $this->admin, 'render_delay_cooldown_minutes_field' ),
+            $page_id,
+            'humata_progressive_delays_section'
         );
     }
 }

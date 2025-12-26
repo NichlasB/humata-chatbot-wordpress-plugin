@@ -94,6 +94,20 @@ function humata_chatbot_activate() {
     add_option( 'humata_search_db_version', '' );
     add_option( 'humata_local_search_system_prompt', 'You are a helpful assistant. Answer questions based only on the provided reference materials. If the information is not in the materials, say so clearly. Be concise and accurate.' );
 
+    // Follow-up questions (disabled by default).
+    add_option( 'humata_followup_questions', array(
+        'enabled'             => false,
+        'provider'            => 'straico',
+        'straico_api_keys'    => array(),
+        'straico_model'       => '',
+        'anthropic_api_keys'  => array(),
+        'anthropic_model'     => 'claude-3-5-sonnet-20241022',
+        'anthropic_extended_thinking' => 0,
+        'max_question_length' => 80,
+        'topic_scope'         => '',
+        'custom_instructions' => '',
+    ) );
+
     // Add rewrite rules for dedicated page
     humata_chatbot_add_rewrite_rules();
     flush_rewrite_rules();

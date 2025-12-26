@@ -179,7 +179,6 @@ $should_noindex     = ! ( $is_homepage_mode && $allow_seo_indexing );
                     </svg>
                 </button>
                 <div id="humata-suggested-questions" class="humata-suggested-questions" style="display: none;"></div>
-                <div id="humata-turnstile-container" style="display: none;"></div>
                 <div class="humata-input-wrapper">
                     <textarea
                         id="humata-chat-input"

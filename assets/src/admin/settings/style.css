@@ -50,6 +50,12 @@
     z-index: 1;
     background: #fff;
 }
+.filter-count .count, .title-count {
+    background: #1d2327;
+}
+.humata-documents-tab .title-count {
+    color: #ffffff;
+}
 #humata-test-result {
     margin-left: 10px;
 }
@@ -520,6 +526,7 @@
     display: inline-flex;
     align-items: center;
     justify-content: center;
+    vertical-align: middle;
 }
 
 .humata-api-key-pool__add {
@@ -536,6 +543,7 @@
     display: inline-flex;
     align-items: center;
     justify-content: center;
+    vertical-align: middle;
 }
 
 .humata-api-key-pool__count {

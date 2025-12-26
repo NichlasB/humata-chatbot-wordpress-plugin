@@ -453,10 +453,10 @@ trait Humata_Chatbot_Admin_Settings_Register_Trait {
             )
         );
 
-        // Cloudflare Turnstile settings.
+        // Bot Protection settings.
         register_setting(
             'humata_chatbot_settings',
-            'humata_turnstile_enabled',
+            'humata_bot_protection_enabled',
             array(
                 'type'              => 'integer',
                 'sanitize_callback' => array( $this, 'sanitize_checkbox' ),
@@ -466,31 +466,111 @@ trait Humata_Chatbot_Admin_Settings_Register_Trait {
 
         register_setting(
             'humata_chatbot_settings',
-            'humata_turnstile_site_key',
+            'humata_honeypot_enabled',
             array(
-                'type'              => 'string',
-                'sanitize_callback' => 'sanitize_text_field',
-                'default'           => '',
+                'type'              => 'integer',
+                'sanitize_callback' => array( $this, 'sanitize_checkbox' ),
+                'default'           => 1,
             )
         );
 
         register_setting(
             'humata_chatbot_settings',
-            'humata_turnstile_secret_key',
+            'humata_pow_enabled',
             array(
-                'type'              => 'string',
-                'sanitize_callback' => 'sanitize_text_field',
-                'default'           => '',
+                'type'              => 'integer',
+                'sanitize_callback' => array( $this, 'sanitize_checkbox' ),
+                'default'           => 1,
             )
         );
 
         register_setting(
             'humata_chatbot_settings',
-            'humata_turnstile_appearance',
+            'humata_pow_difficulty',
             array(
-                'type'              => 'string',
-                'sanitize_callback' => array( $this, 'sanitize_turnstile_appearance' ),
-                'default'           => 'managed',
+                'type'              => 'integer',
+                'sanitize_callback' => array( $this, 'sanitize_pow_difficulty' ),
+                'default'           => 4,
+            )
+        );
+
+        register_setting(
+            'humata_chatbot_settings',
+            'humata_progressive_delays_enabled',
+            array(
+                'type'              => 'integer',
+                'sanitize_callback' => array( $this, 'sanitize_checkbox' ),
+                'default'           => 0,
+            )
+        );
+
+        register_setting(
+            'humata_chatbot_settings',
+            'humata_delay_threshold_1_count',
+            array(
+                'type'              => 'integer',
+                'sanitize_callback' => array( $this, 'sanitize_delay_threshold_count' ),
+                'default'           => 10,
+            )
+        );
+
+        register_setting(
+            'humata_chatbot_settings',
+            'humata_delay_threshold_1_delay',
+            array(
+                'type'              => 'integer',
+                'sanitize_callback' => array( $this, 'sanitize_delay_seconds' ),
+                'default'           => 1,
+            )
+        );
+
+        register_setting(
+            'humata_chatbot_settings',
+            'humata_delay_threshold_2_count',
+            array(
+                'type'              => 'integer',
+                'sanitize_callback' => array( $this, 'sanitize_delay_threshold_count' ),
+                'default'           => 20,
+            )
+        );
+
+        register_setting(
+            'humata_chatbot_settings',
+            'humata_delay_threshold_2_delay',
+            array(
+                'type'              => 'integer',
+                'sanitize_callback' => array( $this, 'sanitize_delay_seconds' ),
+                'default'           => 3,
+            )
+        );
+
+        register_setting(
+            'humata_chatbot_settings',
+            'humata_delay_threshold_3_count',
+            array(
+                'type'              => 'integer',
+                'sanitize_callback' => array( $this, 'sanitize_delay_threshold_count' ),
+                'default'           => 30,
+            )
+        );
+
+        register_setting(
+            'humata_chatbot_settings',
+            'humata_delay_threshold_3_delay',
+            array(
+                'type'              => 'integer',
+                'sanitize_callback' => array( $this, 'sanitize_delay_seconds' ),
+                'default'           => 5,
+            )
+        );
+
+        register_setting(
+            'humata_chatbot_settings',
+            'humata_delay_cooldown_minutes',
+            array(
+                'type'              => 'integer',
+                'sanitize_callback' => array( $this, 'sanitize_cooldown_minutes' ),
+                'default'           => 30,
             )
         );
 
@@ -519,6 +599,25 @@ trait Humata_Chatbot_Admin_Settings_Register_Trait {
             )
         );
 
+        register_setting(
+            'humata_chatbot_settings',
+            'humata_followup_questions',
+            array(
+                'type'              => 'array',
+                'sanitize_callback' => array( $this, 'sanitize_followup_questions' ),
+                'default'           => array(
+                    'enabled'            => false,
+                    'provider'           => 'straico',
+                    'straico_api_keys'   => array(),
+                    'straico_model'      => '',
+                    'anthropic_api_keys' => array(),
+                    'anthropic_model'    => 'claude-3-5-sonnet-20241022',
+                    'anthropic_extended_thinking' => 0,
+                    'max_question_length' => 80,
+                ),
+            )
+        );
+
         // Register per-tab sections/fields.
         foreach ( $this->get_tab_modules() as $module ) {
             if ( is_object( $module ) && method_exists( $module, 'register' ) ) {
@@ -527,6 +626,8 @@ trait Humata_Chatbot_Admin_Settings_Register_Trait {
         }
     }
 }
+
+
 
 
 

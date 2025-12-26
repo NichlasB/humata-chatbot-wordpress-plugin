@@ -440,12 +440,19 @@ body.humata-help-modal-open {
 }
 
 /* FAQ */
+.humata-help-faq {
+    max-width: 100%;
+    overflow: hidden;
+}
+
 .humata-help-faq__item {
     border: 1px solid var(--humata-help-border);
     border-radius: 12px;
     margin-bottom: 12px;
     background: rgba(0, 0, 0, 0.02);
-    overflow: hidden;
+    max-width: 100%;
+    min-width: 0;
+    box-sizing: border-box;
 }
 
 @media (prefers-color-scheme: dark) {
@@ -457,12 +464,19 @@ body.humata-help-modal-open {
 .humata-help-faq__question {
     display: block;
     width: 100%;
+    max-width: 100%;
+    box-sizing: border-box;
     padding: 12px 14px;
     margin: 0;
     cursor: pointer;
     font-weight: 650;
+    line-height: 1.35;
     color: var(--humata-help-text);
     list-style: none;
+    white-space: normal;
+    overflow-wrap: anywhere;
+    word-break: break-word;
+    text-align: left;
 }
 
 .humata-help-faq__question::-webkit-details-marker {

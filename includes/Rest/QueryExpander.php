@@ -70,6 +70,18 @@ class Humata_Chatbot_Rest_Query_Expander {
 	 */
 	private $max_history_terms = 8;
 
+	private $last_expand_meta = array();
+
+	private $exclude_rejections = true;
+
+	public function get_last_expand_meta() {
+		return $this->last_expand_meta;
+	}
+
+	public function set_exclude_rejections( $exclude_rejections ) {
+		$this->exclude_rejections = (bool) $exclude_rejections;
+	}
+
 	/**
 	 * Expand a query with context from conversation history.
 	 *
@@ -86,27 +98,64 @@ class Humata_Chatbot_Rest_Query_Expander {
 	public function expand( $message, $history, $llm_client = null, $llm_config = array() ) {
 		$message = trim( (string) $message );
 
+		$meta = array(
+			'method'                 => 'standalone',
+			'used_history'           => false,
+			'is_followup'            => false,
+			'is_definition_question' => false,
+			'exclude_rejections'     => $this->exclude_rejections,
+		);
+
 		if ( empty( $message ) ) {
+			$meta['method']         = 'empty';
+			$this->last_expand_meta = $meta;
 			return '';
+		}
+
+		$definition_term = $this->extract_definition_term( $message );
+		if ( '' !== $definition_term ) {
+			$meta['method']                 = 'definition_term';
+			$meta['used_history']           = false;
+			$meta['is_definition_question'] = true;
+			$meta['definition_term']        = $definition_term;
+			$this->last_expand_meta         = $meta;
+			return $definition_term;
 		}
 
 		// If no history, return original message.
 		if ( ! is_array( $history ) || empty( $history ) ) {
+			$meta['method']         = 'standalone';
+			$this->last_expand_meta = $meta;
 			return $message;
 		}
 
-		// Check if this looks like a follow-up question.
-		if ( $this->is_followup( $message ) && null !== $llm_client && ! empty( $llm_config ) ) {
-			$reformulated = $this->reformulate_with_llm( $message, $history, $llm_client, $llm_config );
+		$meta['is_followup'] = $this->is_followup( $message );
 
-			if ( ! empty( $reformulated ) ) {
-				return $reformulated;
+		// Check if this looks like a follow-up question.
+		if ( $meta['is_followup'] ) {
+			// Try LLM reformulation first if available.
+			if ( null !== $llm_client && ! empty( $llm_config ) ) {
+				$reformulated = $this->reformulate_with_llm( $message, $history, $llm_client, $llm_config );
+
+				if ( ! empty( $reformulated ) ) {
+					$meta['method']         = 'llm_reformulation';
+					$meta['used_history']   = true;
+					$this->last_expand_meta = $meta;
+					return $reformulated;
+				}
 			}
-			// Fall through to keyword expansion on failure.
+
+			// Keyword-based expansion fallback for follow-ups.
+			$meta['method']         = 'keyword_expansion';
+			$meta['used_history']   = true;
+			$this->last_expand_meta = $meta;
+			return $this->expand_with_keywords( $message, $history );
 		}
 
-		// Keyword-based expansion fallback.
-		return $this->expand_with_keywords( $message, $history );
+		// Not a follow-up: return standalone message without history pollution.
+		$meta['method']         = 'standalone';
+		$this->last_expand_meta = $meta;
+		return $message;
 	}
 
 	/**
@@ -132,6 +181,79 @@ class Humata_Chatbot_Rest_Query_Expander {
 		// Check against follow-up patterns.
 		foreach ( self::$followup_patterns as $pattern ) {
 			if ( preg_match( $pattern, $message ) ) {
+				return true;
+			}
+		}
+
+		return false;
+	}
+
+	public function is_definition_question( $message ) {
+		return '' !== $this->extract_definition_term( $message );
+	}
+
+	private function extract_definition_term( $message ) {
+		$message = trim( (string) $message );
+		if ( '' === $message ) {
+			return '';
+		}
+
+		$patterns = array(
+			'/^\s*define\s+(.+?)[\?\.!]*\s*$/i',
+			'/^\s*what\s+does\s+(.+?)\s+mean[\?\.!]*\s*$/i',
+			'/^\s*(?:meaning|definition)\s+of\s+(.+?)[\?\.!]*\s*$/i',
+			'/^\s*what\s+is\s+(?:a|an)\s+(.+?)[\?\.!]*\s*$/i',
+			'/^\s*what\s+is\s+([a-z0-9][a-z0-9_\-\s]{0,100})[\?\.!]*\s*$/i',
+		);
+
+		foreach ( $patterns as $pattern ) {
+			if ( preg_match( $pattern, $message, $matches ) ) {
+				$term = isset( $matches[1] ) ? (string) $matches[1] : '';
+				$term = trim( $term );
+				$term = preg_replace( '/[\?\.!]+\s*$/', '', $term );
+				$term = trim( $term, " \t\n\r\0\x0B\"'" );
+				$term = preg_replace( '/\s+/', ' ', $term );
+				$term = preg_replace( '/^(?:a|an|the)\s+/i', '', $term );
+				$term = strtolower( trim( $term ) );
+
+				if ( '' === $term || $this->is_pronoun_term( $term ) ) {
+					return '';
+				}
+
+				$word_count = str_word_count( $term );
+				if ( $word_count <= 0 || $word_count > 4 ) {
+					return '';
+				}
+
+				return $term;
+			}
+		}
+
+		return '';
+	}
+
+	private function is_pronoun_term( $term ) {
+		$term = strtolower( trim( (string) $term ) );
+		return in_array( $term, array( 'it', 'this', 'that', 'they', 'them', 'he', 'she', 'him', 'her', 'there', 'here' ), true );
+	}
+
+	private function is_rejection_message( $content ) {
+		$content = strtolower( trim( (string) $content ) );
+		if ( '' === $content ) {
+			return false;
+		}
+
+		$phrases = array(
+			'outside the scope',
+			'not covered by the reference materials',
+			'not covered by the provided materials',
+			'not in the provided materials',
+			'cannot answer',
+			"can't answer",
+		);
+
+		foreach ( $phrases as $phrase ) {
+			if ( false !== strpos( $content, $phrase ) ) {
 				return true;
 			}
 		}
@@ -195,11 +317,17 @@ class Humata_Chatbot_Rest_Query_Expander {
 		$context_lines = array_reverse( $context_lines );
 		$context_text  = implode( "\n", $context_lines );
 
-		// Build reformulation prompt.
+		// Build reformulation prompt - optimized for keyword search.
 		$prompt = "Given this conversation history:\n\n" . $context_text . "\n\n" .
 			"The user now asks: \"" . $message . "\"\n\n" .
-			"Rewrite this as a standalone search query that includes the necessary context. " .
-			"Output ONLY the reformulated query (under 15 words), nothing else.";
+			"Generate a keyword search query that captures the user's intent with context from the conversation.\n" .
+			"Rules:\n" .
+			"- Include the key topic/entity from the new question\n" .
+			"- Include relevant context keywords from the conversation (e.g., shipping, contact, order)\n" .
+			"- Output 3-8 keywords separated by spaces\n" .
+			"- NO full sentences, just keywords\n" .
+			"- Example: if conversation was about shipping to Canada and user asks 'what about Germany?', output: 'shipping Germany international restrictions'\n\n" .
+			"Output ONLY the keywords, nothing else.";
 
 		// Call LLM.
 		if ( 'anthropic' === $provider ) {
@@ -337,6 +465,10 @@ class Humata_Chatbot_Rest_Query_Expander {
 			$content = trim( $content );
 
 			if ( empty( $content ) ) {
+				continue;
+			}
+
+			if ( 'bot' === $type && $this->exclude_rejections && $this->is_rejection_message( $content ) ) {
 				continue;
 			}
 

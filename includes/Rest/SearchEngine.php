@@ -33,11 +33,12 @@ class Humata_Chatbot_Rest_Search_Engine {
 	 *
 	 * Results with scores worse (closer to 0) than this are filtered out.
 	 * BM25 scores are negative; more negative = better match.
+	 * A threshold of -0.5 balances filtering weak matches while allowing relevant results.
 	 *
 	 * @since 1.0.0
 	 * @var float
 	 */
-	const MIN_SCORE_THRESHOLD = 0.0;
+	const MIN_SCORE_THRESHOLD = -0.5;
 
 	/**
 	 * Common stopwords to filter from search queries.

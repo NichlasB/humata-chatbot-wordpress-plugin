@@ -9,7 +9,7 @@ This document describes the file organization and conventions used in the Humata
 The plugin connects WordPress to the Humata AI knowledge base, providing:
 - A full-page chat interface (dedicated page, homepage replacement, or shortcode)
 - Optional second-pass LLM review via Straico or Anthropic
-- Cloudflare Turnstile bot protection
+- Three-layer bot protection (honeypot, proof-of-work, progressive delays)
 - Rate limiting and security features
 - Floating help menu with FAQ/Contact modals
 - Auto-linking and intent-based resource links
@@ -71,7 +71,7 @@ includes/Admin/
 │   ├── Page.php                # Settings page shell, tab forms
 │   ├── Providers.php           # Straico/Anthropic provider fields
 │   ├── Sections.php            # Section description callbacks
-│   └── Security.php            # Turnstile, rate limit fields
+│   └── Security.php            # Rate limit fields
 ├── Settings/
 │   ├── DocumentIds.php         # UUID parsing/sanitization
 │   ├── Register.php            # register_setting() calls
@@ -81,7 +81,7 @@ includes/Admin/
 │       ├── FloatingHelp.php    # Floating help option sanitizer
 │       ├── Links.php           # Auto-links/intent-links sanitizers
 │       ├── Providers.php       # Anthropic model sanitizer
-│       └── Security.php        # Turnstile appearance sanitizer
+│       └── Security.php        # Security sanitizers
 ```
 
 **Naming convention:** `Humata_Chatbot_Admin_Settings_{Category}_{Subcategory}_Trait`
@@ -94,7 +94,7 @@ REST logic is split into **focused service classes**:
 includes/Rest/
 ├── ClientIp.php                # Get client IP (static helper)
 ├── RateLimiter.php             # Transient-based rate limiting
-├── TurnstileVerifier.php       # Cloudflare Turnstile verification
+├── BotProtection.php           # Three-layer bot protection (honeypot, PoW, delays)
 ├── HistoryBuilder.php          # Build conversation context
 ├── SseParser.php               # Parse Humata SSE responses
 └── Clients/
@@ -250,7 +250,7 @@ After making changes:
 | `humata_chat_theme` | string | `light`, `dark`, or `auto` |
 | `humata_rate_limit` | int | Requests per hour per IP |
 | `humata_second_llm_provider` | string | `none`, `straico`, or `anthropic` |
-| `humata_turnstile_enabled` | bool | Enable Cloudflare Turnstile |
+| `humata_bot_protection_enabled` | bool | Enable bot protection |
 | `humata_floating_help` | array | Floating help menu configuration |
 | `humata_auto_links` | array | Auto-link rules |
 | `humata_intent_links` | array | Intent-based link rules |
@@ -262,7 +262,6 @@ After making changes:
 | Endpoint | Method | Description |
 |----------|--------|-------------|
 | `/humata-chat/v1/ask` | POST | Send message to Humata |
-| `/humata-chat/v1/verify-turnstile` | POST | Verify Turnstile token |
 | `/humata-chat/v1/clear-cache` | POST | Clear rate limit transients |
 
 ---

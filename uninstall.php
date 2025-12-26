@@ -46,6 +46,7 @@ delete_option( 'humata_bot_avatar_url' );
 delete_option( 'humata_avatar_size' );
 delete_option( 'humata_trigger_pages' );
 delete_option( 'humata_suggested_questions' );
+delete_option( 'humata_followup_questions' );
 
 // Delete local search options.
 delete_option( 'humata_search_provider' );
@@ -76,6 +77,8 @@ delete_option( 'humata_local_first_straico_key_index' );
 delete_option( 'humata_local_first_anthropic_key_index' );
 delete_option( 'humata_local_second_straico_key_index' );
 delete_option( 'humata_local_second_anthropic_key_index' );
+delete_option( 'humata_followup_straico_key_index' );
+delete_option( 'humata_followup_anthropic_key_index' );
 
 // Delete SQLite database file and directory.
 $upload_dir = wp_upload_dir();
@@ -121,15 +124,42 @@ if ( is_dir( $db_dir ) ) {
     @rmdir( $db_dir );
 }
 
-// Delete rate limit and conversation transients
+// Delete bot protection options.
+delete_option( 'humata_bot_protection_enabled' );
+delete_option( 'humata_honeypot_enabled' );
+delete_option( 'humata_pow_enabled' );
+delete_option( 'humata_pow_difficulty' );
+delete_option( 'humata_progressive_delays_enabled' );
+delete_option( 'humata_delay_threshold_1_count' );
+delete_option( 'humata_delay_threshold_1_delay' );
+delete_option( 'humata_delay_threshold_2_count' );
+delete_option( 'humata_delay_threshold_2_delay' );
+delete_option( 'humata_delay_threshold_3_count' );
+delete_option( 'humata_delay_threshold_3_delay' );
+delete_option( 'humata_delay_cooldown_minutes' );
+
+// Delete rate limit, conversation, and bot protection transients
 global $wpdb;
 $wpdb->query(
     $wpdb->prepare(
-        "DELETE FROM {$wpdb->options} WHERE option_name LIKE %s OR option_name LIKE %s OR option_name LIKE %s OR option_name LIKE %s",
+        "DELETE FROM {$wpdb->options} WHERE option_name LIKE %s OR option_name LIKE %s OR option_name LIKE %s OR option_name LIKE %s OR option_name LIKE %s OR option_name LIKE %s OR option_name LIKE %s OR option_name LIKE %s",
         '_transient_humata_rate_limit_%',
         '_transient_timeout_humata_rate_limit_%',
         '_transient_humata_conversation_%',
-        '_transient_timeout_humata_conversation_%'
+        '_transient_timeout_humata_conversation_%',
+        '_transient_humata_pow_verified_%',
+        '_transient_timeout_humata_pow_verified_%',
+        '_transient_humata_bot_session_%',
+        '_transient_timeout_humata_bot_session_%'
+    )
+);
+
+// Delete PoW challenge transients
+$wpdb->query(
+    $wpdb->prepare(
+        "DELETE FROM {$wpdb->options} WHERE option_name LIKE %s OR option_name LIKE %s",
+        '_transient_humata_pow_challenge_%',
+        '_transient_timeout_humata_pow_challenge_%'
     )
 );
 

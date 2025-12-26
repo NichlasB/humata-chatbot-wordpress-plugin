@@ -1374,6 +1374,91 @@
     }
 }
 
+/* Follow-Up Questions (AI-generated after bot response) */
+.humata-followup-questions {
+    margin-top: 16px;
+    padding-top: 12px;
+    border-top: 1px solid var(--humata-border-color);
+}
+
+.humata-followup-questions-label {
+    display: block;
+    font-size: 12px;
+    color: var(--humata-text-secondary);
+    margin-bottom: 8px;
+    font-weight: 500;
+}
+
+.humata-followup-questions-buttons {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 8px;
+}
+
+.humata-followup-question-btn {
+    display: inline-flex;
+    align-items: center;
+    justify-content: flex-start;
+    padding: 8px 14px;
+    background: var(--humata-bg-secondary);
+    border: 1px solid var(--humata-border-color);
+    border-radius: 20px;
+    color: var(--humata-text-primary);
+    font-family: var(--humata-font-family);
+    font-size: 13px;
+    line-height: 1.3;
+    text-align: left;
+    cursor: pointer;
+    transition: background-color 0.15s ease, border-color 0.15s ease, color 0.15s ease;
+    max-width: 100%;
+}
+
+.humata-followup-question-btn:hover {
+    background: var(--humata-accent-color);
+    border-color: var(--humata-accent-color);
+    color: #ffffff;
+}
+
+.humata-followup-question-btn:focus-visible {
+    outline: 2px solid var(--humata-accent-color);
+    outline-offset: 2px;
+}
+
+.humata-followup-question-text {
+    display: -webkit-box;
+    -webkit-line-clamp: 1;
+    line-clamp: 1;
+    -webkit-box-orient: vertical;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    word-break: break-word;
+    transition: all 0.2s ease;
+}
+
+/* Expand truncated question on focus (keyboard) or when expanded class is added (touch) */
+.humata-followup-question-btn:focus .humata-followup-question-text,
+.humata-followup-question-btn.humata-expanded .humata-followup-question-text {
+    display: block;
+    -webkit-line-clamp: unset;
+    line-clamp: unset;
+    overflow: visible;
+    white-space: normal;
+}
+
+/* Mobile: smaller follow-up buttons */
+@media (max-width: 600px) {
+    .humata-followup-questions {
+        margin-top: 12px;
+        padding-top: 10px;
+    }
+
+    .humata-followup-question-btn {
+        padding: 6px 12px;
+        font-size: 12px;
+        border-radius: 16px;
+    }
+}
+
 /* Print Styles */
 @media print {
     #humata-chat-header,
@@ -1411,6 +1496,10 @@
     }
 
     .humata-accordions {
+        display: none;
+    }
+
+    .humata-followup-questions {
         display: none;
     }
 

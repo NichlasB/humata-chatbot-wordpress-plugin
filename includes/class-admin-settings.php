@@ -39,7 +39,9 @@ require_once __DIR__ . '/Admin/Settings/Sanitize/Providers.php';
 require_once __DIR__ . '/Admin/Settings/Sanitize/Security.php';
 require_once __DIR__ . '/Admin/Settings/Sanitize/TriggerPages.php';
 require_once __DIR__ . '/Admin/Settings/Sanitize/SuggestedQuestions.php';
+require_once __DIR__ . '/Admin/Settings/Sanitize/FollowUpQuestions.php';
 require_once __DIR__ . '/Admin/Settings/Sanitize/ApiKeyPool.php';
+require_once __DIR__ . '/Admin/Settings/Sanitize/BotProtection.php';
 // Render helpers.
 require_once __DIR__ . '/Admin/Render/Sections.php';
 require_once __DIR__ . '/Admin/Render/Providers.php';
@@ -51,6 +53,8 @@ require_once __DIR__ . '/Admin/Render/Links.php';
 require_once __DIR__ . '/Admin/Render/FloatingHelp.php';
 require_once __DIR__ . '/Admin/Render/TriggerPages.php';
 require_once __DIR__ . '/Admin/Render/SuggestedQuestions.php';
+require_once __DIR__ . '/Admin/Render/FollowUpQuestions.php';
+require_once __DIR__ . '/Admin/Render/BotProtection.php';
 
 /**
  * Class Humata_Chatbot_Admin_Settings
@@ -78,7 +82,11 @@ class Humata_Chatbot_Admin_Settings {
     use Humata_Chatbot_Admin_Settings_Render_TriggerPages_Trait;
     use Humata_Chatbot_Admin_Settings_Sanitize_SuggestedQuestions_Trait;
     use Humata_Chatbot_Admin_Settings_Render_SuggestedQuestions_Trait;
+    use Humata_Chatbot_Admin_Settings_Sanitize_FollowUpQuestions_Trait;
+    use Humata_Chatbot_Admin_Settings_Render_FollowUpQuestions_Trait;
     use Humata_Chatbot_Admin_Settings_Sanitize_Api_Key_Pool_Trait;
+    use Humata_Chatbot_Admin_Settings_Sanitize_Bot_Protection_Trait;
+    use Humata_Chatbot_Admin_Settings_Render_Bot_Protection_Trait;
 
     /**
      * Humata API base URL.
@@ -447,12 +455,21 @@ class Humata_Chatbot_Admin_Settings {
             'humata_bot_avatar_url',
             'humata_avatar_size',
             'humata_bot_response_disclaimer',
-            'humata_turnstile_enabled',
-            'humata_turnstile_site_key',
-            'humata_turnstile_secret_key',
-            'humata_turnstile_appearance',
+            'humata_bot_protection_enabled',
+            'humata_honeypot_enabled',
+            'humata_pow_enabled',
+            'humata_pow_difficulty',
+            'humata_progressive_delays_enabled',
+            'humata_delay_threshold_1_count',
+            'humata_delay_threshold_1_delay',
+            'humata_delay_threshold_2_count',
+            'humata_delay_threshold_2_delay',
+            'humata_delay_threshold_3_count',
+            'humata_delay_threshold_3_delay',
+            'humata_delay_cooldown_minutes',
             'humata_trigger_pages',
             'humata_suggested_questions',
+            'humata_followup_questions',
         );
 
         if ( ! in_array( (string) $option, $plugin_options, true ) ) {

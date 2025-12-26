@@ -99,25 +99,6 @@ trait Humata_Chatbot_Admin_Settings_Render_Sections_Trait {
     }
 
     /**
-     * Render Cloudflare Turnstile section description.
-     *
-     * @since 1.0.0
-     * @return void
-     */
-    public function render_turnstile_section() {
-        ?>
-        <p>
-            <?php esc_html_e( 'Cloudflare Turnstile provides human verification to protect against bots. Users must complete a challenge before sending their first message.', 'humata-chatbot' ); ?>
-        </p>
-        <p>
-            <a href="https://dash.cloudflare.com/?to=/:account/turnstile" target="_blank" rel="noopener noreferrer">
-                <?php esc_html_e( 'Get your Turnstile keys from Cloudflare Dashboard', 'humata-chatbot' ); ?>
-            </a>
-        </p>
-        <?php
-    }
-
-    /**
      * Render logo settings section description.
      *
      * @since 1.0.0

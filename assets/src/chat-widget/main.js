@@ -7,9 +7,20 @@
  * @since 1.0.0
  */
 
-import { config, STORAGE_KEY, CONVERSATION_KEY, THEME_KEY, TURNSTILE_VERIFIED_KEY } from './config.js';
+import { config, STORAGE_KEY, CONVERSATION_KEY, THEME_KEY } from './config.js';
 import { setAvatarContent } from './avatars.js';
 import { initSuggestedQuestions, hideSuggestedQuestions } from './suggested-questions.js';
+import { initFollowUpQuestions, renderFollowUpQuestions, hideFollowUpQuestions } from './follow-up-questions.js';
+import {
+    initBotProtection,
+    isBotProtectionEnabled,
+    isPowEnabled,
+    isPowVerified,
+    setPowVerified,
+    getBotProtectionHeaders,
+    extractPowChallenge,
+    clearPowVerification
+} from './bot-protection.js';
 
 (function() {
     'use strict';
@@ -23,10 +34,6 @@ import { initSuggestedQuestions, hideSuggestedQuestions } from './suggested-ques
     let activeEdit = null;
     let maxPromptChars = 3000;
     let isEmbedded = false;
-    let turnstileToken = null;
-    let turnstileWidgetId = null;
-    let turnstileReady = false;
-    let turnstilePendingCallback = null;
 
     /**
      * Initialize the chat widget.
@@ -61,8 +68,8 @@ import { initSuggestedQuestions, hideSuggestedQuestions } from './suggested-ques
         // Initialize theme
         initTheme();
 
-        // Initialize Turnstile if enabled
-        initTurnstile();
+        // Initialize bot protection
+        initBotProtection();
 
         if (elements.welcomeMessage) {
             ensureCopyButton(elements.welcomeMessage.querySelector('.humata-message-content'));
@@ -91,6 +98,9 @@ import { initSuggestedQuestions, hideSuggestedQuestions } from './suggested-ques
 
         // Initialize suggested questions (only if no history loaded)
         initSuggestedQuestionsIfEmpty();
+
+        // Initialize follow-up questions handler
+        initFollowUpQuestions(handleFollowUpQuestionClick);
     }
 
     /**
@@ -117,6 +127,30 @@ import { initSuggestedQuestions, hideSuggestedQuestions } from './suggested-ques
 
         // Hide suggested questions
         hideSuggestedQuestions();
+
+        // Store user message for intent link matching
+        lastUserMessageForIntents = question;
+
+        // Add user message to chat
+        addMessage(question, 'user');
+
+        // Get history and send
+        const history = getChatHistoryForRequest();
+        sendMessage(question, history);
+    }
+
+    /**
+     * Handle click on a follow-up question - send it immediately.
+     *
+     * @param {string} question The question text.
+     */
+    function handleFollowUpQuestionClick(question) {
+        if (!question || isLoading) {
+            return;
+        }
+
+        // Hide follow-up questions
+        hideFollowUpQuestions();
 
         // Store user message for intent link matching
         lastUserMessageForIntents = question;
@@ -304,171 +338,24 @@ import { initSuggestedQuestions, hideSuggestedQuestions } from './suggested-ques
     }
 
     /**
-     * Check if Turnstile is enabled.
+     * Wrap a promise with a timeout.
      *
-     * @returns {boolean} True if Turnstile is enabled.
+     * @param {Promise} promise - The promise to wrap.
+     * @param {number} ms - Timeout in milliseconds.
+     * @param {string} errorType - Error type identifier for timeout.
+     * @returns {Promise} Resolves with promise result or rejects on timeout.
      */
-    function isTurnstileEnabled() {
-        return config.turnstile && config.turnstile.enabled && config.turnstile.siteKey;
-    }
-
-    /**
-     * Check if user is already verified in this session.
-     *
-     * @returns {boolean} True if already verified.
-     */
-    function isTurnstileVerified() {
-        if (!isTurnstileEnabled()) {
-            return true;
-        }
-        return sessionStorage.getItem(TURNSTILE_VERIFIED_KEY) === 'true';
-    }
-
-    /**
-     * Mark Turnstile as verified in session storage.
-     */
-    function setTurnstileVerified() {
-        sessionStorage.setItem(TURNSTILE_VERIFIED_KEY, 'true');
-    }
-
-    /**
-     * Load Cloudflare Turnstile script.
-     *
-     * @returns {Promise} Resolves when script is loaded.
-     */
-    function loadTurnstileScript() {
-        return new Promise(function(resolve, reject) {
-            if (window.turnstile) {
-                turnstileReady = true;
-                resolve();
-                return;
-            }
-
-            const script = document.createElement('script');
-            script.src = 'https://challenges.cloudflare.com/turnstile/v0/api.js?onload=onTurnstileLoad';
-            script.async = true;
-            script.defer = true;
-
-            // Global callback for Turnstile script load
-            window.onTurnstileLoad = function() {
-                turnstileReady = true;
-                resolve();
-            };
-
-            script.onerror = function() {
-                reject(new Error('Failed to load Turnstile script'));
-            };
-
-            document.head.appendChild(script);
-        });
-    }
-
-    /**
-     * Show Turnstile widget and get verification token.
-     *
-     * @returns {Promise<string>} Resolves with the Turnstile token.
-     */
-    function getTurnstileToken() {
-        return new Promise(function(resolve, reject) {
-            // If already verified, resolve immediately
-            if (isTurnstileVerified()) {
-                resolve(null);
-                return;
-            }
-
-            // Get the container element
-            const container = document.getElementById('humata-turnstile-container');
-            if (!container) {
-                // No container, skip Turnstile
-                resolve(null);
-                return;
-            }
-
-            // Load script if not already loaded
-            loadTurnstileScript().then(function() {
-                console.log('Turnstile script loaded, preparing to render widget');
-
-                // Remove any existing widget first
-                if (turnstileWidgetId !== null && window.turnstile) {
-                    try {
-                        window.turnstile.remove(turnstileWidgetId);
-                    } catch (e) {
-                        // Ignore removal errors
-                    }
-                    turnstileWidgetId = null;
-                }
-
-                // Prepare the container - must be visible for Turnstile to work
-                container.innerHTML = '<div id="humata-turnstile-widget"></div>';
-                container.style.display = 'flex';
-
-                const widgetContainer = document.getElementById('humata-turnstile-widget');
-                console.log('Turnstile container visible, widget container:', widgetContainer);
-
-                // Small delay to ensure DOM is ready
+    function withTimeout(promise, ms, errorType) {
+        return Promise.race([
+            promise,
+            new Promise(function(_, reject) {
                 setTimeout(function() {
-                    try {
-                        // Render the Turnstile widget
-                        turnstileWidgetId = window.turnstile.render(widgetContainer, {
-                            sitekey: config.turnstile.siteKey,
-                            appearance: config.turnstile.appearance || 'managed',
-                            theme: document.documentElement.classList.contains('humata-theme-dark') ? 'dark' : 'light',
-                            size: 'normal',
-                            callback: function(token) {
-                                turnstileToken = token;
-                                // Hide container after verification
-                                container.style.display = 'none';
-                                container.innerHTML = '';
-                                resolve(token);
-                            },
-                            'error-callback': function(errorCode) {
-                                console.error('Turnstile error:', errorCode);
-                                container.style.display = 'none';
-                                container.innerHTML = '';
-                                reject(new Error('Turnstile verification failed: ' + (errorCode || 'unknown')));
-                            },
-                            'expired-callback': function() {
-                                // Token expired, need to re-verify
-                                turnstileToken = null;
-                            }
-                        });
-                        
-                        // Check if Cloudflare rendered a visible widget (iframe)
-                        // If not, hide the container since verification is happening invisibly
-                        setTimeout(function() {
-                            const iframe = widgetContainer.querySelector('iframe');
-                            if (!iframe) {
-                                // No visible widget - Cloudflare is verifying invisibly
-                                // Hide the empty container to avoid showing a blank box
-                                container.style.display = 'none';
-                            }
-                        }, 100);
-                    } catch (renderError) {
-                        console.error('Turnstile render error:', renderError);
-                        container.style.display = 'none';
-                        container.innerHTML = '';
-                        reject(renderError);
-                    }
-                }, 50);
-            }).catch(function(error) {
-                console.error('Turnstile script load error:', error);
-                reject(error);
-            });
-        });
-    }
-
-    /**
-     * Initialize Turnstile if enabled.
-     */
-    function initTurnstile() {
-        if (!isTurnstileEnabled()) {
-            return;
-        }
-
-        // Preload the script for faster first-message experience
-        loadTurnstileScript().catch(function() {
-            // Silent fail - will retry when needed
-        });
+                    const error = new Error('Operation timed out');
+                    error.type = errorType;
+                    reject(error);
+                }, ms);
+            })
+        ]);
     }
 
     /**
@@ -1119,6 +1006,9 @@ import { initSuggestedQuestions, hideSuggestedQuestions } from './suggested-ques
 
         // Hide suggested questions on first send
         hideSuggestedQuestions();
+
+        // Hide any existing follow-up questions
+        hideFollowUpQuestions();
 
         if (rawMessage.length > maxPromptChars) {
             const errorMessage = config.i18n?.errorPromptTooLong || ('Message is too long. Maximum is ' + maxPromptChars + ' characters.');
@@ -2860,23 +2750,10 @@ import { initSuggestedQuestions, hideSuggestedQuestions } from './suggested-ques
 
         isLoading = true;
 
+        // Show loading indicator immediately for user feedback
+        showLoading();
+
         try {
-            // Check if Turnstile verification is needed (before showing loading)
-            let turnstileTokenForRequest = null;
-            if (isTurnstileEnabled() && !isTurnstileVerified()) {
-                try {
-                    turnstileTokenForRequest = await getTurnstileToken();
-                } catch (turnstileError) {
-                    console.error('Turnstile error:', turnstileError);
-                    isLoading = false;
-                    addMessage(config.i18n?.errorTurnstile || 'Human verification failed. Please try again.', 'bot', true);
-                    return;
-                }
-            }
-
-            // Show loading indicator after Turnstile verification
-            showLoading();
-
             // Build request headers
             const headers = {
                 'Content-Type': 'application/json',
@@ -2884,12 +2761,15 @@ import { initSuggestedQuestions, hideSuggestedQuestions } from './suggested-ques
                 'X-Humata-Nonce': config.nonce
             };
 
-            // Include Turnstile token if we have one
-            if (turnstileTokenForRequest) {
-                headers['X-Turnstile-Token'] = turnstileTokenForRequest;
+            // Include bot protection headers
+            let botProtectionHeaders = {};
+            let powChallenge = null;
+            if (isBotProtectionEnabled()) {
+                botProtectionHeaders = await getBotProtectionHeaders();
+                Object.assign(headers, botProtectionHeaders);
             }
 
-            const response = await fetch(config.apiUrl, {
+            let response = await fetch(config.apiUrl, {
                 method: 'POST',
                 credentials: 'same-origin',
                 headers: headers,
@@ -2898,6 +2778,33 @@ import { initSuggestedQuestions, hideSuggestedQuestions } from './suggested-ques
                     history: history
                 })
             });
+
+            // Handle PoW challenge response - solve and retry
+            // Check for 403 even if client thinks it's verified (server transient may have expired)
+            if (response.status === 403 && isPowEnabled()) {
+                const errorData = await response.json();
+                powChallenge = extractPowChallenge(errorData);
+                
+                if (powChallenge) {
+                    // Clear stale client verification state if server requires new challenge
+                    clearPowVerification();
+                    
+                    // Solve the PoW challenge
+                    const powHeaders = await getBotProtectionHeaders(powChallenge);
+                    Object.assign(headers, powHeaders);
+                    
+                    // Retry the request with PoW solution
+                    response = await fetch(config.apiUrl, {
+                        method: 'POST',
+                        credentials: 'same-origin',
+                        headers: headers,
+                        body: JSON.stringify({
+                            message: message,
+                            history: history
+                        })
+                    });
+                }
+            }
 
             hideLoading();
 
@@ -2909,16 +2816,6 @@ import { initSuggestedQuestions, hideSuggestedQuestions } from './suggested-ques
 
                 if (response.status === 429) {
                     errorMessage = config.i18n?.errorRateLimit || 'Too many requests. Please wait a moment.';
-                } else if (data && data.code === 'turnstile_required') {
-                    // Server requires Turnstile verification - clear local state and retry
-                    sessionStorage.removeItem(TURNSTILE_VERIFIED_KEY);
-                    turnstileToken = null;
-                    errorMessage = config.i18n?.errorTurnstileRequired || 'Please complete the human verification to continue.';
-                } else if (data && data.code === 'turnstile_failed') {
-                    // Turnstile verification failed
-                    sessionStorage.removeItem(TURNSTILE_VERIFIED_KEY);
-                    turnstileToken = null;
-                    errorMessage = config.i18n?.errorTurnstileFailed || 'Human verification failed. Please try again.';
                 } else if (data && typeof data.message === 'string' && data.message.trim() !== '') {
                     const providerMentionPattern = /\b(straico|humata|anthropic|claude)\b/i;
                     errorMessage = providerMentionPattern.test(data.message) ? requestFailedMessage : data.message;
@@ -2930,9 +2827,9 @@ import { initSuggestedQuestions, hideSuggestedQuestions } from './suggested-ques
                 return;
             }
 
-            // Mark Turnstile as verified on successful response
-            if (isTurnstileEnabled() && turnstileTokenForRequest) {
-                setTurnstileVerified();
+            // Mark PoW as verified on successful response
+            if (isPowEnabled() && !isPowVerified()) {
+                setPowVerified();
             }
 
             if (data.success && data.answer) {
@@ -2941,6 +2838,13 @@ import { initSuggestedQuestions, hideSuggestedQuestions } from './suggested-ques
                 if (botMessageEl && lastUserMessageForIntents) {
                     appendIntentLinksToMessage(botMessageEl, lastUserMessageForIntents);
                     saveHistory(); // Re-save to include intent links
+                }
+                // Render follow-up questions if provided
+                if (botMessageEl && data.followUpQuestions && Array.isArray(data.followUpQuestions) && data.followUpQuestions.length > 0) {
+                    renderFollowUpQuestions(botMessageEl, data.followUpQuestions);
+                    // Store on element for persistence
+                    botMessageEl._humataFollowUpQuestions = data.followUpQuestions;
+                    saveHistory(); // Re-save to include follow-up questions
                 }
                 // Scroll to the beginning of the bot's response
                 scrollToMessage(botMessageEl);
@@ -3290,6 +3194,11 @@ import { initSuggestedQuestions, hideSuggestedQuestions } from './suggested-ques
                 } else {
                     // Store the user message that triggered this bot response for intent links
                     msgData.triggerUserMessage = lastUserMessage;
+                    
+                    // Store follow-up questions if present on this message
+                    if (el._humataFollowUpQuestions && Array.isArray(el._humataFollowUpQuestions)) {
+                        msgData.followUpQuestions = el._humataFollowUpQuestions;
+                    }
                 }
 
                 messages.push(msgData);
@@ -3359,7 +3268,18 @@ import { initSuggestedQuestions, hideSuggestedQuestions } from './suggested-ques
                 if (msg.type === 'bot' && !msg.isError && msg.triggerUserMessage) {
                     appendIntentLinksToMessage(messageDiv, msg.triggerUserMessage);
                 }
+
+                // Store follow-up questions on element for later restoration
+                if (msg.type === 'bot' && !msg.isError && msg.followUpQuestions && Array.isArray(msg.followUpQuestions)) {
+                    messageDiv._humataFollowUpQuestions = msg.followUpQuestions;
+                }
             });
+
+            // Restore follow-up questions for the last bot message only
+            const lastBotMessage = elements.messages.querySelector('.humata-message-bot:last-of-type:not(.humata-message-error)');
+            if (lastBotMessage && lastBotMessage._humataFollowUpQuestions && lastBotMessage._humataFollowUpQuestions.length > 0) {
+                renderFollowUpQuestions(lastBotMessage, lastBotMessage._humataFollowUpQuestions);
+            }
 
             // Load conversation ID
             conversationId = localStorage.getItem(CONVERSATION_KEY);

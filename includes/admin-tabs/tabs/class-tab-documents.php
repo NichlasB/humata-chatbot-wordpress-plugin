@@ -544,7 +544,7 @@ class Humata_Chatbot_Settings_Tab_Documents extends Humata_Chatbot_Settings_Tab_
 			<h2>
 				<?php esc_html_e( 'Indexed Documents', 'humata-chatbot' ); ?>
 				<?php if ( $total > 0 ) : ?>
-					<span class="title-count" style="font-size: 13px; font-weight: normal; color: #50575e;">
+					<span class="title-count" style="font-size: 13px; font-weight: normal;">
 						(<?php echo esc_html( $total ); ?>)
 					</span>
 				<?php endif; ?>

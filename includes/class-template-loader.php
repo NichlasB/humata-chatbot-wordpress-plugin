@@ -222,12 +222,43 @@ class Humata_Chatbot_Template_Loader {
                     'errorRateLimit' => __( 'Too many requests. Please wait a moment.', 'humata-chatbot' ),
                     'chatCleared'    => __( 'Chat history cleared.', 'humata-chatbot' ),
                     'relatedResources' => __( 'Related resources:', 'humata-chatbot' ),
-                    'errorTurnstile' => __( 'Human verification failed. Please try again.', 'humata-chatbot' ),
-                    'errorTurnstileRequired' => __( 'Please complete the human verification to continue.', 'humata-chatbot' ),
-                    'errorTurnstileFailed' => __( 'Human verification failed. Please try again.', 'humata-chatbot' ),
                 ),
-                'turnstile' => $this->get_turnstile_config(),
+                'botProtection' => $this->get_bot_protection_config(),
+                'pageLoadTime' => time(),
             )
+        );
+    }
+
+    /**
+     * Get bot protection configuration for frontend.
+     *
+     * @since 1.0.0
+     * @return array
+     */
+    private function get_bot_protection_config() {
+        $enabled = (bool) get_option( 'humata_bot_protection_enabled', false );
+        if ( ! $enabled ) {
+            return array(
+                'enabled' => false,
+            );
+        }
+
+        $honeypot_enabled = (bool) get_option( 'humata_honeypot_enabled', true );
+        $pow_enabled      = (bool) get_option( 'humata_pow_enabled', true );
+        $pow_difficulty   = absint( get_option( 'humata_pow_difficulty', 4 ) );
+
+        if ( $pow_difficulty < 1 ) {
+            $pow_difficulty = 4;
+        }
+        if ( $pow_difficulty > 8 ) {
+            $pow_difficulty = 8;
+        }
+
+        return array(
+            'enabled'          => true,
+            'honeypotEnabled'  => $honeypot_enabled,
+            'powEnabled'       => $pow_enabled,
+            'powDifficulty'    => $pow_difficulty,
         );
     }
 
@@ -267,31 +298,6 @@ class Humata_Chatbot_Template_Loader {
         }
 
         return array_values( $rules );
-    }
-
-    /**
-     * Get Cloudflare Turnstile configuration for frontend.
-     *
-     * @since 1.0.0
-     * @return array
-     */
-    private function get_turnstile_config() {
-        $enabled    = (int) get_option( 'humata_turnstile_enabled', 0 );
-        $site_key   = get_option( 'humata_turnstile_site_key', '' );
-        $appearance = get_option( 'humata_turnstile_appearance', 'managed' );
-
-        if ( ! is_string( $site_key ) ) {
-            $site_key = '';
-        }
-        if ( ! is_string( $appearance ) ) {
-            $appearance = 'managed';
-        }
-
-        return array(
-            'enabled'    => ( 1 === $enabled && '' !== trim( $site_key ) ),
-            'siteKey'    => sanitize_text_field( $site_key ),
-            'appearance' => sanitize_text_field( $appearance ),
-        );
     }
 
     /**
