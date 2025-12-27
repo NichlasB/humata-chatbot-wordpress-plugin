@@ -1,6 +1,8 @@
-# Humata Chatbot – Cursor AI Rules
+# Humata Chatbot – Windsurf AI Rules
 
 This is a WordPress plugin. Follow these conventions when adding features or modifying code.
+
+---
 
 ## File Organization
 
@@ -28,6 +30,8 @@ This is a WordPress plugin. Follow these conventions when adding features or mod
 - **Use ES6 modules** with named exports
 - **Run `npm run build`** after any JS/CSS changes
 
+---
+
 ## Naming Conventions
 
 ### PHP
@@ -45,17 +49,56 @@ This is a WordPress plugin. Follow these conventions when adding features or mod
 - BEM-style: `.humata-{block}__element--modifier`
 - Use CSS custom properties for theming
 
+---
+
+## Security (Non-negotiable)
+
+### Requirements for All Code
+
+- **Nonces**: Every form and AJAX request must use `wp_nonce_field()` / `wp_verify_nonce()`
+- **Capability checks**: Use `current_user_can()` before any sensitive operation
+- **Database queries**: Always use `$wpdb->prepare()` for variable parameters
+- **Input sanitization**: Sanitize ALL user input before use:
+  - `sanitize_text_field()` for strings
+  - `absint()` for integers
+  - `sanitize_textarea_field()` for textareas
+  - `wp_kses_post()` for HTML content
+- **Output escaping**: Escape ALL output:
+  - `esc_html()` for text content
+  - `esc_attr()` for attributes
+  - `esc_url()` for URLs
+  - `esc_js()` for inline JS
+  - `wp_json_encode()` for JSON responses
+- **Never use**: `eval()`, `extract()`, or `include()` with user input
+
+### Security Checklist (For Code Review)
+
+Before completing any feature, verify:
+
+- [ ] All forms use `wp_nonce_field()` / `wp_verify_nonce()`
+- [ ] All user input sanitized with appropriate `sanitize_*()` function
+- [ ] All database queries use `$wpdb->prepare()`
+- [ ] All output escaped with appropriate `esc_*()` function
+- [ ] Capability checks with `current_user_can()` for admin operations
+- [ ] AJAX endpoints verify nonce and capabilities
+- [ ] REST endpoints have proper permission callbacks
+- [ ] No `$_GET`, `$_POST`, `$_REQUEST` used without sanitization
+- [ ] Settings sanitized via `register_setting()` callbacks
+
+---
+
 ## WordPress Standards
 
 - Guard clause first: `defined( 'ABSPATH' ) || exit;`
-- Use `esc_html__()`, `esc_attr()`, `wp_kses_post()` for output escaping
-- Use `sanitize_text_field()`, `absint()` for input sanitization
 - Register all settings via `register_setting()` with sanitize callbacks
 - Use `wp_localize_script()` to pass PHP data to JavaScript
+
+---
 
 ## Adding Features
 
 ### New Admin Setting
+
 1. Define option default in `humata-chatbot.php` activation hook
 2. Register in `includes/Admin/Settings/Register.php`
 3. Add sanitizer in `includes/Admin/Settings/Sanitize/`
@@ -68,15 +111,67 @@ This is a WordPress plugin. Follow these conventions when adding features or mod
 > **Important**: Steps 6-7 prevent settings from resetting when saving on a different tab. Missing these causes cross-tab wipe issues.
 
 ### New REST Endpoint
+
 1. Create service class in `includes/Rest/` if needed
 2. Register route in `class-rest-api.php`
 3. Implement handler that delegates to services
+4. Add permission callback for authentication
+5. Sanitize all input parameters
+6. Return `WP_REST_Response` or `WP_Error`
 
 ### New JS Feature
+
 1. Create module in appropriate `assets/src/` folder
 2. Export functions with named exports
 3. Import in entry point
 4. Run `npm run build`
+
+### New AJAX Endpoint
+
+1. Register with `wp_ajax_{action}` hook (and `wp_ajax_nopriv_{action}` if public)
+2. Verify nonce with `wp_verify_nonce()`
+3. Check capabilities with `current_user_can()`
+4. Sanitize all input parameters
+5. Return with `wp_send_json_success()` or `wp_send_json_error()`
+
+---
+
+## Testing
+
+### Structure
+
+Tests should mirror the plugin structure:
+
+```
+tests/
+├── bootstrap.php
+├── test-rest-api.php
+├── test-rate-limiter.php
+├── test-bot-protection.php
+└── ...
+```
+
+### Writing Tests
+
+- Use PHPUnit with mocked WordPress functions
+- Test each service class independently
+- Mock external API calls (Humata, Straico, Anthropic)
+- Target 80%+ coverage for core logic
+
+### Running Tests
+
+```bash
+# Run all tests
+./vendor/bin/phpunit
+
+# Run specific test file
+./vendor/bin/phpunit tests/test-rate-limiter.php
+
+# Generate coverage report
+./vendor/bin/phpunit --coverage-html=coverage/
+```
+
+---
 
 ## Do NOT
 
@@ -85,8 +180,18 @@ This is a WordPress plugin. Follow these conventions when adding features or mod
 - Create monolithic files over 300 lines
 - Use jQuery in new code (vanilla JS only)
 - Skip sanitization/escaping
+- Leave debug code (`console.log`, `var_dump`, `error_log` for debugging)
+- Use `$_GET`, `$_POST`, `$_REQUEST` without sanitization
+- Commit database queries without `$wpdb->prepare()`
+
+---
 
 ## Build Commands
+
+| Command | Purpose |
+|---------|---------|
+| `npm run build` | Production build (minified) |
+| `npm run dev` | Watch mode for development |
 
 When running `npm run build`, if `npm` or `node` is not in PATH, use the full path to node.exe:
 
@@ -96,10 +201,14 @@ When running `npm run build`, if `npm` or `node` is not in PATH, use the full pa
 
 This directly runs the build script and bypasses PATH issues.
 
+---
+
 ## Verification After Changes
 
-1. Run `npm run build` (or use full path above) – ensure no errors
-2. Verify `assets/dist/` outputs exist
-3. Test admin settings page loads
-4. Test frontend chat interface loads
-
+1. ✅ Run `npm run build` (or use full path above) – no errors
+2. ✅ Verify `assets/dist/` outputs exist
+3. ✅ Run PHP linting on changed files
+4. ✅ Test admin settings page loads (all tabs work)
+5. ✅ Test frontend chat interface loads
+6. ✅ Run `./vendor/bin/phpunit` – all tests pass (if tests exist for changed code)
+7. ✅ Verify security checklist items for any new code
