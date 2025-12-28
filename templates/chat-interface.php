@@ -124,14 +124,14 @@ $should_noindex     = ! ( $is_homepage_mode && $allow_seo_indexing );
                         <line x1="12" y1="15" x2="12" y2="3"></line>
                     </svg>
                 </button>
-                <button type="button" id="humata-clear-chat" title="<?php esc_attr_e( 'Clear Chat', 'humata-chatbot' ); ?>">
+                <button type="button" id="humata-clear-chat" title="<?php esc_attr_e( 'Clear Chat', 'humata-chatbot' ); ?>" aria-label="<?php esc_attr_e( 'Clear Chat', 'humata-chatbot' ); ?>">
                     <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round">
                         <path d="M3 6h18"></path>
                         <path d="M19 6v14c0 1-1 2-2 2H7c-1 0-2-1-2-2V6"></path>
                         <path d="M8 6V4c0-1 1-2 2-2h4c1 0 2 1 2 2v2"></path>
                     </svg>
                 </button>
-                <button type="button" id="humata-theme-toggle" title="<?php esc_attr_e( 'Toggle Theme', 'humata-chatbot' ); ?>">
+                <button type="button" id="humata-theme-toggle" title="<?php esc_attr_e( 'Toggle Theme', 'humata-chatbot' ); ?>" aria-label="<?php esc_attr_e( 'Toggle Theme', 'humata-chatbot' ); ?>">
                     <svg class="humata-icon-sun" xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round">
                         <circle cx="12" cy="12" r="5"></circle>
                         <line x1="12" y1="1" x2="12" y2="3"></line>
@@ -182,12 +182,13 @@ $should_noindex     = ! ( $is_homepage_mode && $allow_seo_indexing );
                 <div class="humata-input-wrapper">
                     <textarea
                         id="humata-chat-input"
+                        aria-label="<?php esc_attr_e( 'Ask a question', 'humata-chatbot' ); ?>"
                         placeholder="<?php esc_attr_e( 'Ask a question...', 'humata-chatbot' ); ?>"
                         maxlength="<?php echo esc_attr( $max_prompt_chars ); ?>"
                         rows="1"
                         autofocus
                     ></textarea>
-                    <button type="button" id="humata-send-button" title="<?php esc_attr_e( 'Send', 'humata-chatbot' ); ?>" disabled>
+                    <button type="button" id="humata-send-button" title="<?php esc_attr_e( 'Send', 'humata-chatbot' ); ?>" aria-label="<?php esc_attr_e( 'Send', 'humata-chatbot' ); ?>" disabled>
                         <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round">
                             <line x1="22" y1="2" x2="11" y2="13"></line>
                             <polygon points="22 2 15 22 11 13 2 9 22 2"></polygon>

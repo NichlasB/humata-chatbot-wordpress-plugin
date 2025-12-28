@@ -34,6 +34,7 @@ import {
     let activeEdit = null;
     let maxPromptChars = 3000;
     let isEmbedded = false;
+    let accordionIdCounter = 0;
 
     /**
      * Initialize the chat widget.
@@ -324,6 +325,10 @@ import {
             html.classList.add('humata-theme-light');
             body.classList.add('humata-theme-light');
         }
+
+        if (elements.themeToggle) {
+            elements.themeToggle.setAttribute('aria-pressed', theme === 'dark' ? 'true' : 'false');
+        }
     }
 
     /**
@@ -409,6 +414,71 @@ import {
 
         // Medical disclaimer modal
         initMedicalDisclaimerModal();
+
+        installModalFocusTrap();
+    }
+
+    function installModalFocusTrap() {
+        if (typeof window === 'undefined') {
+            return;
+        }
+
+        if (window.__humataModalFocusTrapInstalled) {
+            return;
+        }
+        window.__humataModalFocusTrapInstalled = true;
+
+        document.addEventListener('keydown', function(e) {
+            if (e.key !== 'Tab') {
+                return;
+            }
+
+            const openModal = document.querySelector('.humata-help-modal.is-open');
+            if (!openModal) {
+                return;
+            }
+
+            const dialog = openModal.querySelector('.humata-help-modal__dialog');
+            if (!dialog) {
+                return;
+            }
+
+            const focusableNodeList = dialog.querySelectorAll(
+                'a[href], area[href], button:not([disabled]), input:not([disabled]):not([type="hidden"]), select:not([disabled]), textarea:not([disabled]), iframe, object, embed, [contenteditable], [tabindex]:not([tabindex="-1"])'
+            );
+            const focusable = Array.prototype.slice.call(focusableNodeList).filter(function(el) {
+                return !!(el.offsetWidth || el.offsetHeight || el.getClientRects().length);
+            });
+
+            if (!focusable.length) {
+                return;
+            }
+
+            const first = focusable[0];
+            const last = focusable[focusable.length - 1];
+            const active = document.activeElement;
+
+            if (!dialog.contains(active)) {
+                e.preventDefault();
+                if (e.shiftKey) {
+                    last.focus();
+                } else {
+                    first.focus();
+                }
+                return;
+            }
+
+            if (e.shiftKey && active === first) {
+                e.preventDefault();
+                last.focus();
+                return;
+            }
+
+            if (!e.shiftKey && active === last) {
+                e.preventDefault();
+                first.focus();
+            }
+        });
     }
 
     /**
@@ -2527,19 +2597,31 @@ import {
             const item = document.createElement('div');
             item.className = 'humata-accordion-item';
 
+            const contentId = 'humata-accordion-content-' + (++accordionIdCounter);
+            const toggleId = 'humata-accordion-toggle-' + accordionIdCounter;
+
             const toggle = document.createElement('button');
             toggle.type = 'button';
             toggle.className = 'humata-accordion-toggle';
+            toggle.id = toggleId;
+            toggle.setAttribute('aria-expanded', 'false');
+            toggle.setAttribute('aria-controls', contentId);
             toggle.innerHTML = '<span>' + escapeHtml(acc.title) + '</span>' +
                 '<svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="6 9 12 15 18 9"></polyline></svg>';
 
-            toggle.addEventListener('click', function() {
-                item.classList.toggle('open');
-            });
-
             const content = document.createElement('div');
             content.className = 'humata-accordion-content';
+            content.id = contentId;
+            content.hidden = true;
+            content.setAttribute('role', 'region');
+            content.setAttribute('aria-labelledby', toggleId);
             content.innerHTML = acc.content; // Pre-sanitized server-side
+
+            toggle.addEventListener('click', function() {
+                const isOpen = item.classList.toggle('open');
+                toggle.setAttribute('aria-expanded', isOpen ? 'true' : 'false');
+                content.hidden = !isOpen;
+            });
 
             item.appendChild(toggle);
             item.appendChild(content);

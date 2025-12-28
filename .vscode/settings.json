@@ -1,5 +1,7 @@
 {
-  "task.allowAutomaticTasks": "on"
+  "task.allowAutomaticTasks": "on",
+  "php.validate.enable": true,
+  "php.validate.executablePath": "C:\\php\\php.exe"
 }
 
 
