@@ -129,6 +129,33 @@ The chat widget uses CSS custom properties for theming. Override in your theme:
 }
 ```
 
+## Server Security Configuration
+
+### Local Documents Protection
+
+When using the Local Documents feature, the plugin stores files in `wp-content/uploads/humata-search/`. Protection files (`.htaccess`, `index.php`, `web.config`) are automatically created, but **Nginx requires manual configuration**.
+
+#### Nginx Configuration
+
+Add this to your server block to protect local search data:
+
+```nginx
+# Block direct access to Humata search data
+location ~* /wp-content/uploads/humata-search/ {
+    deny all;
+    return 403;
+}
+```
+
+#### Apache / LiteSpeed
+
+Automatic — the plugin creates `.htaccess` files with `Deny from all`.
+
+#### IIS
+
+Automatic — the plugin creates `web.config` files with `<deny users="*" />`.
+
+
 
 
 

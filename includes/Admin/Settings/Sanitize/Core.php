@@ -116,7 +116,7 @@ trait Humata_Chatbot_Admin_Settings_Sanitize_Core_Trait {
      */
     public function sanitize_second_llm_provider( $value ) {
         $value = sanitize_text_field( (string) $value );
-        $valid = array( 'none', 'straico', 'anthropic' );
+        $valid = array( 'none', 'straico', 'anthropic', 'openrouter' );
         return in_array( $value, $valid, true ) ? $value : 'none';
     }
 
@@ -144,7 +144,7 @@ trait Humata_Chatbot_Admin_Settings_Sanitize_Core_Trait {
      */
     public function sanitize_local_first_llm_provider( $value ) {
         $value = sanitize_text_field( (string) $value );
-        $valid = array( 'straico', 'anthropic' );
+        $valid = array( 'straico', 'anthropic', 'openrouter' );
         return in_array( $value, $valid, true ) ? $value : 'straico';
     }
 
@@ -157,10 +157,11 @@ trait Humata_Chatbot_Admin_Settings_Sanitize_Core_Trait {
      */
     public function sanitize_local_second_llm_provider( $value ) {
         $value = sanitize_text_field( (string) $value );
-        $valid = array( 'none', 'straico', 'anthropic' );
+        $valid = array( 'none', 'straico', 'anthropic', 'openrouter' );
         return in_array( $value, $valid, true ) ? $value : 'none';
     }
 }
+
 
 
 

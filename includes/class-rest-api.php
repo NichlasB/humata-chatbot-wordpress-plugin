@@ -18,6 +18,7 @@ require_once __DIR__ . '/Rest/SseParser.php';
 require_once __DIR__ . '/Rest/KeyRotator.php';
 require_once __DIR__ . '/Rest/Clients/StraicoClient.php';
 require_once __DIR__ . '/Rest/Clients/AnthropicClient.php';
+require_once __DIR__ . '/Rest/Clients/OpenRouterClient.php';
 
 /**
  * Class Humata_Chatbot_REST_API
@@ -81,6 +82,14 @@ class Humata_Chatbot_REST_API {
     private $anthropic_client;
 
     /**
+     * OpenRouter client (second-stage review).
+     *
+     * @since 1.0.0
+     * @var Humata_Chatbot_Rest_OpenRouter_Client
+     */
+    private $openrouter_client;
+
+    /**
      * Key rotator for API key rotation.
      *
      * @since 1.0.0
@@ -109,10 +118,12 @@ class Humata_Chatbot_REST_API {
         $this->key_rotator        = new Humata_Chatbot_Rest_Key_Rotator();
         $this->straico_client     = new Humata_Chatbot_Rest_Straico_Client();
         $this->anthropic_client   = new Humata_Chatbot_Rest_Anthropic_Client();
+        $this->openrouter_client  = new Humata_Chatbot_Rest_OpenRouter_Client();
 
         // Inject key rotator into clients.
         $this->straico_client->set_key_rotator( $this->key_rotator );
         $this->anthropic_client->set_key_rotator( $this->key_rotator );
+        $this->openrouter_client->set_key_rotator( $this->key_rotator );
 
         add_action( 'rest_api_init', array( $this, 'register_routes' ) );
         add_filter( 'rest_authentication_errors', array( $this, 'maybe_bypass_cookie_check' ), 101 );
@@ -514,6 +525,36 @@ class Humata_Chatbot_REST_API {
             }
 
             $answer = $reviewed;
+        } elseif ( 'openrouter' === $second_llm_provider ) {
+            $openrouter_api_keys = get_option( 'humata_openrouter_api_key', array() );
+            $openrouter_model    = get_option( 'humata_openrouter_model', '' );
+            $system_prompt       = get_option( 'humata_straico_system_prompt', '' );
+
+            if ( ! is_array( $openrouter_api_keys ) ) {
+                $openrouter_api_keys = is_string( $openrouter_api_keys ) && '' !== $openrouter_api_keys ? array( $openrouter_api_keys ) : array();
+            }
+            // Fallback to default model if not set.
+            if ( ! is_string( $openrouter_model ) || '' === $openrouter_model ) {
+                $openrouter_model = 'mistralai/mistral-medium-3.1';
+            }
+            if ( ! is_string( $system_prompt ) ) {
+                $system_prompt = '';
+            }
+
+            $reviewed = $this->openrouter_client->review(
+                $openrouter_api_keys,
+                $openrouter_model,
+                $system_prompt,
+                $message,
+                $answer,
+                'openrouter_second_stage'
+            );
+
+            if ( is_wp_error( $reviewed ) ) {
+                return $reviewed;
+            }
+
+            $answer = $reviewed;
         }
 
         // Generate follow-up questions if enabled.
@@ -586,7 +627,7 @@ class Humata_Chatbot_REST_API {
         if ( ! is_string( $first_llm_provider ) ) {
             $first_llm_provider = 'straico';
         }
-        if ( ! in_array( $first_llm_provider, array( 'straico', 'anthropic' ), true ) ) {
+        if ( ! in_array( $first_llm_provider, array( 'straico', 'anthropic', 'openrouter' ), true ) ) {
             $first_llm_provider = 'straico';
         }
 
@@ -610,6 +651,27 @@ class Humata_Chatbot_REST_API {
                     'api_keys'          => $anthropic_api_keys,
                     'model'             => $anthropic_model,
                     'extended_thinking' => $extended_thinking,
+                );
+            }
+        } elseif ( 'openrouter' === $first_llm_provider ) {
+            $openrouter_api_keys = get_option( 'humata_local_first_openrouter_api_key', array() );
+            $openrouter_model    = get_option( 'humata_local_first_openrouter_model', '' );
+
+            if ( ! is_array( $openrouter_api_keys ) ) {
+                $openrouter_api_keys = is_string( $openrouter_api_keys ) && '' !== $openrouter_api_keys ? array( $openrouter_api_keys ) : array();
+            }
+
+            // Fallback to default model if not set.
+            if ( ! is_string( $openrouter_model ) || '' === $openrouter_model ) {
+                $openrouter_model = 'mistralai/mistral-medium-3.1';
+            }
+
+            if ( ! empty( $openrouter_api_keys ) && ! empty( $openrouter_model ) ) {
+                $llm_client = $this->openrouter_client;
+                $llm_config = array(
+                    'provider' => 'openrouter',
+                    'api_keys' => $openrouter_api_keys,
+                    'model'    => $openrouter_model,
                 );
             }
         } else {
@@ -708,6 +770,15 @@ class Humata_Chatbot_REST_API {
                 '',
                 'local_first_anthropic'
             );
+        } elseif ( 'openrouter' === $first_llm_provider ) {
+            $first_stage_answer = $this->openrouter_client->review(
+                $llm_config['api_keys'],
+                $llm_config['model'],
+                '',
+                $full_prompt,
+                '',
+                'local_first_openrouter'
+            );
         } else {
             $first_stage_answer = $this->straico_client->review(
                 $llm_config['api_keys'],
@@ -732,7 +803,7 @@ class Humata_Chatbot_REST_API {
         if ( ! is_string( $second_llm_provider ) ) {
             $second_llm_provider = 'none';
         }
-        if ( ! in_array( $second_llm_provider, array( 'none', 'straico', 'anthropic' ), true ) ) {
+        if ( ! in_array( $second_llm_provider, array( 'none', 'straico', 'anthropic', 'openrouter' ), true ) ) {
             $second_llm_provider = 'none';
         }
 
@@ -783,6 +854,33 @@ class Humata_Chatbot_REST_API {
                         $message,
                         $first_stage_answer,
                         'local_second_anthropic'
+                    );
+
+                    if ( ! is_wp_error( $reviewed ) ) {
+                        $answer = $reviewed;
+                    }
+                }
+            } elseif ( 'openrouter' === $second_llm_provider ) {
+                $openrouter_api_keys = get_option( 'humata_local_second_openrouter_api_key', array() );
+                $openrouter_model    = get_option( 'humata_local_second_openrouter_model', '' );
+
+                if ( ! is_array( $openrouter_api_keys ) ) {
+                    $openrouter_api_keys = is_string( $openrouter_api_keys ) && '' !== $openrouter_api_keys ? array( $openrouter_api_keys ) : array();
+                }
+
+                // Fallback to default model if not set.
+                if ( ! is_string( $openrouter_model ) || '' === $openrouter_model ) {
+                    $openrouter_model = 'mistralai/mistral-medium-3.1';
+                }
+
+                if ( ! empty( $openrouter_api_keys ) && ! empty( $openrouter_model ) ) {
+                    $reviewed = $this->openrouter_client->review(
+                        $openrouter_api_keys,
+                        $openrouter_model,
+                        $second_stage_system_prompt,
+                        $message,
+                        $first_stage_answer,
+                        'local_second_openrouter'
                     );
 
                     if ( ! is_wp_error( $reviewed ) ) {
@@ -890,6 +988,31 @@ class Humata_Chatbot_REST_API {
                 $prompt,
                 '',
                 'followup_anthropic'
+            );
+        } elseif ( 'openrouter' === $provider ) {
+            $api_keys = isset( $settings['openrouter_api_keys'] ) ? $settings['openrouter_api_keys'] : array();
+            $model    = isset( $settings['openrouter_model'] ) ? $settings['openrouter_model'] : 'mistralai/mistral-medium-3.1';
+
+            if ( ! is_array( $api_keys ) ) {
+                $api_keys = is_string( $api_keys ) && '' !== $api_keys ? array( $api_keys ) : array();
+            }
+
+            // Fallback to default model if not set.
+            if ( ! is_string( $model ) || '' === $model ) {
+                $model = 'mistralai/mistral-medium-3.1';
+            }
+
+            if ( empty( $api_keys ) || empty( $model ) ) {
+                return array();
+            }
+
+            $result = $this->openrouter_client->review(
+                $api_keys,
+                $model,
+                '',
+                $prompt,
+                '',
+                'followup_openrouter'
             );
         } else {
             // Straico (default).

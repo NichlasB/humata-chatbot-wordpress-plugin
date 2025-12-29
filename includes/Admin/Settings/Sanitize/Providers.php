@@ -67,6 +67,73 @@ trait Humata_Chatbot_Admin_Settings_Sanitize_Providers_Trait {
         $keys = array_keys( $models );
         return isset( $keys[0] ) ? $keys[0] : 'claude-3-5-sonnet-20241022';
     }
+
+    /**
+     * Get available OpenRouter model options.
+     *
+     * @since 1.0.0
+     * @return array Map of model_id => label.
+     */
+    public function get_openrouter_model_options() {
+        $models = array(
+            'mistralai/mistral-medium-3.1'    => 'Mistral Medium 3.1',
+            'z-ai/glm-4.7'                    => 'Z.AI: GLM 4.7',
+            'google/gemini-3-flash-preview'   => 'Gemini 3 Flash Preview',
+        );
+
+        /**
+         * Allow overriding the OpenRouter model dropdown options.
+         *
+         * @since 1.0.0
+         * @param array $models Map of model_id => label.
+         */
+        $models = apply_filters( 'humata_chatbot_openrouter_models', $models );
+
+        if ( ! is_array( $models ) ) {
+            $models = array();
+        }
+
+        $clean = array();
+        foreach ( $models as $model_id => $label ) {
+            $model_id = sanitize_text_field( (string) $model_id );
+            if ( '' === $model_id ) {
+                continue;
+            }
+
+            $label = is_string( $label ) ? $label : (string) $label;
+            $label = sanitize_text_field( $label );
+            if ( '' === $label ) {
+                $label = $model_id;
+            }
+
+            $clean[ $model_id ] = $label;
+        }
+
+        if ( empty( $clean ) ) {
+            $clean = array( 'mistralai/mistral-medium-3.1' => 'Mistral Medium 3.1' );
+        }
+
+        return $clean;
+    }
+
+    /**
+     * Sanitize OpenRouter model selection.
+     *
+     * @since 1.0.0
+     * @param string $value Model ID.
+     * @return string Sanitized model ID.
+     */
+    public function sanitize_openrouter_model( $value ) {
+        $value  = sanitize_text_field( (string) $value );
+        $models = $this->get_openrouter_model_options();
+
+        if ( isset( $models[ $value ] ) ) {
+            return $value;
+        }
+
+        $keys = array_keys( $models );
+        return isset( $keys[0] ) ? $keys[0] : 'mistralai/mistral-medium-3.1';
+    }
 }
 
 

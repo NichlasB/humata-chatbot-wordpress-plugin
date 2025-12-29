@@ -216,6 +216,17 @@ trait Humata_Chatbot_Admin_Settings_Render_Providers_Trait {
                 />
                 <?php esc_html_e( 'Anthropic Claude', 'humata-chatbot' ); ?>
             </label>
+
+            <label>
+                <input
+                    type="radio"
+                    id="humata_second_llm_provider_openrouter"
+                    name="humata_second_llm_provider"
+                    value="openrouter"
+                    <?php checked( $provider, 'openrouter' ); ?>
+                />
+                <?php esc_html_e( 'OpenRouter', 'humata-chatbot' ); ?>
+            </label>
         </fieldset>
         <p class="description">
             <?php esc_html_e( 'When enabled, responses may take longer because the plugin waits for both Humata and the selected provider.', 'humata-chatbot' ); ?>
@@ -339,6 +350,51 @@ trait Humata_Chatbot_Admin_Settings_Render_Providers_Trait {
     }
 
     /**
+     * Render OpenRouter API key field (Humata mode second-stage).
+     *
+     * @since 1.0.0
+     * @return void
+     */
+    public function render_openrouter_api_key_field() {
+        $this->render_api_key_pool_field(
+            'humata_openrouter_api_key',
+            'humata_openrouter_api_key',
+            __( 'Your OpenRouter API key(s). Stored server-side and never exposed to the frontend.', 'humata-chatbot' )
+        );
+    }
+
+    /**
+     * Render OpenRouter model field (Humata mode second-stage).
+     *
+     * @since 1.0.0
+     * @return void
+     */
+    public function render_openrouter_model_field() {
+        $value = get_option( 'humata_openrouter_model', '' );
+        if ( ! is_string( $value ) ) {
+            $value = '';
+        }
+
+        $models = $this->get_openrouter_model_options();
+        if ( '' === $value || ! isset( $models[ $value ] ) ) {
+            $keys  = array_keys( $models );
+            $value = isset( $keys[0] ) ? $keys[0] : '';
+        }
+        ?>
+        <select id="humata_openrouter_model" name="humata_openrouter_model" class="regular-text">
+            <?php foreach ( $models as $model_id => $label ) : ?>
+                <option value="<?php echo esc_attr( $model_id ); ?>" <?php selected( $value, $model_id ); ?>>
+                    <?php echo esc_html( $label ); ?>
+                </option>
+            <?php endforeach; ?>
+        </select>
+        <p class="description">
+            <?php esc_html_e( 'Select the OpenRouter model to use for the second-stage review step.', 'humata-chatbot' ); ?>
+        </p>
+        <?php
+    }
+
+    /**
      * Render Straico system prompt field.
      *
      * @since 1.0.0
@@ -414,6 +470,17 @@ trait Humata_Chatbot_Admin_Settings_Render_Providers_Trait {
                     <?php checked( $provider, 'anthropic' ); ?>
                 />
                 <?php esc_html_e( 'Anthropic Claude', 'humata-chatbot' ); ?>
+            </label>
+
+            <label>
+                <input
+                    type="radio"
+                    id="humata_local_first_llm_provider_openrouter"
+                    name="humata_local_first_llm_provider"
+                    value="openrouter"
+                    <?php checked( $provider, 'openrouter' ); ?>
+                />
+                <?php esc_html_e( 'OpenRouter', 'humata-chatbot' ); ?>
             </label>
         </fieldset>
         <p class="description">
@@ -531,6 +598,51 @@ trait Humata_Chatbot_Admin_Settings_Render_Providers_Trait {
     }
 
     /**
+     * Render Local Search first-stage OpenRouter API key field.
+     *
+     * @since 1.0.0
+     * @return void
+     */
+    public function render_local_first_openrouter_api_key_field() {
+        $this->render_api_key_pool_field(
+            'humata_local_first_openrouter_api_key',
+            'humata_local_first_openrouter_api_key',
+            __( 'Your OpenRouter API key(s) for first-stage processing.', 'humata-chatbot' )
+        );
+    }
+
+    /**
+     * Render Local Search first-stage OpenRouter model field.
+     *
+     * @since 1.0.0
+     * @return void
+     */
+    public function render_local_first_openrouter_model_field() {
+        $value = get_option( 'humata_local_first_openrouter_model', '' );
+        if ( ! is_string( $value ) ) {
+            $value = '';
+        }
+
+        $models = $this->get_openrouter_model_options();
+        if ( '' === $value || ! isset( $models[ $value ] ) ) {
+            $keys  = array_keys( $models );
+            $value = isset( $keys[0] ) ? $keys[0] : '';
+        }
+        ?>
+        <select id="humata_local_first_openrouter_model" name="humata_local_first_openrouter_model" class="regular-text">
+            <?php foreach ( $models as $model_id => $label ) : ?>
+                <option value="<?php echo esc_attr( $model_id ); ?>" <?php selected( $value, $model_id ); ?>>
+                    <?php echo esc_html( $label ); ?>
+                </option>
+            <?php endforeach; ?>
+        </select>
+        <p class="description">
+            <?php esc_html_e( 'Select the OpenRouter model to use for first-stage processing.', 'humata-chatbot' ); ?>
+        </p>
+        <?php
+    }
+
+    /**
      * Render Local Search second-stage LLM provider field.
      *
      * @since 1.0.0
@@ -575,6 +687,17 @@ trait Humata_Chatbot_Admin_Settings_Render_Providers_Trait {
                     <?php checked( $provider, 'anthropic' ); ?>
                 />
                 <?php esc_html_e( 'Anthropic Claude', 'humata-chatbot' ); ?>
+            </label>
+
+            <label>
+                <input
+                    type="radio"
+                    id="humata_local_second_llm_provider_openrouter"
+                    name="humata_local_second_llm_provider"
+                    value="openrouter"
+                    <?php checked( $provider, 'openrouter' ); ?>
+                />
+                <?php esc_html_e( 'OpenRouter', 'humata-chatbot' ); ?>
             </label>
         </fieldset>
         <p class="description">
@@ -687,6 +810,51 @@ trait Humata_Chatbot_Admin_Settings_Render_Providers_Trait {
         </label>
         <p class="description">
             <?php esc_html_e( 'Uses more tokens but significantly improves instruction adherence.', 'humata-chatbot' ); ?>
+        </p>
+        <?php
+    }
+
+    /**
+     * Render Local Search second-stage OpenRouter API key field.
+     *
+     * @since 1.0.0
+     * @return void
+     */
+    public function render_local_second_openrouter_api_key_field() {
+        $this->render_api_key_pool_field(
+            'humata_local_second_openrouter_api_key',
+            'humata_local_second_openrouter_api_key',
+            __( 'Your OpenRouter API key(s) for second-stage processing.', 'humata-chatbot' )
+        );
+    }
+
+    /**
+     * Render Local Search second-stage OpenRouter model field.
+     *
+     * @since 1.0.0
+     * @return void
+     */
+    public function render_local_second_openrouter_model_field() {
+        $value = get_option( 'humata_local_second_openrouter_model', '' );
+        if ( ! is_string( $value ) ) {
+            $value = '';
+        }
+
+        $models = $this->get_openrouter_model_options();
+        if ( '' === $value || ! isset( $models[ $value ] ) ) {
+            $keys  = array_keys( $models );
+            $value = isset( $keys[0] ) ? $keys[0] : '';
+        }
+        ?>
+        <select id="humata_local_second_openrouter_model" name="humata_local_second_openrouter_model" class="regular-text">
+            <?php foreach ( $models as $model_id => $label ) : ?>
+                <option value="<?php echo esc_attr( $model_id ); ?>" <?php selected( $value, $model_id ); ?>>
+                    <?php echo esc_html( $label ); ?>
+                </option>
+            <?php endforeach; ?>
+        </select>
+        <p class="description">
+            <?php esc_html_e( 'Select the OpenRouter model to use for second-stage processing.', 'humata-chatbot' ); ?>
         </p>
         <?php
     }

@@ -77,9 +77,24 @@ class Humata_Chatbot_Rest_Search_Engine {
 	}
 
 	/**
+	 * Maximum number of terms in a sanitized FTS query.
+	 *
+	 * @var int
+	 */
+	const MAX_QUERY_TERMS = 20;
+
+	/**
+	 * Maximum length of final sanitized query string.
+	 *
+	 * @var int
+	 */
+	const MAX_QUERY_LENGTH = 1024;
+
+	/**
 	 * Sanitize query string for FTS5 MATCH syntax.
 	 *
 	 * Escapes special characters and prepares query for FTS5.
+	 * Enforces term count and query length limits to prevent DoS.
 	 *
 	 * @since 1.0.0
 	 * @param string $query Raw query string.
@@ -123,6 +138,9 @@ class Humata_Chatbot_Rest_Search_Engine {
 			return '';
 		}
 
+		// Cap number of terms to prevent expensive queries.
+		$words = array_slice( array_values( $words ), 0, self::MAX_QUERY_TERMS );
+
 		// Join words with OR for broader matching.
 		// Each word is quoted to handle special characters.
 		$escaped_words = array_map( function( $word ) {
@@ -131,7 +149,19 @@ class Humata_Chatbot_Rest_Search_Engine {
 			return '"' . $word . '"';
 		}, $words );
 
-		return implode( ' OR ', $escaped_words );
+		$result = implode( ' OR ', $escaped_words );
+
+		// Cap final query length.
+		if ( strlen( $result ) > self::MAX_QUERY_LENGTH ) {
+			$result = substr( $result, 0, self::MAX_QUERY_LENGTH );
+			// Trim to last complete term (find last complete quoted word).
+			$last_quote = strrpos( $result, '"' );
+			if ( false !== $last_quote && $last_quote > 0 ) {
+				$result = substr( $result, 0, $last_quote + 1 );
+			}
+		}
+
+		return $result;
 	}
 
 	/**

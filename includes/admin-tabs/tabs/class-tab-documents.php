@@ -189,10 +189,30 @@ class Humata_Chatbot_Settings_Tab_Documents extends Humata_Chatbot_Settings_Tab_
 		$success_count   = 0;
 		$failed_files    = array();
 
+		// Batch limit: max 20 files per upload.
+		$max_batch_size = 20;
+		if ( $file_count > $max_batch_size ) {
+			add_settings_error(
+				'humata_documents',
+				'batch_limit',
+				sprintf(
+					/* translators: %d: maximum files allowed */
+					__( 'Too many files. Maximum %d files per upload.', 'humata-chatbot' ),
+					$max_batch_size
+				),
+				'error'
+			);
+			return;
+		}
+
+		// Per-file size limit: 2MB default.
+		$max_file_size = 2 * 1024 * 1024;
+
 		for ( $i = 0; $i < $file_count; $i++ ) {
 			$tmp_name = $files['tmp_name'][ $i ];
 			$name     = $files['name'][ $i ];
 			$error    = $files['error'][ $i ];
+			$size     = isset( $files['size'][ $i ] ) ? absint( $files['size'][ $i ] ) : 0;
 
 			// Skip empty slots.
 			if ( empty( $tmp_name ) ) {
@@ -208,16 +228,24 @@ class Humata_Chatbot_Settings_Tab_Documents extends Humata_Chatbot_Settings_Tab_
 				continue;
 			}
 
-			// Validate file type.
-			if ( 'txt' !== $ext ) {
-				$failed_files[] = $filename . ' (' . __( 'invalid type', 'humata-chatbot' ) . ')';
+			// Check file size.
+			if ( $size <= 0 || $size > $max_file_size ) {
+				$failed_files[] = $filename . ' (' . __( 'file too large (max 2MB)', 'humata-chatbot' ) . ')';
+				continue;
+			}
+
+			// Validate file type using WordPress function.
+			$filetype_check = wp_check_filetype_and_ext( $tmp_name, $filename );
+			if ( empty( $filetype_check['ext'] ) || 'txt' !== strtolower( $filetype_check['ext'] ) ) {
+				$failed_files[] = $filename . ' (' . __( 'invalid type, only .txt allowed', 'humata-chatbot' ) . ')';
 				continue;
 			}
 
 			$dest_path = $dest_dir . '/' . $filename;
 
-			// Handle existing file with same name.
+			// Handle existing file with same name: delete old DB entry first.
 			if ( file_exists( $dest_path ) ) {
+				$indexer->delete_document( $dest_path );
 				unlink( $dest_path );
 			}
 
@@ -331,9 +359,17 @@ class Humata_Chatbot_Settings_Tab_Documents extends Humata_Chatbot_Settings_Tab_
 			return;
 		}
 
-		// Delete the file.
+		// Delete the file (with path validation to prevent arbitrary file deletion).
 		if ( ! empty( $doc['file_path'] ) && file_exists( $doc['file_path'] ) ) {
-			unlink( $doc['file_path'] );
+			$upload_dir    = wp_upload_dir();
+			$allowed_dir   = realpath( $upload_dir['basedir'] . '/humata-search/documents' );
+			$file_realpath = realpath( $doc['file_path'] );
+
+			// Only delete if file is within the allowed documents directory.
+			if ( false !== $allowed_dir && false !== $file_realpath &&
+			     0 === strpos( $file_realpath, $allowed_dir . DIRECTORY_SEPARATOR ) ) {
+				unlink( $doc['file_path'] );
+			}
 		}
 
 		add_settings_error(

@@ -82,6 +82,22 @@ class Humata_Chatbot_Settings_Tab_Providers extends Humata_Chatbot_Settings_Tab_
             'humata_straico_section'
         );
 
+        add_settings_field(
+            'humata_openrouter_api_key',
+            __( 'OpenRouter API Key', 'humata-chatbot' ),
+            array( $this->admin, 'render_openrouter_api_key_field' ),
+            $page_id,
+            'humata_straico_section'
+        );
+
+        add_settings_field(
+            'humata_openrouter_model',
+            __( 'OpenRouter Model', 'humata-chatbot' ),
+            array( $this->admin, 'render_openrouter_model_field' ),
+            $page_id,
+            'humata_straico_section'
+        );
+
         // =====================================================
         // LOCAL SEARCH MODE - First-Stage LLM
         // =====================================================
@@ -140,6 +156,22 @@ class Humata_Chatbot_Settings_Tab_Providers extends Humata_Chatbot_Settings_Tab_
             'humata_local_first_section'
         );
 
+        add_settings_field(
+            'humata_local_first_openrouter_api_key',
+            __( 'OpenRouter API Key', 'humata-chatbot' ),
+            array( $this->admin, 'render_local_first_openrouter_api_key_field' ),
+            $page_id,
+            'humata_local_first_section'
+        );
+
+        add_settings_field(
+            'humata_local_first_openrouter_model',
+            __( 'OpenRouter Model', 'humata-chatbot' ),
+            array( $this->admin, 'render_local_first_openrouter_model_field' ),
+            $page_id,
+            'humata_local_first_section'
+        );
+
         // =====================================================
         // LOCAL SEARCH MODE - Second-Stage LLM
         // =====================================================
@@ -194,6 +226,22 @@ class Humata_Chatbot_Settings_Tab_Providers extends Humata_Chatbot_Settings_Tab_
             'humata_local_second_anthropic_extended_thinking',
             __( 'Extended Thinking', 'humata-chatbot' ),
             array( $this->admin, 'render_local_second_anthropic_extended_thinking_field' ),
+            $page_id,
+            'humata_local_second_section'
+        );
+
+        add_settings_field(
+            'humata_local_second_openrouter_api_key',
+            __( 'OpenRouter API Key', 'humata-chatbot' ),
+            array( $this->admin, 'render_local_second_openrouter_api_key_field' ),
+            $page_id,
+            'humata_local_second_section'
+        );
+
+        add_settings_field(
+            'humata_local_second_openrouter_model',
+            __( 'OpenRouter Model', 'humata-chatbot' ),
+            array( $this->admin, 'render_local_second_openrouter_model_field' ),
             $page_id,
             'humata_local_second_section'
         );

@@ -434,6 +434,8 @@ class Humata_Chatbot_Admin_Settings {
             'humata_anthropic_api_key',
             'humata_anthropic_model',
             'humata_anthropic_extended_thinking',
+            'humata_openrouter_api_key',
+            'humata_openrouter_model',
             // Local Search first-stage provider options.
             'humata_local_first_llm_provider',
             'humata_local_first_straico_api_key',
@@ -441,6 +443,8 @@ class Humata_Chatbot_Admin_Settings {
             'humata_local_first_anthropic_api_key',
             'humata_local_first_anthropic_model',
             'humata_local_first_anthropic_extended_thinking',
+            'humata_local_first_openrouter_api_key',
+            'humata_local_first_openrouter_model',
             // Local Search second-stage provider options.
             'humata_local_second_llm_provider',
             'humata_local_second_straico_api_key',
@@ -448,6 +452,8 @@ class Humata_Chatbot_Admin_Settings {
             'humata_local_second_anthropic_api_key',
             'humata_local_second_anthropic_model',
             'humata_local_second_anthropic_extended_thinking',
+            'humata_local_second_openrouter_api_key',
+            'humata_local_second_openrouter_model',
             'humata_floating_help',
             'humata_auto_links',
             'humata_intent_links',

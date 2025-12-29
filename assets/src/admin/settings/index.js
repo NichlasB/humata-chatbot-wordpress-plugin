@@ -732,6 +732,7 @@
                 var provider = humataGetSecondLlmProvider();
                 var showStraico = provider === "straico";
                 var showAnthropic = provider === "anthropic";
+                var showOpenRouter = provider === "openrouter";
 
                 $(".humata-api-key-pool[data-option='humata_straico_api_key']").closest("tr").toggle(showStraico);
                 $("#humata_straico_model").closest("tr").toggle(showStraico);
@@ -739,6 +740,9 @@
                 $(".humata-api-key-pool[data-option='humata_anthropic_api_key']").closest("tr").toggle(showAnthropic);
                 $("#humata_anthropic_model").closest("tr").toggle(showAnthropic);
                 $("#humata_anthropic_extended_thinking").closest("tr").toggle(showAnthropic);
+
+                $(".humata-api-key-pool[data-option='humata_openrouter_api_key']").closest("tr").toggle(showOpenRouter);
+                $("#humata_openrouter_model").closest("tr").toggle(showOpenRouter);
             }
 
             $(document).on("change", "input[name=\"humata_second_llm_provider\"]", humataToggleSecondLlmFields);
@@ -764,6 +768,7 @@
                 var provider = humataGetLocalFirstProvider();
                 var showStraico = provider === "straico";
                 var showAnthropic = provider === "anthropic";
+                var showOpenRouter = provider === "openrouter";
 
                 $(".humata-api-key-pool[data-option='humata_local_first_straico_api_key']").closest("tr").toggle(showStraico);
                 $("#humata_local_first_straico_model").closest("tr").toggle(showStraico);
@@ -771,6 +776,9 @@
                 $(".humata-api-key-pool[data-option='humata_local_first_anthropic_api_key']").closest("tr").toggle(showAnthropic);
                 $("#humata_local_first_anthropic_model").closest("tr").toggle(showAnthropic);
                 $("#humata_local_first_anthropic_extended_thinking").closest("tr").toggle(showAnthropic);
+
+                $(".humata-api-key-pool[data-option='humata_local_first_openrouter_api_key']").closest("tr").toggle(showOpenRouter);
+                $("#humata_local_first_openrouter_model").closest("tr").toggle(showOpenRouter);
             }
 
             $(document).on("change", "input[name=\"humata_local_first_llm_provider\"]", humataToggleLocalFirstFields);
@@ -796,6 +804,7 @@
                 var provider = humataGetLocalSecondProvider();
                 var showStraico = provider === "straico";
                 var showAnthropic = provider === "anthropic";
+                var showOpenRouter = provider === "openrouter";
 
                 $(".humata-api-key-pool[data-option='humata_local_second_straico_api_key']").closest("tr").toggle(showStraico);
                 $("#humata_local_second_straico_model").closest("tr").toggle(showStraico);
@@ -803,6 +812,9 @@
                 $(".humata-api-key-pool[data-option='humata_local_second_anthropic_api_key']").closest("tr").toggle(showAnthropic);
                 $("#humata_local_second_anthropic_model").closest("tr").toggle(showAnthropic);
                 $("#humata_local_second_anthropic_extended_thinking").closest("tr").toggle(showAnthropic);
+
+                $(".humata-api-key-pool[data-option='humata_local_second_openrouter_api_key']").closest("tr").toggle(showOpenRouter);
+                $("#humata_local_second_openrouter_model").closest("tr").toggle(showOpenRouter);
             }
 
             $(document).on("change", "input[name=\"humata_local_second_llm_provider\"]", humataToggleLocalSecondFields);
@@ -1648,14 +1660,11 @@
 
                 var $straicoFields = $('.humata-followup-straico-fields');
                 var $anthropicFields = $('.humata-followup-anthropic-fields');
+                var $openrouterFields = $('.humata-followup-openrouter-fields');
 
-                if (selectedProvider === 'straico') {
-                    $straicoFields.closest('tr').show();
-                    $anthropicFields.closest('tr').hide();
-                } else {
-                    $straicoFields.closest('tr').hide();
-                    $anthropicFields.closest('tr').show();
-                }
+                $straicoFields.closest('tr').toggle(selectedProvider === 'straico');
+                $anthropicFields.closest('tr').toggle(selectedProvider === 'anthropic');
+                $openrouterFields.closest('tr').toggle(selectedProvider === 'openrouter');
             }
 
             // Bind change event.

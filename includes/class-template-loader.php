@@ -41,15 +41,43 @@ class Humata_Chatbot_Template_Loader {
 
         // Homepage override
         if ( 'homepage' === $location && is_front_page() ) {
+            $this->maybe_send_security_headers();
             return HUMATA_CHATBOT_PATH . 'templates/chat-interface.php';
         }
 
         // Dedicated page via rewrite rule
         if ( 'dedicated' === $location && get_query_var( 'humata_chat_page' ) ) {
+            $this->maybe_send_security_headers();
             return HUMATA_CHATBOT_PATH . 'templates/chat-interface.php';
         }
 
         return $template;
+    }
+
+    /**
+     * Send security headers for chat pages if enabled.
+     *
+     * @since 1.0.0
+     * @return void
+     */
+    private function maybe_send_security_headers() {
+        if ( ! get_option( 'humata_security_headers_enabled', false ) ) {
+            return;
+        }
+
+        // Only send if headers haven't been sent yet.
+        if ( headers_sent() ) {
+            return;
+        }
+
+        // Clickjacking protection.
+        header( 'X-Frame-Options: SAMEORIGIN' );
+
+        // Prevent MIME-type sniffing.
+        header( 'X-Content-Type-Options: nosniff' );
+
+        // Control referrer information.
+        header( 'Referrer-Policy: strict-origin-when-cross-origin' );
     }
 
     /**

@@ -95,6 +95,61 @@ class Humata_Chatbot_Rest_Search_Database {
 	}
 
 	/**
+	 * Ensure a directory exists and is protected from direct web access.
+	 *
+	 * Creates the directory if needed, then ensures .htaccess, index.php,
+	 * and web.config protection files exist (idempotent).
+	 *
+	 * @since 1.0.0
+	 * @param string $dir Directory path to protect.
+	 * @return bool|WP_Error True on success, WP_Error on failure.
+	 */
+	public function ensure_directory_protected( $dir ) {
+		$dir = untrailingslashit( $dir );
+
+		if ( ! file_exists( $dir ) ) {
+			if ( ! wp_mkdir_p( $dir ) ) {
+				error_log( '[Humata Chatbot] Failed to create directory: ' . $dir );
+				return new WP_Error(
+					'dir_create_error',
+					__( 'Failed to create directory.', 'humata-chatbot' )
+				);
+			}
+		}
+
+		// Apache: .htaccess
+		$htaccess_path = $dir . '/.htaccess';
+		if ( ! file_exists( $htaccess_path ) ) {
+			// phpcs:ignore WordPress.WP.AlternativeFunctions.file_system_operations_file_put_contents
+			file_put_contents( $htaccess_path, "Deny from all\n", LOCK_EX );
+		}
+
+		// Fallback: index.php
+		$index_path = $dir . '/index.php';
+		if ( ! file_exists( $index_path ) ) {
+			// phpcs:ignore WordPress.WP.AlternativeFunctions.file_system_operations_file_put_contents
+			file_put_contents( $index_path, "<?php\n// Silence is golden.\n", LOCK_EX );
+		}
+
+		// IIS: web.config
+		$webconfig_path = $dir . '/web.config';
+		if ( ! file_exists( $webconfig_path ) ) {
+			$webconfig_content = '<?xml version="1.0" encoding="UTF-8"?>' . "\n"
+				. '<configuration>' . "\n"
+				. '  <system.webServer>' . "\n"
+				. '    <authorization>' . "\n"
+				. '      <deny users="*" />' . "\n"
+				. '    </authorization>' . "\n"
+				. '  </system.webServer>' . "\n"
+				. '</configuration>' . "\n";
+			// phpcs:ignore WordPress.WP.AlternativeFunctions.file_system_operations_file_put_contents
+			file_put_contents( $webconfig_path, $webconfig_content, LOCK_EX );
+		}
+
+		return true;
+	}
+
+	/**
 	 * Get the SQLite3 database connection.
 	 *
 	 * Lazy-loads and returns a singleton SQLite3 instance.
@@ -117,28 +172,15 @@ class Humata_Chatbot_Rest_Search_Database {
 
 		$db_dir = $this->get_db_dir();
 
-		// Create directory if it doesn't exist.
-		if ( ! file_exists( $db_dir ) ) {
-			if ( ! wp_mkdir_p( $db_dir ) ) {
-				error_log( '[Humata Chatbot] Failed to create database directory: ' . $db_dir );
-				return new WP_Error(
-					'db_dir_error',
-					__( 'Failed to create database directory.', 'humata-chatbot' )
-				);
-			}
-
-			// Add .htaccess to protect the directory.
-			$htaccess_path = $db_dir . '/.htaccess';
-			if ( ! file_exists( $htaccess_path ) ) {
-				file_put_contents( $htaccess_path, "Deny from all\n" );
-			}
-
-			// Add index.php for extra protection.
-			$index_path = $db_dir . '/index.php';
-			if ( ! file_exists( $index_path ) ) {
-				file_put_contents( $index_path, "<?php\n// Silence is golden.\n" );
-			}
+		// Ensure DB directory is protected (idempotent).
+		$protect_result = $this->ensure_directory_protected( $db_dir );
+		if ( is_wp_error( $protect_result ) ) {
+			return $protect_result;
 		}
+
+		// Also protect the documents subdirectory.
+		$docs_dir = $db_dir . '/documents';
+		$this->ensure_directory_protected( $docs_dir );
 
 		try {
 			$this->connection = new SQLite3( $this->db_path );

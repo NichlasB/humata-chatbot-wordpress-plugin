@@ -78,6 +78,17 @@ trait Humata_Chatbot_Admin_Settings_Render_FollowUpQuestions_Trait {
 				/>
 				<?php esc_html_e( 'Anthropic Claude', 'humata-chatbot' ); ?>
 			</label>
+			<br>
+			<label>
+				<input
+					type="radio"
+					name="humata_followup_questions[provider]"
+					value="openrouter"
+					<?php checked( $provider, 'openrouter' ); ?>
+					class="humata-followup-provider-radio"
+				/>
+				<?php esc_html_e( 'OpenRouter', 'humata-chatbot' ); ?>
+			</label>
 		</fieldset>
 		<p class="description">
 			<?php esc_html_e( 'Select the LLM provider to generate follow-up questions. This uses separate API credentials from other provider settings.', 'humata-chatbot' ); ?>
@@ -289,6 +300,101 @@ trait Humata_Chatbot_Admin_Settings_Render_FollowUpQuestions_Trait {
 			</label>
 			<p class="description">
 				<?php esc_html_e( 'Not recommended for follow-up questions as it increases latency. Leave disabled for faster responses.', 'humata-chatbot' ); ?>
+			</p>
+		</div>
+		<?php
+	}
+
+	/**
+	 * Render the follow-up questions OpenRouter API keys field.
+	 *
+	 * @since 1.0.0
+	 * @return void
+	 */
+	public function render_followup_openrouter_api_keys_field() {
+		$settings = $this->get_followup_questions_settings();
+		$api_keys = isset( $settings['openrouter_api_keys'] ) ? $settings['openrouter_api_keys'] : array();
+
+		if ( ! is_array( $api_keys ) ) {
+			$api_keys = array();
+		}
+		if ( empty( $api_keys ) ) {
+			$api_keys = array( '' );
+		}
+
+		$key_count = count( array_filter( $api_keys, function( $k ) {
+			return is_string( $k ) && '' !== trim( $k );
+		} ) );
+		?>
+		<div class="humata-followup-openrouter-fields">
+			<div class="humata-api-key-pool" data-option="humata_followup_questions[openrouter_api_keys]">
+				<div class="humata-api-key-pool__keys">
+					<?php foreach ( $api_keys as $index => $key ) : ?>
+						<div class="humata-api-key-pool__row">
+							<input
+								type="password"
+								id="humata_followup_openrouter_api_key_<?php echo esc_attr( $index ); ?>"
+								name="humata_followup_questions[openrouter_api_keys][]"
+								value="<?php echo esc_attr( $key ); ?>"
+								class="regular-text humata-api-key-pool__input"
+								autocomplete="off"
+								placeholder="<?php esc_attr_e( 'API Key', 'humata-chatbot' ); ?>"
+							/>
+							<button type="button" class="button humata-api-key-pool__remove" title="<?php esc_attr_e( 'Remove', 'humata-chatbot' ); ?>">
+								<span class="dashicons dashicons-trash"></span>
+							</button>
+						</div>
+					<?php endforeach; ?>
+				</div>
+				<button type="button" class="button humata-api-key-pool__add">
+					<span class="dashicons dashicons-plus-alt2"></span>
+					<?php esc_html_e( 'Add API Key', 'humata-chatbot' ); ?>
+				</button>
+				<?php if ( $key_count > 1 ) : ?>
+					<span class="humata-api-key-pool__count">
+						<?php
+						printf(
+							/* translators: %d: number of API keys */
+							esc_html( _n( '%d key configured (rotation enabled)', '%d keys configured (rotation enabled)', $key_count, 'humata-chatbot' ) ),
+							$key_count
+						);
+						?>
+					</span>
+				<?php endif; ?>
+			</div>
+			<p class="description">
+				<?php esc_html_e( 'Add multiple keys to enable round-robin rotation across accounts.', 'humata-chatbot' ); ?>
+			</p>
+		</div>
+		<?php
+	}
+
+	/**
+	 * Render the follow-up questions OpenRouter model field.
+	 *
+	 * @since 1.0.0
+	 * @return void
+	 */
+	public function render_followup_openrouter_model_field() {
+		$settings = $this->get_followup_questions_settings();
+		$model    = isset( $settings['openrouter_model'] ) ? $settings['openrouter_model'] : 'mistralai/mistral-medium-3.1';
+
+		$models = $this->get_openrouter_model_options();
+		if ( '' === $model || ! isset( $models[ $model ] ) ) {
+			$keys  = array_keys( $models );
+			$model = isset( $keys[0] ) ? $keys[0] : '';
+		}
+		?>
+		<div class="humata-followup-openrouter-fields">
+			<select name="humata_followup_questions[openrouter_model]">
+				<?php foreach ( $models as $model_id => $label ) : ?>
+					<option value="<?php echo esc_attr( $model_id ); ?>" <?php selected( $model, $model_id ); ?>>
+						<?php echo esc_html( $label ); ?>
+					</option>
+				<?php endforeach; ?>
+			</select>
+			<p class="description">
+				<?php esc_html_e( 'A fast, cost-effective model is recommended for follow-up question generation.', 'humata-chatbot' ); ?>
 			</p>
 		</div>
 		<?php

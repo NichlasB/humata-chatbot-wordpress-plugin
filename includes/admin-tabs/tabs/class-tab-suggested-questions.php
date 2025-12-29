@@ -146,6 +146,22 @@ class Humata_Chatbot_Settings_Tab_Suggested_Questions extends Humata_Chatbot_Set
 		);
 
 		add_settings_field(
+			'humata_followup_openrouter_api_keys',
+			__( 'OpenRouter API Keys', 'humata-chatbot' ),
+			array( $this->admin, 'render_followup_openrouter_api_keys_field' ),
+			$page_id,
+			'humata_followup_questions_section'
+		);
+
+		add_settings_field(
+			'humata_followup_openrouter_model',
+			__( 'OpenRouter Model', 'humata-chatbot' ),
+			array( $this->admin, 'render_followup_openrouter_model_field' ),
+			$page_id,
+			'humata_followup_questions_section'
+		);
+
+		add_settings_field(
 			'humata_followup_max_question_length',
 			__( 'Max Question Length', 'humata-chatbot' ),
 			array( $this->admin, 'render_followup_max_question_length_field' ),

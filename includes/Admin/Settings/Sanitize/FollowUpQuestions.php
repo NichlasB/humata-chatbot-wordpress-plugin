@@ -26,6 +26,8 @@ trait Humata_Chatbot_Admin_Settings_Sanitize_FollowUpQuestions_Trait {
 			'anthropic_api_keys'  => array(),
 			'anthropic_model'     => 'claude-3-5-sonnet-20241022',
 			'anthropic_extended_thinking' => 0,
+			'openrouter_api_keys' => array(),
+			'openrouter_model'    => 'mistralai/mistral-medium-3.1',
 			'max_question_length' => 80,
 			'topic_scope'         => '',
 			'custom_instructions' => '',
@@ -40,9 +42,9 @@ trait Humata_Chatbot_Admin_Settings_Sanitize_FollowUpQuestions_Trait {
 		// Enabled toggle.
 		$sanitized['enabled'] = ! empty( $value['enabled'] );
 
-		// Provider: straico or anthropic.
+		// Provider: straico, anthropic, or openrouter.
 		$provider = isset( $value['provider'] ) ? sanitize_key( $value['provider'] ) : 'straico';
-		$sanitized['provider'] = in_array( $provider, array( 'straico', 'anthropic' ), true ) ? $provider : 'straico';
+		$sanitized['provider'] = in_array( $provider, array( 'straico', 'anthropic', 'openrouter' ), true ) ? $provider : 'straico';
 
 		// Straico API keys (array for rotation).
 		$sanitized['straico_api_keys'] = $this->sanitize_followup_api_keys(
@@ -67,6 +69,17 @@ trait Humata_Chatbot_Admin_Settings_Sanitize_FollowUpQuestions_Trait {
 
 		// Anthropic extended thinking.
 		$sanitized['anthropic_extended_thinking'] = ! empty( $value['anthropic_extended_thinking'] ) ? 1 : 0;
+
+		// OpenRouter API keys (array for rotation).
+		$sanitized['openrouter_api_keys'] = $this->sanitize_followup_api_keys(
+			isset( $value['openrouter_api_keys'] ) ? $value['openrouter_api_keys'] : ''
+		);
+
+		// OpenRouter model.
+		$openrouter_model = isset( $value['openrouter_model'] )
+			? sanitize_text_field( trim( (string) $value['openrouter_model'] ) )
+			: 'mistralai/mistral-medium-3.1';
+		$sanitized['openrouter_model'] = '' !== $openrouter_model ? $openrouter_model : 'mistralai/mistral-medium-3.1';
 
 		// Max question length (30-150 chars, default 80).
 		$max_len = isset( $value['max_question_length'] ) ? absint( $value['max_question_length'] ) : 80;

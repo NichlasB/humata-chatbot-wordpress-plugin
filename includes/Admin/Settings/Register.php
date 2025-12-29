@@ -112,6 +112,26 @@ trait Humata_Chatbot_Admin_Settings_Register_Trait {
 
         register_setting(
             'humata_chatbot_settings',
+            'humata_trusted_proxies',
+            array(
+                'type'              => 'string',
+                'sanitize_callback' => 'sanitize_textarea_field',
+                'default'           => '',
+            )
+        );
+
+        register_setting(
+            'humata_chatbot_settings',
+            'humata_security_headers_enabled',
+            array(
+                'type'              => 'integer',
+                'sanitize_callback' => array( $this, 'sanitize_checkbox' ),
+                'default'           => 0,
+            )
+        );
+
+        register_setting(
+            'humata_chatbot_settings',
             'humata_medical_disclaimer_text',
             array(
                 'type'              => 'string',
@@ -240,6 +260,27 @@ trait Humata_Chatbot_Admin_Settings_Register_Trait {
             )
         );
 
+        // OpenRouter (Humata mode second-stage) settings.
+        register_setting(
+            'humata_chatbot_settings',
+            'humata_openrouter_api_key',
+            array(
+                'type'              => 'array',
+                'sanitize_callback' => array( $this, 'sanitize_api_key_pool' ),
+                'default'           => array(),
+            )
+        );
+
+        register_setting(
+            'humata_chatbot_settings',
+            'humata_openrouter_model',
+            array(
+                'type'              => 'string',
+                'sanitize_callback' => array( $this, 'sanitize_openrouter_model' ),
+                'default'           => 'mistralai/mistral-medium-3.1',
+            )
+        );
+
         // Local Search Mode first-stage provider settings.
         register_setting(
             'humata_chatbot_settings',
@@ -301,6 +342,26 @@ trait Humata_Chatbot_Admin_Settings_Register_Trait {
             )
         );
 
+        register_setting(
+            'humata_chatbot_settings',
+            'humata_local_first_openrouter_api_key',
+            array(
+                'type'              => 'array',
+                'sanitize_callback' => array( $this, 'sanitize_api_key_pool' ),
+                'default'           => array(),
+            )
+        );
+
+        register_setting(
+            'humata_chatbot_settings',
+            'humata_local_first_openrouter_model',
+            array(
+                'type'              => 'string',
+                'sanitize_callback' => array( $this, 'sanitize_openrouter_model' ),
+                'default'           => 'mistralai/mistral-medium-3.1',
+            )
+        );
+
         // Local Search Mode second-stage provider settings.
         register_setting(
             'humata_chatbot_settings',
@@ -359,6 +420,26 @@ trait Humata_Chatbot_Admin_Settings_Register_Trait {
                 'type'              => 'integer',
                 'sanitize_callback' => array( $this, 'sanitize_checkbox' ),
                 'default'           => 0,
+            )
+        );
+
+        register_setting(
+            'humata_chatbot_settings',
+            'humata_local_second_openrouter_api_key',
+            array(
+                'type'              => 'array',
+                'sanitize_callback' => array( $this, 'sanitize_api_key_pool' ),
+                'default'           => array(),
+            )
+        );
+
+        register_setting(
+            'humata_chatbot_settings',
+            'humata_local_second_openrouter_model',
+            array(
+                'type'              => 'string',
+                'sanitize_callback' => array( $this, 'sanitize_openrouter_model' ),
+                'default'           => 'mistralai/mistral-medium-3.1',
             )
         );
 
@@ -626,6 +707,7 @@ trait Humata_Chatbot_Admin_Settings_Register_Trait {
         }
     }
 }
+
 
 
 

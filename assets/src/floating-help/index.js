@@ -125,3 +125,4 @@ function initFloatingHelpAriaSync() {
 
 installModalFocusTrap();
 initFloatingHelpAriaSync();
+

@@ -48,6 +48,22 @@ class Humata_Chatbot_Settings_Tab_Security extends Humata_Chatbot_Settings_Tab_B
             'humata_security_section'
         );
 
+        add_settings_field(
+            'humata_trusted_proxies',
+            __( 'Trusted Proxies', 'humata-chatbot' ),
+            array( $this->admin, 'render_trusted_proxies_field' ),
+            $page_id,
+            'humata_security_section'
+        );
+
+        add_settings_field(
+            'humata_security_headers_enabled',
+            __( 'Security Headers', 'humata-chatbot' ),
+            array( $this->admin, 'render_security_headers_enabled_field' ),
+            $page_id,
+            'humata_security_section'
+        );
+
         // Bot Protection Section.
         add_settings_section(
             'humata_bot_protection_section',

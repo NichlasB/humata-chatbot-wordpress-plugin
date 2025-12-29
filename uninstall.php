@@ -25,6 +25,8 @@ delete_option( 'humata_allow_seo_indexing' );
 delete_option( 'humata_system_prompt' );
 delete_option( 'humata_rate_limit' );
 delete_option( 'humata_max_prompt_chars' );
+delete_option( 'humata_trusted_proxies' );
+delete_option( 'humata_security_headers_enabled' );
 delete_option( 'humata_medical_disclaimer_text' );
 delete_option( 'humata_footer_copyright_text' );
 delete_option( 'humata_bot_response_disclaimer' );
@@ -36,6 +38,8 @@ delete_option( 'humata_straico_system_prompt' );
 delete_option( 'humata_anthropic_api_key' );
 delete_option( 'humata_anthropic_model' );
 delete_option( 'humata_anthropic_extended_thinking' );
+delete_option( 'humata_openrouter_api_key' );
+delete_option( 'humata_openrouter_model' );
 delete_option( 'humata_floating_help' );
 delete_option( 'humata_auto_links' );
 delete_option( 'humata_intent_links' );
@@ -61,6 +65,8 @@ delete_option( 'humata_local_first_straico_model' );
 delete_option( 'humata_local_first_anthropic_api_key' );
 delete_option( 'humata_local_first_anthropic_model' );
 delete_option( 'humata_local_first_anthropic_extended_thinking' );
+delete_option( 'humata_local_first_openrouter_api_key' );
+delete_option( 'humata_local_first_openrouter_model' );
 
 // Delete Local Search second-stage provider options.
 delete_option( 'humata_local_second_llm_provider' );
@@ -69,6 +75,8 @@ delete_option( 'humata_local_second_straico_model' );
 delete_option( 'humata_local_second_anthropic_api_key' );
 delete_option( 'humata_local_second_anthropic_model' );
 delete_option( 'humata_local_second_anthropic_extended_thinking' );
+delete_option( 'humata_local_second_openrouter_api_key' );
+delete_option( 'humata_local_second_openrouter_model' );
 
 // Delete API key rotation counter options.
 delete_option( 'humata_straico_second_stage_key_index' );
@@ -79,6 +87,10 @@ delete_option( 'humata_local_second_straico_key_index' );
 delete_option( 'humata_local_second_anthropic_key_index' );
 delete_option( 'humata_followup_straico_key_index' );
 delete_option( 'humata_followup_anthropic_key_index' );
+delete_option( 'humata_openrouter_second_stage_key_index' );
+delete_option( 'humata_local_first_openrouter_key_index' );
+delete_option( 'humata_local_second_openrouter_key_index' );
+delete_option( 'humata_followup_openrouter_key_index' );
 
 // Delete SQLite database file and directory.
 $upload_dir = wp_upload_dir();
@@ -117,6 +129,20 @@ if ( file_exists( $db_dir . '/.htaccess' ) ) {
 }
 if ( file_exists( $db_dir . '/index.php' ) ) {
     @unlink( $db_dir . '/index.php' );
+}
+if ( file_exists( $db_dir . '/web.config' ) ) {
+    @unlink( $db_dir . '/web.config' );
+}
+
+// Delete security files in documents directory.
+if ( file_exists( $docs_dir . '/.htaccess' ) ) {
+    @unlink( $docs_dir . '/.htaccess' );
+}
+if ( file_exists( $docs_dir . '/index.php' ) ) {
+    @unlink( $docs_dir . '/index.php' );
+}
+if ( file_exists( $docs_dir . '/web.config' ) ) {
+    @unlink( $docs_dir . '/web.config' );
 }
 
 // Remove database directory.
