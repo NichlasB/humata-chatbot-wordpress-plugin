@@ -121,14 +121,20 @@ class Humata_Chatbot_Rest_Search_Database {
 		$htaccess_path = $dir . '/.htaccess';
 		if ( ! file_exists( $htaccess_path ) ) {
 			// phpcs:ignore WordPress.WP.AlternativeFunctions.file_system_operations_file_put_contents
-			file_put_contents( $htaccess_path, "Deny from all\n", LOCK_EX );
+			$result = file_put_contents( $htaccess_path, "Deny from all\n", LOCK_EX );
+			if ( false === $result && defined( 'WP_DEBUG' ) && WP_DEBUG ) {
+				error_log( 'Humata Chatbot: Failed to create .htaccess in ' . $dir );
+			}
 		}
 
 		// Fallback: index.php
 		$index_path = $dir . '/index.php';
 		if ( ! file_exists( $index_path ) ) {
 			// phpcs:ignore WordPress.WP.AlternativeFunctions.file_system_operations_file_put_contents
-			file_put_contents( $index_path, "<?php\n// Silence is golden.\n", LOCK_EX );
+			$result = file_put_contents( $index_path, "<?php\n// Silence is golden.\n", LOCK_EX );
+			if ( false === $result && defined( 'WP_DEBUG' ) && WP_DEBUG ) {
+				error_log( 'Humata Chatbot: Failed to create index.php in ' . $dir );
+			}
 		}
 
 		// IIS: web.config
@@ -143,7 +149,10 @@ class Humata_Chatbot_Rest_Search_Database {
 				. '  </system.webServer>' . "\n"
 				. '</configuration>' . "\n";
 			// phpcs:ignore WordPress.WP.AlternativeFunctions.file_system_operations_file_put_contents
-			file_put_contents( $webconfig_path, $webconfig_content, LOCK_EX );
+			$result = file_put_contents( $webconfig_path, $webconfig_content, LOCK_EX );
+			if ( false === $result && defined( 'WP_DEBUG' ) && WP_DEBUG ) {
+				error_log( 'Humata Chatbot: Failed to create web.config in ' . $dir );
+			}
 		}
 
 		return true;

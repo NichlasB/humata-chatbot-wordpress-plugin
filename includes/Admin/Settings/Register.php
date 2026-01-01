@@ -277,7 +277,7 @@ trait Humata_Chatbot_Admin_Settings_Register_Trait {
             array(
                 'type'              => 'string',
                 'sanitize_callback' => array( $this, 'sanitize_openrouter_model' ),
-                'default'           => 'mistralai/mistral-medium-3.1',
+                'default'           => HUMATA_DEFAULT_OPENROUTER_MODEL,
             )
         );
 
@@ -358,7 +358,7 @@ trait Humata_Chatbot_Admin_Settings_Register_Trait {
             array(
                 'type'              => 'string',
                 'sanitize_callback' => array( $this, 'sanitize_openrouter_model' ),
-                'default'           => 'mistralai/mistral-medium-3.1',
+                'default'           => HUMATA_DEFAULT_OPENROUTER_MODEL,
             )
         );
 
@@ -439,7 +439,7 @@ trait Humata_Chatbot_Admin_Settings_Register_Trait {
             array(
                 'type'              => 'string',
                 'sanitize_callback' => array( $this, 'sanitize_openrouter_model' ),
-                'default'           => 'mistralai/mistral-medium-3.1',
+                'default'           => HUMATA_DEFAULT_OPENROUTER_MODEL,
             )
         );
 
@@ -707,6 +707,8 @@ trait Humata_Chatbot_Admin_Settings_Register_Trait {
         }
     }
 }
+
+
 
 
 

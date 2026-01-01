@@ -532,6 +532,7 @@
 }
 
 .humata-message-content a {
+    border-bottom: 1px dotted;
     color: var(--humata-accent-color);
     text-decoration: none;
     font-weight: 500;
@@ -540,6 +541,7 @@
 }
 
 .humata-message-content a:hover {
+    border-bottom: none;
     text-decoration: underline;
 }
 
@@ -970,7 +972,7 @@
 /* Bot Response Disclaimer Box */
 .humata-bot-response-disclaimer {
     margin-top: 16px;
-    margin-bottom: 44px;
+    margin-bottom: 16px;
     padding: 14px 18px;
     background-color: var(--humata-bg-secondary);
     border: 1px solid var(--humata-border-color);
@@ -1376,6 +1378,7 @@
 
 /* Follow-Up Questions (AI-generated after bot response) */
 .humata-followup-questions {
+    margin-bottom: 44px;
     margin-top: 16px;
     padding-top: 12px;
     border-top: 1px solid var(--humata-border-color);

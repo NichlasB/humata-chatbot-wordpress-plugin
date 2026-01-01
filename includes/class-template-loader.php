@@ -178,6 +178,7 @@ class Humata_Chatbot_Template_Loader {
         $second_llm_provider = trim( $second_llm_provider );
 
         // Back-compat: if new provider option is unset, respect the legacy Straico enabled flag.
+        // @deprecated 1.1.0 Use humata_second_llm_provider option instead. Will be removed in 1.3.0.
         if ( '' === $second_llm_provider ) {
             $legacy_straico_enabled = (int) get_option( 'humata_straico_review_enabled', 0 );
             $second_llm_provider    = ( 1 === $legacy_straico_enabled ) ? 'straico' : 'none';
@@ -188,13 +189,7 @@ class Humata_Chatbot_Template_Loader {
             $second_llm_provider = 'none';
         }
 
-        $max_prompt_chars = absint( get_option( 'humata_max_prompt_chars', 3000 ) );
-        if ( $max_prompt_chars <= 0 ) {
-            $max_prompt_chars = 3000;
-        }
-        if ( $max_prompt_chars > 100000 ) {
-            $max_prompt_chars = 100000;
-        }
+        $max_prompt_chars = humata_get_max_prompt_chars();
 
         // Avatar settings.
         $user_avatar_url = get_option( 'humata_user_avatar_url', '' );
@@ -273,14 +268,7 @@ class Humata_Chatbot_Template_Loader {
 
         $honeypot_enabled = (bool) get_option( 'humata_honeypot_enabled', true );
         $pow_enabled      = (bool) get_option( 'humata_pow_enabled', true );
-        $pow_difficulty   = absint( get_option( 'humata_pow_difficulty', 4 ) );
-
-        if ( $pow_difficulty < 1 ) {
-            $pow_difficulty = 4;
-        }
-        if ( $pow_difficulty > 8 ) {
-            $pow_difficulty = 8;
-        }
+        $pow_difficulty   = humata_get_pow_difficulty();
 
         return array(
             'enabled'          => true,
@@ -671,7 +659,7 @@ class Humata_Chatbot_Template_Loader {
                     class="humata-floating-help__button"
                     aria-haspopup="true"
                     aria-expanded="false"
-                    <?php echo $has_panel ? 'aria-controls="humata-floating-help-panel"' : ''; ?>
+                    <?php if ( $has_panel ) : ?>aria-controls="humata-floating-help-panel"<?php endif; ?>
                 >
                     <span class="humata-floating-help__icon" aria-hidden="true">
                         <svg xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round">
@@ -743,7 +731,7 @@ class Humata_Chatbot_Template_Loader {
                                             rel="noopener noreferrer"
                                             aria-label="<?php echo esc_attr( ucfirst( $network ) ); ?>"
                                         >
-                                            <?php echo $this->get_social_icon_svg( $network ); // phpcs:ignore WordPress.Security.EscapeOutput.OutputNotEscaped ?>
+                                            <?php echo $this->get_social_icon_svg( $network ); ?>
                                         </a>
                                     <?php endforeach; ?>
                                 </div>
@@ -812,14 +800,18 @@ class Humata_Chatbot_Template_Loader {
     /**
      * Return inline SVG icons for supported social networks.
      *
+     * Returns hardcoded safe HTML SVG markup for known social networks.
+     * Output is pre-escaped and safe for direct echo.
+     *
      * @since 1.0.0
-     * @param string $network
-     * @return string
+     * @param string $network Network identifier.
+     * @return string Safe HTML SVG string (pre-escaped, safe for direct output).
      */
     private function get_social_icon_svg( $network ) {
         $network = strtolower( (string) $network );
 
         // Simple, lightweight inline icons (stroke-based) to avoid external dependencies.
+        // phpcs:disable WordPress.Security.EscapeOutput.OutputNotEscaped -- Hardcoded safe SVG markup.
         $icons = array(
             'facebook'  => '<svg xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M18 2h-3a5 5 0 0 0-5 5v3H7v4h3v8h4v-8h3l1-4h-4V7a1 1 0 0 1 1-1h3V2z"/></svg>',
             'instagram' => '<svg xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="3" width="18" height="18" rx="5" ry="5"/><path d="M16 11.37a4 4 0 1 1-7.37 2.63 4 4 0 0 1 7.37-2.63z"/><path d="M17.5 6.5h.01"/></svg>',
@@ -827,6 +819,7 @@ class Humata_Chatbot_Template_Loader {
             'x'         => '<svg xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M4 4l16 16"/><path d="M20 4 4 20"/></svg>',
             'tiktok'    => '<svg xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M14 3v10.5a4.5 4.5 0 1 1-4-4.47"/><path d="M14 3c1.2 3.6 3.6 6 7 6"/></svg>',
         );
+        // phpcs:enable WordPress.Security.EscapeOutput.OutputNotEscaped
 
         if ( isset( $icons[ $network ] ) ) {
             return $icons[ $network ];
@@ -858,13 +851,7 @@ class Humata_Chatbot_Template_Loader {
         // Build the chat container HTML
         $height = esc_attr( $atts['height'] );
 
-        $max_prompt_chars = absint( get_option( 'humata_max_prompt_chars', 3000 ) );
-        if ( $max_prompt_chars <= 0 ) {
-            $max_prompt_chars = 3000;
-        }
-        if ( $max_prompt_chars > 100000 ) {
-            $max_prompt_chars = 100000;
-        }
+        $max_prompt_chars = humata_get_max_prompt_chars();
 
         ob_start();
         ?>

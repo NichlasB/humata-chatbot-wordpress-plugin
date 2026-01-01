@@ -111,14 +111,7 @@ class Humata_Chatbot_Rest_Proof_Of_Work_Verifier {
 
         $nonce      = wp_generate_password( 32, false );
         $timestamp  = time();
-        $difficulty = absint( get_option( 'humata_pow_difficulty', 4 ) );
-
-        if ( $difficulty < 1 ) {
-            $difficulty = 4;
-        }
-        if ( $difficulty > 8 ) {
-            $difficulty = 8;
-        }
+        $difficulty = humata_get_pow_difficulty();
 
         $challenge = array(
             'nonce'      => $nonce,

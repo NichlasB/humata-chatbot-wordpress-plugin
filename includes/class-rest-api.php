@@ -245,9 +245,12 @@ class Humata_Chatbot_REST_API {
      * @return WP_REST_Response|WP_Error Response object or error.
      */
     public function handle_ask_request( $request ) {
-        // Apply progressive delays if enabled.
+        // Apply progressive delays if enabled (returns 429 if throttled).
         $ip = Humata_Chatbot_Rest_Client_Ip::get_client_ip();
-        $this->bot_protection->apply_progressive_delay( $ip );
+        $delay_result = $this->bot_protection->apply_progressive_delay( $ip );
+        if ( is_wp_error( $delay_result ) ) {
+            return $delay_result;
+        }
 
         // Check search provider setting.
         $search_provider = get_option( 'humata_search_provider', 'humata' );
@@ -282,13 +285,7 @@ class Humata_Chatbot_REST_API {
         // Get request parameters
         $message = (string) $request->get_param( 'message' );
 
-        $max_prompt_chars = absint( get_option( 'humata_max_prompt_chars', 3000 ) );
-        if ( $max_prompt_chars <= 0 ) {
-            $max_prompt_chars = 3000;
-        }
-        if ( $max_prompt_chars > 100000 ) {
-            $max_prompt_chars = 100000;
-        }
+        $max_prompt_chars = humata_get_max_prompt_chars();
 
         $message_len = function_exists( 'wp_strlen' )
             ? wp_strlen( $message )
@@ -460,6 +457,7 @@ class Humata_Chatbot_REST_API {
         $second_llm_provider = trim( $second_llm_provider );
 
         // Back-compat: if new provider option is unset, respect the legacy Straico enabled flag.
+        // @deprecated 1.1.0 Use humata_second_llm_provider option instead. Will be removed in 1.3.0.
         if ( '' === $second_llm_provider ) {
             $legacy_straico_enabled = (int) get_option( 'humata_straico_review_enabled', 0 );
             $second_llm_provider    = ( 1 === $legacy_straico_enabled ) ? 'straico' : 'none';
@@ -535,7 +533,7 @@ class Humata_Chatbot_REST_API {
             }
             // Fallback to default model if not set.
             if ( ! is_string( $openrouter_model ) || '' === $openrouter_model ) {
-                $openrouter_model = 'mistralai/mistral-medium-3.1';
+                $openrouter_model = HUMATA_DEFAULT_OPENROUTER_MODEL;
             }
             if ( ! is_string( $system_prompt ) ) {
                 $system_prompt = '';
@@ -602,13 +600,7 @@ class Humata_Chatbot_REST_API {
         $message = (string) $request->get_param( 'message' );
 
         // Validate message length.
-        $max_prompt_chars = absint( get_option( 'humata_max_prompt_chars', 3000 ) );
-        if ( $max_prompt_chars <= 0 ) {
-            $max_prompt_chars = 3000;
-        }
-        if ( $max_prompt_chars > 100000 ) {
-            $max_prompt_chars = 100000;
-        }
+        $max_prompt_chars = humata_get_max_prompt_chars();
 
         $message_len = function_exists( 'wp_strlen' )
             ? wp_strlen( $message )
@@ -663,7 +655,7 @@ class Humata_Chatbot_REST_API {
 
             // Fallback to default model if not set.
             if ( ! is_string( $openrouter_model ) || '' === $openrouter_model ) {
-                $openrouter_model = 'mistralai/mistral-medium-3.1';
+                $openrouter_model = HUMATA_DEFAULT_OPENROUTER_MODEL;
             }
 
             if ( ! empty( $openrouter_api_keys ) && ! empty( $openrouter_model ) ) {
@@ -870,7 +862,7 @@ class Humata_Chatbot_REST_API {
 
                 // Fallback to default model if not set.
                 if ( ! is_string( $openrouter_model ) || '' === $openrouter_model ) {
-                    $openrouter_model = 'mistralai/mistral-medium-3.1';
+                    $openrouter_model = HUMATA_DEFAULT_OPENROUTER_MODEL;
                 }
 
                 if ( ! empty( $openrouter_api_keys ) && ! empty( $openrouter_model ) ) {
@@ -991,7 +983,7 @@ class Humata_Chatbot_REST_API {
             );
         } elseif ( 'openrouter' === $provider ) {
             $api_keys = isset( $settings['openrouter_api_keys'] ) ? $settings['openrouter_api_keys'] : array();
-            $model    = isset( $settings['openrouter_model'] ) ? $settings['openrouter_model'] : 'mistralai/mistral-medium-3.1';
+            $model    = isset( $settings['openrouter_model'] ) ? $settings['openrouter_model'] : HUMATA_DEFAULT_OPENROUTER_MODEL;
 
             if ( ! is_array( $api_keys ) ) {
                 $api_keys = is_string( $api_keys ) && '' !== $api_keys ? array( $api_keys ) : array();
@@ -999,7 +991,7 @@ class Humata_Chatbot_REST_API {
 
             // Fallback to default model if not set.
             if ( ! is_string( $model ) || '' === $model ) {
-                $model = 'mistralai/mistral-medium-3.1';
+                $model = HUMATA_DEFAULT_OPENROUTER_MODEL;
             }
 
             if ( empty( $api_keys ) || empty( $model ) ) {

@@ -94,13 +94,8 @@ export function renderFollowUpQuestions(messageElement, questions) {
     // Insert after the message content (but inside the message wrapper).
     const messageContent = messageElement.querySelector('.humata-message-content');
     if (messageContent) {
-        // Insert after message content, before any disclaimer.
-        const disclaimer = messageElement.querySelector('.humata-bot-response-disclaimer');
-        if (disclaimer) {
-            messageContent.insertBefore(container, disclaimer);
-        } else {
-            messageContent.appendChild(container);
-        }
+        // Insert after any disclaimer (at the end of message content).
+        messageContent.appendChild(container);
     } else {
         messageElement.appendChild(container);
     }

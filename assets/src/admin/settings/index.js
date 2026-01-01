@@ -361,34 +361,95 @@
                     return navigator.clipboard.writeText(text);
                 }
 
+                // Fallback: prompt user to manually copy since clipboard API is unavailable
+                return humataPromptManualCopy(text);
+            }
+
+            function humataPromptManualCopy(text) {
                 return new Promise(function(resolve, reject) {
-                    try {
-                        var $temp = $("<textarea></textarea>")
-                            .css({ position: "absolute", left: "-9999px", top: "0" })
-                            .val(text || "");
+                    var isMac = /Mac|iPhone|iPad|iPod/i.test(navigator.platform || navigator.userAgent);
+                    var shortcut = isMac ? "Cmd+C" : "Ctrl+C";
+                    var message = "Press " + shortcut + " to copy";
 
-                        $("body").append($temp);
-                        $temp[0].focus();
-                        $temp[0].select();
+                    // Show toast notification
+                    humataShowCopyToast(message);
 
-                        var ok = false;
-                        try {
-                            ok = document.execCommand("copy");
-                        } catch (e) {
-                            ok = false;
-                        }
+                    var $temp = $("<textarea></textarea>")
+                        .attr("readonly", "")
+                        .attr("aria-label", "Text to copy")
+                        .css({
+                            position: "fixed",
+                            top: "50%",
+                            left: "50%",
+                            transform: "translate(-50%, -50%)",
+                            width: "1px",
+                            height: "1px",
+                            padding: "0",
+                            border: "none",
+                            outline: "none",
+                            opacity: "0",
+                            zIndex: "999999"
+                        })
+                        .val(text || "");
 
-                        $temp.remove();
+                    $("body").append($temp);
+                    $temp[0].focus();
+                    $temp[0].select();
+                    $temp[0].setSelectionRange(0, $temp[0].value.length);
 
-                        if (ok) {
-                            resolve();
-                        } else {
-                            reject(new Error("copy_failed"));
-                        }
-                    } catch (e) {
-                        reject(e);
+                    function handleCopy() {
+                        cleanup();
+                        resolve();
                     }
+
+                    function handleKeydown(e) {
+                        if (e.key === "Escape") {
+                            cleanup();
+                            reject(new Error("copy_cancelled"));
+                        }
+                    }
+
+                    function cleanup() {
+                        $(document).off("copy", handleCopy);
+                        $(document).off("keydown", handleKeydown);
+                        $temp.remove();
+                        humataHideCopyToast();
+                    }
+
+                    $(document).on("copy", handleCopy);
+                    $(document).on("keydown", handleKeydown);
+
+                    // Auto-cleanup after 10 seconds
+                    setTimeout(function() {
+                        cleanup();
+                        reject(new Error("copy_timeout"));
+                    }, 10000);
                 });
+            }
+
+            function humataShowCopyToast(message) {
+                humataHideCopyToast();
+                var $toast = $("<div></div>")
+                    .attr("id", "humata-admin-copy-toast")
+                    .text(message)
+                    .css({
+                        position: "fixed",
+                        top: "20px",
+                        left: "50%",
+                        transform: "translateX(-50%)",
+                        background: "#333",
+                        color: "#fff",
+                        padding: "12px 24px",
+                        borderRadius: "8px",
+                        fontSize: "14px",
+                        zIndex: "999999",
+                        boxShadow: "0 4px 12px rgba(0,0,0,0.3)"
+                    });
+                $("body").append($toast);
+            }
+
+            function humataHideCopyToast() {
+                $("#humata-admin-copy-toast").remove();
             }
 
             function humataGetImportMode() {

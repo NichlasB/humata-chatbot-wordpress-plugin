@@ -8,9 +8,51 @@
  * @since 1.0.0
  */
 
-// If uninstall not called from WordPress, exit.
+// Security guards.
+defined( 'ABSPATH' ) || exit;
 if ( ! defined( 'WP_UNINSTALL_PLUGIN' ) ) {
     exit;
+}
+
+/**
+ * Safely delete a file and log failures when WP_DEBUG is enabled.
+ *
+ * @param string $file_path Absolute path to the file.
+ * @return bool True on success, false on failure.
+ */
+function humata_uninstall_delete_file( $file_path ) {
+    if ( ! file_exists( $file_path ) ) {
+        return true;
+    }
+    $result = wp_delete_file( $file_path );
+    // wp_delete_file returns void, check if file still exists.
+    if ( file_exists( $file_path ) ) {
+        if ( defined( 'WP_DEBUG' ) && WP_DEBUG ) {
+            error_log( 'Humata Chatbot uninstall: Failed to delete file: ' . $file_path );
+        }
+        return false;
+    }
+    return true;
+}
+
+/**
+ * Safely delete a directory and log failures when WP_DEBUG is enabled.
+ *
+ * @param string $dir_path Absolute path to the directory.
+ * @return bool True on success, false on failure.
+ */
+function humata_uninstall_delete_dir( $dir_path ) {
+    if ( ! is_dir( $dir_path ) ) {
+        return true;
+    }
+    $result = rmdir( $dir_path );
+    if ( ! $result ) {
+        if ( defined( 'WP_DEBUG' ) && WP_DEBUG ) {
+            error_log( 'Humata Chatbot uninstall: Failed to delete directory: ' . $dir_path );
+        }
+        return false;
+    }
+    return true;
 }
 
 // Delete plugin options
@@ -99,16 +141,10 @@ $db_path    = $db_dir . '/index.db';
 $docs_dir   = $db_dir . '/documents';
 
 // Delete database file.
-if ( file_exists( $db_path ) ) {
-    @unlink( $db_path );
-}
+humata_uninstall_delete_file( $db_path );
 // Delete WAL and SHM files if they exist (SQLite journal files).
-if ( file_exists( $db_path . '-wal' ) ) {
-    @unlink( $db_path . '-wal' );
-}
-if ( file_exists( $db_path . '-shm' ) ) {
-    @unlink( $db_path . '-shm' );
-}
+humata_uninstall_delete_file( $db_path . '-wal' );
+humata_uninstall_delete_file( $db_path . '-shm' );
 
 // Delete uploaded document files.
 if ( is_dir( $docs_dir ) ) {
@@ -116,39 +152,25 @@ if ( is_dir( $docs_dir ) ) {
     if ( $files ) {
         foreach ( $files as $file ) {
             if ( is_file( $file ) ) {
-                @unlink( $file );
+                humata_uninstall_delete_file( $file );
             }
         }
     }
-    @rmdir( $docs_dir );
+    humata_uninstall_delete_dir( $docs_dir );
 }
 
 // Delete security files in db directory.
-if ( file_exists( $db_dir . '/.htaccess' ) ) {
-    @unlink( $db_dir . '/.htaccess' );
-}
-if ( file_exists( $db_dir . '/index.php' ) ) {
-    @unlink( $db_dir . '/index.php' );
-}
-if ( file_exists( $db_dir . '/web.config' ) ) {
-    @unlink( $db_dir . '/web.config' );
-}
+humata_uninstall_delete_file( $db_dir . '/.htaccess' );
+humata_uninstall_delete_file( $db_dir . '/index.php' );
+humata_uninstall_delete_file( $db_dir . '/web.config' );
 
 // Delete security files in documents directory.
-if ( file_exists( $docs_dir . '/.htaccess' ) ) {
-    @unlink( $docs_dir . '/.htaccess' );
-}
-if ( file_exists( $docs_dir . '/index.php' ) ) {
-    @unlink( $docs_dir . '/index.php' );
-}
-if ( file_exists( $docs_dir . '/web.config' ) ) {
-    @unlink( $docs_dir . '/web.config' );
-}
+humata_uninstall_delete_file( $docs_dir . '/.htaccess' );
+humata_uninstall_delete_file( $docs_dir . '/index.php' );
+humata_uninstall_delete_file( $docs_dir . '/web.config' );
 
 // Remove database directory.
-if ( is_dir( $db_dir ) ) {
-    @rmdir( $db_dir );
-}
+humata_uninstall_delete_dir( $db_dir );
 
 // Delete bot protection options.
 delete_option( 'humata_bot_protection_enabled' );

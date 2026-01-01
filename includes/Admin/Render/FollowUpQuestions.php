@@ -377,7 +377,7 @@ trait Humata_Chatbot_Admin_Settings_Render_FollowUpQuestions_Trait {
 	 */
 	public function render_followup_openrouter_model_field() {
 		$settings = $this->get_followup_questions_settings();
-		$model    = isset( $settings['openrouter_model'] ) ? $settings['openrouter_model'] : 'mistralai/mistral-medium-3.1';
+		$model    = isset( $settings['openrouter_model'] ) ? $settings['openrouter_model'] : HUMATA_DEFAULT_OPENROUTER_MODEL;
 
 		$models = $this->get_openrouter_model_options();
 		if ( '' === $model || ! isset( $models[ $model ] ) ) {

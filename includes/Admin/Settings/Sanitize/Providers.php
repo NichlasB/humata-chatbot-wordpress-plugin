@@ -76,7 +76,7 @@ trait Humata_Chatbot_Admin_Settings_Sanitize_Providers_Trait {
      */
     public function get_openrouter_model_options() {
         $models = array(
-            'mistralai/mistral-medium-3.1'    => 'Mistral Medium 3.1',
+            HUMATA_DEFAULT_OPENROUTER_MODEL    => 'Mistral Medium 3.1',
             'z-ai/glm-4.7'                    => 'Z.AI: GLM 4.7',
             'google/gemini-3-flash-preview'   => 'Gemini 3 Flash Preview',
         );
@@ -110,7 +110,7 @@ trait Humata_Chatbot_Admin_Settings_Sanitize_Providers_Trait {
         }
 
         if ( empty( $clean ) ) {
-            $clean = array( 'mistralai/mistral-medium-3.1' => 'Mistral Medium 3.1' );
+            $clean = array( HUMATA_DEFAULT_OPENROUTER_MODEL => 'Mistral Medium 3.1' );
         }
 
         return $clean;
@@ -132,7 +132,7 @@ trait Humata_Chatbot_Admin_Settings_Sanitize_Providers_Trait {
         }
 
         $keys = array_keys( $models );
-        return isset( $keys[0] ) ? $keys[0] : 'mistralai/mistral-medium-3.1';
+        return isset( $keys[0] ) ? $keys[0] : HUMATA_DEFAULT_OPENROUTER_MODEL;
     }
 }
 

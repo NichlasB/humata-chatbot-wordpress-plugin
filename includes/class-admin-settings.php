@@ -413,7 +413,6 @@ class Humata_Chatbot_Admin_Settings {
             'humata_api_key',
             'humata_document_ids',
             'humata_document_titles',
-            'humata_folder_id',
             'humata_chat_location',
             'humata_chat_page_slug',
             'humata_chat_theme',

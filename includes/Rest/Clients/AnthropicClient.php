@@ -172,7 +172,9 @@ class Humata_Chatbot_Rest_Anthropic_Client {
                 $status     = isset( $error_data['status'] ) ? (int) $error_data['status'] : 0;
 
                 if ( in_array( $status, self::FAILOVER_STATUS_CODES, true ) && $i < $key_count - 1 ) {
-                    $this->log_failover( $pool_name, $key_index, $status, $key_count );
+                    if ( $this->key_rotator ) {
+                        $this->key_rotator->log_failover( $pool_name, $key_index, $status, $key_count );
+                    }
                     $last_error = $result;
                     continue;
                 }
@@ -367,29 +369,6 @@ class Humata_Chatbot_Rest_Anthropic_Client {
         }
     }
 
-    /**
-     * Log failover attempt for debugging.
-     *
-     * @since 1.0.0
-     * @param string $pool_name    Pool identifier.
-     * @param int    $failed_index Index of the failed key.
-     * @param int    $status_code  HTTP status code that caused failover.
-     * @param int    $count        Total keys in pool.
-     * @return void
-     */
-    private function log_failover( $pool_name, $failed_index, $status_code, $count ) {
-        if ( defined( 'WP_DEBUG' ) && WP_DEBUG ) {
-            error_log(
-                sprintf(
-                    '[Humata Chatbot] Anthropic API key failover: pool=%s, key %d/%d failed with status %d, trying next key',
-                    $pool_name,
-                    $failed_index + 1,
-                    $count,
-                    $status_code
-                )
-            );
-        }
-    }
 }
 
 

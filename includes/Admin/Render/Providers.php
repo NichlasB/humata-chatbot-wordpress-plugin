@@ -176,6 +176,7 @@ trait Humata_Chatbot_Admin_Settings_Render_Providers_Trait {
         $provider = trim( $provider );
 
         // Back-compat: if new provider option is unset, reflect the legacy Straico enabled flag.
+        // @deprecated 1.1.0 Use humata_second_llm_provider option instead. Will be removed in 1.3.0.
         if ( '' === $provider ) {
             $legacy_enabled = (int) get_option( 'humata_straico_review_enabled', 0 );
             $provider       = ( 1 === $legacy_enabled ) ? 'straico' : 'none';

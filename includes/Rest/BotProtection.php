@@ -92,22 +92,23 @@ class Humata_Chatbot_Rest_Bot_Protection {
     }
 
     /**
-     * Apply progressive delay based on session message count.
+     * Check progressive delay based on session message count.
      *
-     * Should be called after successful bot protection checks.
+     * Returns WP_Error with 429 status if throttling is required,
+     * allowing caller to respond without blocking PHP workers.
      *
      * @since 1.0.0
      * @param string $ip Client IP address.
-     * @return void
+     * @return true|WP_Error True if no delay needed, WP_Error with retry_after if throttled.
      */
     public function apply_progressive_delay( $ip ) {
         if ( ! $this->is_enabled() ) {
-            return;
+            return true;
         }
 
         $delays_enabled = (bool) get_option( 'humata_progressive_delays_enabled', false );
         if ( ! $delays_enabled ) {
-            return;
+            return true;
         }
 
         $session_key = self::SESSION_COUNT_PREFIX . md5( $ip );
@@ -141,13 +142,22 @@ class Humata_Chatbot_Rest_Bot_Protection {
         // Calculate delay based on thresholds.
         $delay_seconds = $this->calculate_delay( $session_data['count'] );
 
-        // Apply delay if needed.
-        if ( $delay_seconds > 0 ) {
-            sleep( $delay_seconds );
-        }
-
         // Store updated session data (expires after cooldown period + buffer).
         set_transient( $session_key, $session_data, $cooldown_seconds + 300 );
+
+        // Return 429 error with Retry-After if throttling is required.
+        if ( $delay_seconds > 0 ) {
+            return new WP_Error(
+                'rate_limited',
+                __( 'Too many requests. Please wait before sending another message.', 'humata-chatbot' ),
+                array(
+                    'status'      => 429,
+                    'retry_after' => $delay_seconds,
+                )
+            );
+        }
+
+        return true;
     }
 
     /**
@@ -200,14 +210,7 @@ class Humata_Chatbot_Rest_Bot_Protection {
 
         $honeypot_enabled = (bool) get_option( 'humata_honeypot_enabled', true );
         $pow_enabled      = (bool) get_option( 'humata_pow_enabled', true );
-        $pow_difficulty   = absint( get_option( 'humata_pow_difficulty', 4 ) );
-
-        if ( $pow_difficulty < 1 ) {
-            $pow_difficulty = 4;
-        }
-        if ( $pow_difficulty > 8 ) {
-            $pow_difficulty = 8;
-        }
+        $pow_difficulty   = humata_get_pow_difficulty();
 
         return array(
             'enabled'          => true,

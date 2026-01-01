@@ -2176,54 +2176,8 @@ import {
     }
 
     function copyHtmlWithSelection(html) {
-        return new Promise(function(resolve, reject) {
-            try {
-                const container = document.createElement('div');
-                container.setAttribute('aria-hidden', 'true');
-                container.style.position = 'fixed';
-                container.style.left = '-9999px';
-                container.style.top = '0';
-                container.style.width = '1px';
-                container.style.height = '1px';
-                container.style.overflow = 'hidden';
-                container.innerHTML = html;
-                document.body.appendChild(container);
-
-                const selection = window.getSelection ? window.getSelection() : null;
-                const savedRanges = [];
-                if (selection && selection.rangeCount) {
-                    for (let i = 0; i < selection.rangeCount; i++) {
-                        savedRanges.push(selection.getRangeAt(i).cloneRange());
-                    }
-                }
-
-                if (selection) {
-                    const range = document.createRange();
-                    range.selectNodeContents(container);
-                    selection.removeAllRanges();
-                    selection.addRange(range);
-                }
-
-                const successful = document.execCommand('copy');
-
-                if (selection) {
-                    selection.removeAllRanges();
-                    for (let i = 0; i < savedRanges.length; i++) {
-                        selection.addRange(savedRanges[i]);
-                    }
-                }
-
-                container.remove();
-
-                if (successful) {
-                    resolve();
-                } else {
-                    reject(new Error('Copy failed'));
-                }
-            } catch (e) {
-                reject(e);
-            }
-        });
+        // Fallback: prompt user to manually copy since clipboard API is unavailable
+        return promptManualCopy(html.replace(/<[^>]*>/g, ''));
     }
 
     function copyPlainTextToClipboard(text) {
@@ -2237,28 +2191,87 @@ import {
     }
 
     function copyPlainTextWithTextarea(text) {
+        // Fallback: prompt user to manually copy since clipboard API is unavailable
+        return promptManualCopy(text);
+    }
+
+    function promptManualCopy(text) {
         return new Promise(function(resolve, reject) {
-            try {
-                const textarea = document.createElement('textarea');
-                textarea.value = String(text || '');
-                textarea.setAttribute('readonly', '');
-                textarea.style.position = 'fixed';
-                textarea.style.top = '-9999px';
-                textarea.style.left = '-9999px';
-                document.body.appendChild(textarea);
-                textarea.select();
-                textarea.setSelectionRange(0, textarea.value.length);
-                const successful = document.execCommand('copy');
-                textarea.remove();
-                if (successful) {
-                    resolve();
-                } else {
-                    reject(new Error('Copy failed'));
-                }
-            } catch (e) {
-                reject(e);
+            const isMac = /Mac|iPhone|iPad|iPod/i.test(navigator.platform || navigator.userAgent);
+            const shortcut = isMac ? 'Cmd+C' : 'Ctrl+C';
+            const message = 'Press ' + shortcut + ' to copy';
+
+            // Show toast notification
+            showCopyPromptToast(message);
+
+            // Create hidden textarea with text pre-selected for user to copy
+            const textarea = document.createElement('textarea');
+            textarea.value = String(text || '');
+            textarea.setAttribute('readonly', '');
+            textarea.setAttribute('aria-label', 'Text to copy');
+            textarea.style.position = 'fixed';
+            textarea.style.top = '50%';
+            textarea.style.left = '50%';
+            textarea.style.transform = 'translate(-50%, -50%)';
+            textarea.style.width = '1px';
+            textarea.style.height = '1px';
+            textarea.style.padding = '0';
+            textarea.style.border = 'none';
+            textarea.style.outline = 'none';
+            textarea.style.opacity = '0';
+            textarea.style.zIndex = '999999';
+            document.body.appendChild(textarea);
+            textarea.focus();
+            textarea.select();
+            textarea.setSelectionRange(0, textarea.value.length);
+
+            function handleCopy(e) {
+                cleanup();
+                resolve();
             }
+
+            function handleKeydown(e) {
+                // Escape to cancel
+                if (e.key === 'Escape') {
+                    cleanup();
+                    reject(new Error('Copy cancelled'));
+                }
+            }
+
+            function cleanup() {
+                document.removeEventListener('copy', handleCopy);
+                document.removeEventListener('keydown', handleKeydown);
+                if (textarea.parentNode) {
+                    textarea.remove();
+                }
+                hideCopyPromptToast();
+            }
+
+            document.addEventListener('copy', handleCopy);
+            document.addEventListener('keydown', handleKeydown);
+
+            // Auto-cleanup after 10 seconds
+            setTimeout(function() {
+                cleanup();
+                reject(new Error('Copy timeout'));
+            }, 10000);
         });
+    }
+
+    function showCopyPromptToast(message) {
+        hideCopyPromptToast();
+        const toast = document.createElement('div');
+        toast.id = 'humata-copy-prompt-toast';
+        toast.textContent = message;
+        toast.style.cssText = 'position:fixed;top:20px;left:50%;transform:translateX(-50%);background:#333;color:#fff;padding:12px 24px;border-radius:8px;font-size:14px;z-index:999999;box-shadow:0 4px 12px rgba(0,0,0,0.3);';
+        document.body.appendChild(toast);
+    }
+
+    function hideCopyPromptToast() {
+        const existing = document.getElementById('humata-copy-prompt-toast');
+        if (existing) {
+            existing.remove();
+        }
     }
 
     function indicateCopySuccess(button) {

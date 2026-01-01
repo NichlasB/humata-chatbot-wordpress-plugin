@@ -70,13 +70,7 @@ class Humata_Chatbot_Rest_Query_Expander {
 	 */
 	private $max_history_terms = 8;
 
-	private $last_expand_meta = array();
-
 	private $exclude_rejections = true;
-
-	public function get_last_expand_meta() {
-		return $this->last_expand_meta;
-	}
 
 	public function set_exclude_rejections( $exclude_rejections ) {
 		$this->exclude_rejections = (bool) $exclude_rejections;
