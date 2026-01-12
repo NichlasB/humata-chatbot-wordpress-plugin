@@ -42,7 +42,7 @@ class Humata_Chatbot_Rest_Search_Database {
 	 * @since 1.0.0
 	 * @var string
 	 */
-	const SCHEMA_VERSION = '1.0';
+	const SCHEMA_VERSION = '1.1';
 
 	/**
 	 * Constructor.
@@ -225,6 +225,15 @@ class Humata_Chatbot_Rest_Search_Database {
 		}
 
 		try {
+			// Create document_categories table.
+			$db->exec( "
+				CREATE TABLE IF NOT EXISTS document_categories (
+					id INTEGER PRIMARY KEY AUTOINCREMENT,
+					name TEXT NOT NULL UNIQUE,
+					sort_order INTEGER DEFAULT 0
+				)
+			" );
+
 			// Create documents_meta table for file metadata.
 			$db->exec( "
 				CREATE TABLE IF NOT EXISTS documents_meta (
@@ -234,6 +243,7 @@ class Humata_Chatbot_Rest_Search_Database {
 					file_size INTEGER NOT NULL DEFAULT 0,
 					file_path TEXT NOT NULL,
 					section_count INTEGER NOT NULL DEFAULT 0,
+					category_id INTEGER DEFAULT NULL,
 					created_at TEXT DEFAULT CURRENT_TIMESTAMP
 				)
 			" );
@@ -288,6 +298,7 @@ class Humata_Chatbot_Rest_Search_Database {
 		try {
 			$db->exec( 'DROP TABLE IF EXISTS documents_fts' );
 			$db->exec( 'DROP TABLE IF EXISTS documents_meta' );
+			$db->exec( 'DROP TABLE IF EXISTS document_categories' );
 
 			return true;
 		} catch ( Exception $e ) {
@@ -307,10 +318,11 @@ class Humata_Chatbot_Rest_Search_Database {
 	 */
 	public function get_stats() {
 		$stats = array(
-			'document_count' => 0,
-			'section_count'  => 0,
-			'db_file_size'   => 0,
-			'db_exists'      => false,
+			'document_count'  => 0,
+			'section_count'   => 0,
+			'category_count'  => 0,
+			'db_file_size'    => 0,
+			'db_exists'       => false,
 		);
 
 		if ( ! file_exists( $this->db_path ) ) {
@@ -334,6 +346,10 @@ class Humata_Chatbot_Rest_Search_Database {
 			// Count sections.
 			$result = $db->querySingle( 'SELECT COUNT(*) FROM documents_fts' );
 			$stats['section_count'] = (int) $result;
+
+			// Count categories.
+			$result = $db->querySingle( 'SELECT COUNT(*) FROM document_categories' );
+			$stats['category_count'] = (int) $result;
 
 			return $stats;
 		} catch ( Exception $e ) {
@@ -385,11 +401,75 @@ class Humata_Chatbot_Rest_Search_Database {
 	 * @return bool|WP_Error True on success, WP_Error on failure.
 	 */
 	public function maybe_init() {
-		if ( ! $this->needs_init() ) {
-			return true;
+		$current_version = $this->get_db_version();
+
+		// Fresh install.
+		if ( empty( $current_version ) || ! file_exists( $this->db_path ) ) {
+			return $this->create_tables();
 		}
 
-		return $this->create_tables();
+		// Check if migration needed.
+		if ( version_compare( $current_version, self::SCHEMA_VERSION, '<' ) ) {
+			return $this->migrate( $current_version );
+		}
+
+		return true;
+	}
+
+	/**
+	 * Migrate database schema from older version.
+	 *
+	 * @since 1.1.0
+	 * @param string $from_version Current schema version.
+	 * @return bool|WP_Error True on success, WP_Error on failure.
+	 */
+	private function migrate( $from_version ) {
+		$db = $this->get_connection();
+
+		if ( is_wp_error( $db ) ) {
+			return $db;
+		}
+
+		try {
+			// 1.0 → 1.1: Add document categories support.
+			if ( version_compare( $from_version, '1.1', '<' ) ) {
+				// Create categories table.
+				$db->exec( "
+					CREATE TABLE IF NOT EXISTS document_categories (
+						id INTEGER PRIMARY KEY AUTOINCREMENT,
+						name TEXT NOT NULL UNIQUE,
+						sort_order INTEGER DEFAULT 0
+					)
+				" );
+
+				// Check if category_id column exists in documents_meta.
+				$columns      = $db->query( 'PRAGMA table_info(documents_meta)' );
+				$has_category = false;
+
+				while ( $row = $columns->fetchArray( SQLITE3_ASSOC ) ) {
+					if ( 'category_id' === $row['name'] ) {
+						$has_category = true;
+						break;
+					}
+				}
+
+				// Add category_id column if missing.
+				if ( ! $has_category ) {
+					$db->exec( 'ALTER TABLE documents_meta ADD COLUMN category_id INTEGER DEFAULT NULL' );
+				}
+			}
+
+			// Update version.
+			$this->set_db_version( self::SCHEMA_VERSION );
+
+			return true;
+		} catch ( Exception $e ) {
+			error_log( '[Humata Chatbot] Migration error: ' . $e->getMessage() );
+			return new WP_Error(
+				'migration_error',
+				__( 'Failed to migrate database schema.', 'humata-chatbot' )
+			);
+		}
 	}
 
 	/**

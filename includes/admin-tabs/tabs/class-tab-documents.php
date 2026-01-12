@@ -130,6 +130,31 @@ class Humata_Chatbot_Settings_Tab_Documents extends Humata_Chatbot_Settings_Tab_
 		if ( isset( $_POST['humata_test_search'] ) ) {
 			$this->handle_test_search();
 		}
+
+		// Handle add category.
+		if ( isset( $_POST['humata_add_category'] ) ) {
+			$this->handle_add_category();
+		}
+
+		// Handle delete category.
+		if ( isset( $_GET['action'] ) && 'delete_category' === $_GET['action'] && isset( $_GET['cat_id'] ) ) {
+			$this->handle_delete_category();
+		}
+
+		// Handle assign category to document.
+		if ( isset( $_POST['humata_assign_category'] ) ) {
+			$this->handle_assign_category();
+		}
+
+		// Handle bulk delete.
+		if ( isset( $_POST['humata_bulk_delete'] ) ) {
+			$this->handle_bulk_delete();
+		}
+
+		// Handle bulk category assignment.
+		if ( isset( $_POST['humata_bulk_category'] ) ) {
+			$this->handle_bulk_category();
+		}
 	}
 
 	/**
@@ -188,6 +213,12 @@ class Humata_Chatbot_Settings_Tab_Documents extends Humata_Chatbot_Settings_Tab_
 		$file_count      = count( $files['name'] );
 		$success_count   = 0;
 		$failed_files    = array();
+
+		// Get optional category.
+		$category_id = isset( $_POST['humata_upload_category'] ) ? absint( $_POST['humata_upload_category'] ) : null;
+		if ( 0 === $category_id ) {
+			$category_id = null;
+		}
 
 		// Batch limit: max 20 files per upload.
 		$max_batch_size = 20;
@@ -254,8 +285,8 @@ class Humata_Chatbot_Settings_Tab_Documents extends Humata_Chatbot_Settings_Tab_
 				continue;
 			}
 
-			// Index the document.
-			$result = $indexer->index_document( $dest_path );
+			// Index the document with optional category.
+			$result = $indexer->index_document( $dest_path, $category_id );
 
 			if ( is_wp_error( $result ) ) {
 				unlink( $dest_path );
@@ -469,6 +500,356 @@ class Humata_Chatbot_Settings_Tab_Documents extends Humata_Chatbot_Settings_Tab_
 	}
 
 	/**
+	 * Handle add category.
+	 *
+	 * @since 1.1.0
+	 * @return void
+	 */
+	private function handle_add_category() {
+		if ( ! check_admin_referer( 'humata_add_category', 'humata_category_nonce' ) ) {
+			add_settings_error(
+				'humata_documents',
+				'nonce_error',
+				__( 'Security check failed. Please try again.', 'humata-chatbot' ),
+				'error'
+			);
+			return;
+		}
+
+		$name = isset( $_POST['humata_category_name'] ) ? sanitize_text_field( $_POST['humata_category_name'] ) : '';
+
+		if ( empty( $name ) ) {
+			add_settings_error(
+				'humata_documents',
+				'empty_name',
+				__( 'Category name cannot be empty.', 'humata-chatbot' ),
+				'error'
+			);
+			return;
+		}
+
+		require_once HUMATA_CHATBOT_PATH . 'includes/Rest/SearchDatabase.php';
+		require_once HUMATA_CHATBOT_PATH . 'includes/Rest/CategoryManager.php';
+
+		$database = new Humata_Chatbot_Rest_Search_Database();
+		$manager  = new Humata_Chatbot_Rest_Category_Manager( $database );
+
+		$result = $manager->create( $name );
+
+		if ( is_wp_error( $result ) ) {
+			add_settings_error(
+				'humata_documents',
+				'category_error',
+				$result->get_error_message(),
+				'error'
+			);
+			return;
+		}
+
+		add_settings_error(
+			'humata_documents',
+			'category_success',
+			sprintf(
+				/* translators: %s: category name */
+				__( 'Category "%s" created successfully.', 'humata-chatbot' ),
+				esc_html( $name )
+			),
+			'success'
+		);
+	}
+
+	/**
+	 * Handle delete category.
+	 *
+	 * @since 1.1.0
+	 * @return void
+	 */
+	private function handle_delete_category() {
+		$cat_id = absint( $_GET['cat_id'] );
+
+		if ( ! wp_verify_nonce( $_GET['_wpnonce'], 'humata_delete_category_' . $cat_id ) ) {
+			add_settings_error(
+				'humata_documents',
+				'nonce_error',
+				__( 'Security check failed. Please try again.', 'humata-chatbot' ),
+				'error'
+			);
+			return;
+		}
+
+		require_once HUMATA_CHATBOT_PATH . 'includes/Rest/SearchDatabase.php';
+		require_once HUMATA_CHATBOT_PATH . 'includes/Rest/CategoryManager.php';
+
+		$database = new Humata_Chatbot_Rest_Search_Database();
+		$manager  = new Humata_Chatbot_Rest_Category_Manager( $database );
+
+		// Get category name before deletion.
+		$category = $manager->get( $cat_id );
+
+		if ( is_wp_error( $category ) || null === $category ) {
+			add_settings_error(
+				'humata_documents',
+				'not_found',
+				__( 'Category not found.', 'humata-chatbot' ),
+				'error'
+			);
+			return;
+		}
+
+		$result = $manager->delete( $cat_id );
+
+		if ( is_wp_error( $result ) ) {
+			add_settings_error(
+				'humata_documents',
+				'delete_error',
+				$result->get_error_message(),
+				'error'
+			);
+			return;
+		}
+
+		add_settings_error(
+			'humata_documents',
+			'delete_success',
+			sprintf(
+				/* translators: %s: category name */
+				__( 'Category "%s" deleted. Documents moved to Uncategorized.', 'humata-chatbot' ),
+				esc_html( $category['name'] )
+			),
+			'success'
+		);
+
+		// Redirect to remove action from URL.
+		wp_safe_redirect( admin_url( 'options-general.php?page=humata-chatbot&tab=documents' ) );
+		exit;
+	}
+
+	/**
+	 * Handle assign category to document.
+	 *
+	 * @since 1.1.0
+	 * @return void
+	 */
+	private function handle_assign_category() {
+		if ( ! check_admin_referer( 'humata_assign_category', 'humata_assign_nonce' ) ) {
+			add_settings_error(
+				'humata_documents',
+				'nonce_error',
+				__( 'Security check failed. Please try again.', 'humata-chatbot' ),
+				'error'
+			);
+			return;
+		}
+
+		$doc_id      = isset( $_POST['humata_doc_id'] ) ? absint( $_POST['humata_doc_id'] ) : 0;
+		$category_id = isset( $_POST['humata_doc_category'] ) ? absint( $_POST['humata_doc_category'] ) : 0;
+
+		if ( $doc_id <= 0 ) {
+			return;
+		}
+
+		// Convert 0 to null for uncategorized.
+		if ( 0 === $category_id ) {
+			$category_id = null;
+		}
+
+		require_once HUMATA_CHATBOT_PATH . 'includes/Rest/SearchDatabase.php';
+		require_once HUMATA_CHATBOT_PATH . 'includes/Rest/DocumentIndexer.php';
+
+		$database = new Humata_Chatbot_Rest_Search_Database();
+		$indexer  = new Humata_Chatbot_Rest_Document_Indexer( $database );
+
+		$result = $indexer->update_document_category( $doc_id, $category_id );
+
+		if ( is_wp_error( $result ) ) {
+			add_settings_error(
+				'humata_documents',
+				'assign_error',
+				$result->get_error_message(),
+				'error'
+			);
+			return;
+		}
+
+		add_settings_error(
+			'humata_documents',
+			'assign_success',
+			__( 'Document category updated.', 'humata-chatbot' ),
+			'success'
+		);
+	}
+
+	/**
+	 * Handle bulk delete.
+	 *
+	 * @since 1.1.0
+	 * @return void
+	 */
+	private function handle_bulk_delete() {
+		if ( ! check_admin_referer( 'humata_bulk_actions', 'humata_bulk_nonce' ) ) {
+			add_settings_error(
+				'humata_documents',
+				'nonce_error',
+				__( 'Security check failed. Please try again.', 'humata-chatbot' ),
+				'error'
+			);
+			return;
+		}
+
+		$doc_ids = isset( $_POST['humata_doc_ids'] ) ? array_map( 'absint', (array) $_POST['humata_doc_ids'] ) : array();
+		$doc_ids = array_filter( $doc_ids );
+
+		if ( empty( $doc_ids ) ) {
+			add_settings_error(
+				'humata_documents',
+				'no_selection',
+				__( 'No documents selected.', 'humata-chatbot' ),
+				'error'
+			);
+			return;
+		}
+
+		require_once HUMATA_CHATBOT_PATH . 'includes/Rest/SearchDatabase.php';
+		require_once HUMATA_CHATBOT_PATH . 'includes/Rest/DocumentIndexer.php';
+
+		$database = new Humata_Chatbot_Rest_Search_Database();
+		$indexer  = new Humata_Chatbot_Rest_Document_Indexer( $database );
+
+		$success_count = 0;
+		$fail_count    = 0;
+
+		foreach ( $doc_ids as $doc_id ) {
+			$doc = $indexer->get_document( $doc_id );
+
+			if ( is_wp_error( $doc ) || null === $doc ) {
+				$fail_count++;
+				continue;
+			}
+
+			$result = $indexer->delete_document( $doc_id );
+
+			if ( is_wp_error( $result ) ) {
+				$fail_count++;
+				continue;
+			}
+
+			// Delete the file if it exists.
+			if ( $doc['file_exists'] && file_exists( $doc['file_path'] ) ) {
+				unlink( $doc['file_path'] );
+			}
+
+			$success_count++;
+		}
+
+		if ( $success_count > 0 ) {
+			add_settings_error(
+				'humata_documents',
+				'bulk_delete_success',
+				sprintf(
+					/* translators: %d: number of documents */
+					_n(
+						'%d document deleted successfully.',
+						'%d documents deleted successfully.',
+						$success_count,
+						'humata-chatbot'
+					),
+					$success_count
+				),
+				'success'
+			);
+		}
+
+		if ( $fail_count > 0 ) {
+			add_settings_error(
+				'humata_documents',
+				'bulk_delete_fail',
+				sprintf(
+					/* translators: %d: number of documents */
+					_n(
+						'%d document could not be deleted.',
+						'%d documents could not be deleted.',
+						$fail_count,
+						'humata-chatbot'
+					),
+					$fail_count
+				),
+				'error'
+			);
+		}
+	}
+
+	/**
+	 * Handle bulk category assignment.
+	 *
+	 * @since 1.1.0
+	 * @return void
+	 */
+	private function handle_bulk_category() {
+		if ( ! check_admin_referer( 'humata_bulk_actions', 'humata_bulk_nonce' ) ) {
+			add_settings_error(
+				'humata_documents',
+				'nonce_error',
+				__( 'Security check failed. Please try again.', 'humata-chatbot' ),
+				'error'
+			);
+			return;
+		}
+
+		$doc_ids     = isset( $_POST['humata_doc_ids'] ) ? array_map( 'absint', (array) $_POST['humata_doc_ids'] ) : array();
+		$doc_ids     = array_filter( $doc_ids );
+		$category_id = isset( $_POST['humata_bulk_cat_id'] ) ? absint( $_POST['humata_bulk_cat_id'] ) : 0;
+
+		if ( empty( $doc_ids ) ) {
+			add_settings_error(
+				'humata_documents',
+				'no_selection',
+				__( 'No documents selected.', 'humata-chatbot' ),
+				'error'
+			);
+			return;
+		}
+
+		// Convert 0 to null for uncategorized.
+		if ( 0 === $category_id ) {
+			$category_id = null;
+		}
+
+		require_once HUMATA_CHATBOT_PATH . 'includes/Rest/SearchDatabase.php';
+		require_once HUMATA_CHATBOT_PATH . 'includes/Rest/DocumentIndexer.php';
+
+		$database = new Humata_Chatbot_Rest_Search_Database();
+		$indexer  = new Humata_Chatbot_Rest_Document_Indexer( $database );
+
+		$success_count = 0;
+
+		foreach ( $doc_ids as $doc_id ) {
+			$result = $indexer->update_document_category( $doc_id, $category_id );
+
+			if ( ! is_wp_error( $result ) ) {
+				$success_count++;
+			}
+		}
+
+		if ( $success_count > 0 ) {
+			add_settings_error(
+				'humata_documents',
+				'bulk_category_success',
+				sprintf(
+					/* translators: %d: number of documents */
+					_n(
+						'%d document category updated.',
+						'%d documents category updated.',
+						$success_count,
+						'humata-chatbot'
+					),
+					$success_count
+				),
+				'success'
+			);
+		}
+	}
+
+	/**
 	 * Render the tab content.
 	 *
 	 * @since 1.0.0
@@ -486,17 +867,26 @@ class Humata_Chatbot_Settings_Tab_Documents extends Humata_Chatbot_Settings_Tab_
 
 		require_once HUMATA_CHATBOT_PATH . 'includes/Rest/DocumentIndexer.php';
 		require_once HUMATA_CHATBOT_PATH . 'includes/Rest/SearchEngine.php';
+		require_once HUMATA_CHATBOT_PATH . 'includes/Rest/CategoryManager.php';
 
-		$indexer = new Humata_Chatbot_Rest_Document_Indexer( $database );
-		$stats   = $database->get_stats();
+		$indexer  = new Humata_Chatbot_Rest_Document_Indexer( $database );
+		$cat_mgr  = new Humata_Chatbot_Rest_Category_Manager( $database );
+		$stats    = $database->get_stats();
 
 		// Initialize database if needed.
 		$database->maybe_init();
 
+		// Get categories for dropdowns.
+		$categories = $cat_mgr->get_all( true );
+		if ( is_wp_error( $categories ) ) {
+			$categories = array();
+		}
+
 		?>
 		<div class="humata-documents-tab">
-			<?php $this->render_upload_form(); ?>
-			<?php $this->render_document_list( $indexer ); ?>
+			<?php $this->render_category_management( $categories, $cat_mgr ); ?>
+			<?php $this->render_upload_form( $categories ); ?>
+			<?php $this->render_document_list( $indexer, $categories ); ?>
 			<?php $this->render_stats_box( $stats ); ?>
 			<?php $this->render_test_search(); ?>
 		</div>
@@ -523,12 +913,88 @@ class Humata_Chatbot_Settings_Tab_Documents extends Humata_Chatbot_Settings_Tab_
 	}
 
 	/**
+	 * Render category management section.
+	 *
+	 * @since 1.1.0
+	 * @param array                                 $categories Array of categories.
+	 * @param Humata_Chatbot_Rest_Category_Manager $cat_mgr    Category manager instance.
+	 * @return void
+	 */
+	private function render_category_management( $categories, $cat_mgr ) {
+		$uncategorized_count = $cat_mgr->get_uncategorized_count();
+		if ( is_wp_error( $uncategorized_count ) ) {
+			$uncategorized_count = 0;
+		}
+		?>
+		<div class="card">
+			<h2><?php esc_html_e( 'Document Categories', 'humata-chatbot' ); ?></h2>
+			<p class="description">
+				<?php esc_html_e( 'Organize your documents into categories. Categories are for organization only and do not affect search results.', 'humata-chatbot' ); ?>
+			</p>
+
+			<form method="post" style="margin-bottom: 15px;">
+				<?php wp_nonce_field( 'humata_add_category', 'humata_category_nonce' ); ?>
+				<input type="text" name="humata_category_name" placeholder="<?php esc_attr_e( 'New category name...', 'humata-chatbot' ); ?>" style="width: 250px;" maxlength="100" />
+				<button type="submit" name="humata_add_category" class="button">
+					<?php esc_html_e( 'Add Category', 'humata-chatbot' ); ?>
+				</button>
+			</form>
+
+			<?php if ( ! empty( $categories ) || $uncategorized_count > 0 ) : ?>
+				<table class="wp-list-table widefat fixed striped" style="max-width: 500px;">
+					<thead>
+						<tr>
+							<th><?php esc_html_e( 'Category', 'humata-chatbot' ); ?></th>
+							<th style="width: 80px;"><?php esc_html_e( 'Documents', 'humata-chatbot' ); ?></th>
+							<th style="width: 80px;"><?php esc_html_e( 'Actions', 'humata-chatbot' ); ?></th>
+						</tr>
+					</thead>
+					<tbody>
+						<tr>
+							<td><em><?php esc_html_e( 'Uncategorized', 'humata-chatbot' ); ?></em></td>
+							<td><?php echo esc_html( $uncategorized_count ); ?></td>
+							<td>&mdash;</td>
+						</tr>
+						<?php foreach ( $categories as $cat ) : ?>
+							<tr>
+								<td><?php echo esc_html( $cat['name'] ); ?></td>
+								<td><?php echo esc_html( $cat['doc_count'] ); ?></td>
+								<td>
+									<?php
+									$delete_url = wp_nonce_url(
+										add_query_arg(
+											array(
+												'page'   => 'humata-chatbot',
+												'tab'    => 'documents',
+												'action' => 'delete_category',
+												'cat_id' => $cat['id'],
+											),
+											admin_url( 'options-general.php' )
+										),
+										'humata_delete_category_' . $cat['id']
+									);
+									?>
+									<a href="<?php echo esc_url( $delete_url ); ?>" class="button button-small" onclick="return confirm('<?php esc_attr_e( 'Delete this category? Documents will become uncategorized.', 'humata-chatbot' ); ?>');">
+										<?php esc_html_e( 'Delete', 'humata-chatbot' ); ?>
+									</a>
+								</td>
+							</tr>
+						<?php endforeach; ?>
+					</tbody>
+				</table>
+			<?php endif; ?>
+		</div>
+		<?php
+	}
+
+	/**
 	 * Render the upload form.
 	 *
 	 * @since 1.0.0
+	 * @param array $categories Array of categories for dropdown.
 	 * @return void
 	 */
-	private function render_upload_form() {
+	private function render_upload_form( $categories = array() ) {
 		?>
 		<div class="card">
 			<h2><?php esc_html_e( 'Upload Documents', 'humata-chatbot' ); ?></h2>
@@ -540,6 +1006,19 @@ class Humata_Chatbot_Settings_Tab_Documents extends Humata_Chatbot_Settings_Tab_
 				<p>
 					<input type="file" name="humata_documents[]" accept=".txt" multiple required />
 				</p>
+				<?php if ( ! empty( $categories ) ) : ?>
+					<p>
+						<label for="humata_upload_category"><?php esc_html_e( 'Category (optional):', 'humata-chatbot' ); ?></label><br />
+						<select name="humata_upload_category" id="humata_upload_category" style="min-width: 200px;">
+							<option value="0"><?php esc_html_e( '— Uncategorized —', 'humata-chatbot' ); ?></option>
+							<?php foreach ( $categories as $cat ) : ?>
+								<option value="<?php echo esc_attr( $cat['id'] ); ?>">
+									<?php echo esc_html( $cat['name'] ); ?>
+								</option>
+							<?php endforeach; ?>
+						</select>
+					</p>
+				<?php endif; ?>
 				<p>
 					<button type="submit" name="humata_upload_document" class="button button-primary">
 						<?php esc_html_e( 'Upload & Index', 'humata-chatbot' ); ?>
@@ -554,13 +1033,21 @@ class Humata_Chatbot_Settings_Tab_Documents extends Humata_Chatbot_Settings_Tab_
 	 * Render the document list table with pagination.
 	 *
 	 * @since 1.0.0
-	 * @param Humata_Chatbot_Rest_Document_Indexer $indexer Document indexer instance.
+	 * @param Humata_Chatbot_Rest_Document_Indexer $indexer    Document indexer instance.
+	 * @param array                                $categories Array of categories for filter/assignment.
 	 * @return void
 	 */
-	private function render_document_list( $indexer ) {
+	private function render_document_list( $indexer, $categories = array() ) {
 		$per_page     = 20;
 		$current_page = isset( $_GET['paged'] ) ? max( 1, absint( $_GET['paged'] ) ) : 1;
-		$result       = $indexer->get_document_list( $per_page, $current_page );
+
+		// Get category filter from URL.
+		$filter_category = null;
+		if ( isset( $_GET['cat_filter'] ) ) {
+			$filter_category = ( '' === $_GET['cat_filter'] ) ? null : absint( $_GET['cat_filter'] );
+		}
+
+		$result = $indexer->get_document_list( $per_page, $current_page, $filter_category );
 
 		if ( is_wp_error( $result ) ) {
 			$result = array(
@@ -586,72 +1073,129 @@ class Humata_Chatbot_Settings_Tab_Documents extends Humata_Chatbot_Settings_Tab_
 				<?php endif; ?>
 			</h2>
 
-			<?php if ( empty( $documents ) && 1 === $current_page ) : ?>
+			<?php if ( ! empty( $categories ) ) : ?>
+				<form method="get" style="margin-bottom: 10px;">
+					<input type="hidden" name="page" value="humata-chatbot" />
+					<input type="hidden" name="tab" value="documents" />
+					<label for="cat_filter"><?php esc_html_e( 'Filter by category:', 'humata-chatbot' ); ?></label>
+					<select name="cat_filter" id="cat_filter" onchange="this.form.submit();">
+						<option value=""><?php esc_html_e( 'All Categories', 'humata-chatbot' ); ?></option>
+						<option value="0" <?php selected( $filter_category, 0 ); ?>><?php esc_html_e( 'Uncategorized', 'humata-chatbot' ); ?></option>
+						<?php foreach ( $categories as $cat ) : ?>
+							<option value="<?php echo esc_attr( $cat['id'] ); ?>" <?php selected( $filter_category, $cat['id'] ); ?>>
+								<?php echo esc_html( $cat['name'] ); ?>
+							</option>
+						<?php endforeach; ?>
+					</select>
+				</form>
+			<?php endif; ?>
+
+			<?php if ( empty( $documents ) && 1 === $current_page && null === $filter_category ) : ?>
 				<p class="description">
 					<?php esc_html_e( 'No documents indexed yet. Upload a .txt file to get started.', 'humata-chatbot' ); ?>
 				</p>
+			<?php elseif ( empty( $documents ) ) : ?>
+				<p class="description">
+					<?php esc_html_e( 'No documents found matching the selected filter.', 'humata-chatbot' ); ?>
+				</p>
 			<?php else : ?>
 				<?php if ( $total_pages > 1 ) : ?>
-					<?php $this->render_pagination( $current_page, $total_pages, $total ); ?>
+					<?php $this->render_pagination( $current_page, $total_pages, $total, $filter_category ); ?>
 				<?php endif; ?>
 
-				<table class="wp-list-table widefat fixed striped" style="margin-top: 10px;">
-					<thead>
-						<tr>
-							<th style="width: 35%;"><?php esc_html_e( 'Filename', 'humata-chatbot' ); ?></th>
-							<th style="width: 18%;"><?php esc_html_e( 'Upload Date', 'humata-chatbot' ); ?></th>
-							<th style="width: 10%;"><?php esc_html_e( 'Size', 'humata-chatbot' ); ?></th>
-							<th style="width: 10%;"><?php esc_html_e( 'Sections', 'humata-chatbot' ); ?></th>
-							<th style="width: 12%;"><?php esc_html_e( 'Status', 'humata-chatbot' ); ?></th>
-							<th style="width: 15%;"><?php esc_html_e( 'Actions', 'humata-chatbot' ); ?></th>
-						</tr>
-					</thead>
-					<tbody>
-						<?php foreach ( $documents as $doc ) : ?>
+				<form method="post" id="humata-bulk-form">
+					<?php wp_nonce_field( 'humata_bulk_actions', 'humata_bulk_nonce' ); ?>
+
+					<div class="humata-bulk-actions">
+						<button type="submit" name="humata_bulk_delete" class="button" onclick="return confirm('<?php esc_attr_e( 'Delete all selected documents?', 'humata-chatbot' ); ?>');">
+							<?php esc_html_e( 'Delete Selected', 'humata-chatbot' ); ?>
+						</button>
+						<?php if ( ! empty( $categories ) ) : ?>
+							<select name="humata_bulk_cat_id" class="humata-cat-select">
+								<option value="0"><?php esc_html_e( 'Uncategorized', 'humata-chatbot' ); ?></option>
+								<?php foreach ( $categories as $cat ) : ?>
+									<option value="<?php echo esc_attr( $cat['id'] ); ?>">
+										<?php echo esc_html( $cat['name'] ); ?>
+									</option>
+								<?php endforeach; ?>
+							</select>
+							<button type="submit" name="humata_bulk_category" class="button">
+								<?php esc_html_e( 'Set Category', 'humata-chatbot' ); ?>
+							</button>
+						<?php endif; ?>
+						<span class="humata-bulk-select-info" id="humata-select-count"></span>
+					</div>
+
+					<table class="wp-list-table widefat fixed striped" style="margin-top: 10px;" id="humata-docs-table">
+						<thead>
 							<tr>
-								<td>
-									<strong title="<?php echo esc_attr( $doc['filename'] ); ?>">
-										<?php echo esc_html( $doc['filename'] ); ?>
-									</strong>
-								</td>
-								<td><?php echo esc_html( wp_date( get_option( 'date_format' ) . ' ' . get_option( 'time_format' ), strtotime( $doc['upload_date'] ) ) ); ?></td>
-								<td><?php echo esc_html( size_format( $doc['file_size'] ) ); ?></td>
-								<td><?php echo esc_html( $doc['section_count'] ); ?></td>
-								<td>
-									<?php if ( $doc['file_exists'] ) : ?>
-										<span class="dashicons dashicons-yes-alt" style="color: #00a32a;"></span>
-										<?php esc_html_e( 'OK', 'humata-chatbot' ); ?>
-									<?php else : ?>
-										<span class="dashicons dashicons-warning" style="color: #dba617;"></span>
-										<?php esc_html_e( 'Missing', 'humata-chatbot' ); ?>
-									<?php endif; ?>
-								</td>
-								<td>
-									<?php
-									$delete_url = wp_nonce_url(
-										add_query_arg(
-											array(
-												'page'   => 'humata-chatbot',
-												'tab'    => 'documents',
-												'action' => 'delete',
-												'doc_id' => $doc['id'],
-											),
-											admin_url( 'options-general.php' )
-										),
-										'humata_delete_document_' . $doc['id']
-									);
-									?>
-									<a href="<?php echo esc_url( $delete_url ); ?>" class="button button-small" onclick="return confirm('<?php esc_attr_e( 'Are you sure you want to delete this document?', 'humata-chatbot' ); ?>');">
-										<?php esc_html_e( 'Delete', 'humata-chatbot' ); ?>
-									</a>
-								</td>
+								<th class="check-column"><input type="checkbox" id="humata-select-all" /></th>
+								<th><?php esc_html_e( 'Filename', 'humata-chatbot' ); ?></th>
+								<th><?php esc_html_e( 'Category', 'humata-chatbot' ); ?></th>
+								<th><?php esc_html_e( 'Upload Date', 'humata-chatbot' ); ?></th>
+								<th><?php esc_html_e( 'Size', 'humata-chatbot' ); ?></th>
+								<th><?php esc_html_e( 'Sections', 'humata-chatbot' ); ?></th>
+								<th><?php esc_html_e( 'Status', 'humata-chatbot' ); ?></th>
+								<th><?php esc_html_e( 'Actions', 'humata-chatbot' ); ?></th>
 							</tr>
-						<?php endforeach; ?>
-					</tbody>
-				</table>
+						</thead>
+						<tbody>
+							<?php foreach ( $documents as $index => $doc ) : ?>
+								<tr data-index="<?php echo esc_attr( $index ); ?>">
+									<td class="check-column">
+										<input type="checkbox" name="humata_doc_ids[]" value="<?php echo esc_attr( $doc['id'] ); ?>" class="humata-doc-checkbox" />
+									</td>
+									<td>
+										<strong title="<?php echo esc_attr( $doc['filename'] ); ?>">
+											<?php echo esc_html( $doc['filename'] ); ?>
+										</strong>
+									</td>
+									<td>
+										<?php if ( ! empty( $categories ) ) : ?>
+											<?php echo esc_html( $doc['category_name'] ? $doc['category_name'] : __( 'Uncategorized', 'humata-chatbot' ) ); ?>
+										<?php else : ?>
+											<em><?php esc_html_e( 'Uncategorized', 'humata-chatbot' ); ?></em>
+										<?php endif; ?>
+									</td>
+									<td><?php echo esc_html( wp_date( get_option( 'date_format' ), strtotime( $doc['upload_date'] ) ) ); ?></td>
+									<td><?php echo esc_html( size_format( $doc['file_size'] ) ); ?></td>
+									<td><?php echo esc_html( $doc['section_count'] ); ?></td>
+									<td>
+										<?php if ( $doc['file_exists'] ) : ?>
+											<span class="dashicons dashicons-yes-alt" style="color: #00a32a;"></span>
+											<?php esc_html_e( 'OK', 'humata-chatbot' ); ?>
+										<?php else : ?>
+											<span class="dashicons dashicons-warning" style="color: #dba617;"></span>
+											<?php esc_html_e( 'Missing', 'humata-chatbot' ); ?>
+										<?php endif; ?>
+									</td>
+									<td>
+										<?php
+										$delete_url = wp_nonce_url(
+											add_query_arg(
+												array(
+													'page'   => 'humata-chatbot',
+													'tab'    => 'documents',
+													'action' => 'delete',
+													'doc_id' => $doc['id'],
+												),
+												admin_url( 'options-general.php' )
+											),
+											'humata_delete_document_' . $doc['id']
+										);
+										?>
+										<a href="<?php echo esc_url( $delete_url ); ?>" class="button button-small" onclick="return confirm('<?php esc_attr_e( 'Are you sure you want to delete this document?', 'humata-chatbot' ); ?>');">
+											<?php esc_html_e( 'Delete', 'humata-chatbot' ); ?>
+										</a>
+									</td>
+								</tr>
+							<?php endforeach; ?>
+						</tbody>
+					</table>
+				</form>
 
 				<?php if ( $total_pages > 1 ) : ?>
-					<?php $this->render_pagination( $current_page, $total_pages, $total ); ?>
+					<?php $this->render_pagination( $current_page, $total_pages, $total, $filter_category ); ?>
 				<?php endif; ?>
 
 				<p style="margin-top: 15px;">
@@ -671,19 +1215,24 @@ class Humata_Chatbot_Settings_Tab_Documents extends Humata_Chatbot_Settings_Tab_
 	 * Render pagination links.
 	 *
 	 * @since 1.0.0
-	 * @param int $current Current page.
-	 * @param int $total   Total pages.
-	 * @param int $items   Total items.
+	 * @param int      $current         Current page.
+	 * @param int      $total           Total pages.
+	 * @param int      $items           Total items.
+	 * @param int|null $filter_category Optional category filter to preserve.
 	 * @return void
 	 */
-	private function render_pagination( $current, $total, $items ) {
-		$base_url = add_query_arg(
-			array(
-				'page' => 'humata-chatbot',
-				'tab'  => 'documents',
-			),
-			admin_url( 'options-general.php' )
+	private function render_pagination( $current, $total, $items, $filter_category = null ) {
+		$args = array(
+			'page' => 'humata-chatbot',
+			'tab'  => 'documents',
 		);
+
+		// Preserve category filter in pagination links.
+		if ( null !== $filter_category ) {
+			$args['cat_filter'] = $filter_category;
+		}
+
+		$base_url = add_query_arg( $args, admin_url( 'options-general.php' ) );
 		?>
 		<div class="tablenav">
 			<div class="tablenav-pages">
@@ -755,6 +1304,10 @@ class Humata_Chatbot_Settings_Tab_Documents extends Humata_Chatbot_Settings_Tab_
 					<td><?php echo esc_html( $stats['document_count'] ); ?></td>
 				</tr>
 				<tr>
+					<th><?php esc_html_e( 'Total Categories', 'humata-chatbot' ); ?></th>
+					<td><?php echo esc_html( $stats['category_count'] ); ?></td>
+				</tr>
+				<tr>
 					<th><?php esc_html_e( 'Total Sections', 'humata-chatbot' ); ?></th>
 					<td><?php echo esc_html( $stats['section_count'] ); ?></td>
 				</tr>
@@ -804,13 +1357,13 @@ class Humata_Chatbot_Settings_Tab_Documents extends Humata_Chatbot_Settings_Tab_
 						<?php esc_html_e( 'No results found for your query.', 'humata-chatbot' ); ?>
 					</p>
 				<?php else : ?>
-					<table class="wp-list-table widefat fixed striped">
+					<table class="wp-list-table widefat striped" id="humata-test-search-results">
 						<thead>
 							<tr>
-								<th style="width: 20%;"><?php esc_html_e( 'Section', 'humata-chatbot' ); ?></th>
-								<th style="width: 15%;"><?php esc_html_e( 'Document', 'humata-chatbot' ); ?></th>
+								<th><?php esc_html_e( 'Section', 'humata-chatbot' ); ?></th>
+								<th><?php esc_html_e( 'Document', 'humata-chatbot' ); ?></th>
 								<th><?php esc_html_e( 'Content Preview', 'humata-chatbot' ); ?></th>
-								<th style="width: 10%;"><?php esc_html_e( 'Score', 'humata-chatbot' ); ?></th>
+								<th><?php esc_html_e( 'Score', 'humata-chatbot' ); ?></th>
 							</tr>
 						</thead>
 						<tbody>

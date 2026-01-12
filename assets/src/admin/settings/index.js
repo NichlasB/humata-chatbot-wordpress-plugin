@@ -1734,6 +1734,87 @@
             // Initialize on page load.
             updateFollowupProviderFields();
         })();
+
+        // ------------------------------------------
+        // Documents Tab: Bulk Selection with SHIFT
+        // ------------------------------------------
+        (function() {
+            var $table = $('#humata-docs-table');
+            if (!$table.length) {
+                return;
+            }
+
+            var $selectAll = $('#humata-select-all');
+            var $checkboxes = $table.find('.humata-doc-checkbox');
+            var $selectCount = $('#humata-select-count');
+            var lastCheckedIndex = null;
+
+            function updateSelectCount() {
+                var count = $table.find('.humata-doc-checkbox:checked').length;
+                if (count > 0) {
+                    $selectCount.text(count + ' selected');
+                } else {
+                    $selectCount.text('');
+                }
+            }
+
+            function updateSelectAllState() {
+                var total = $checkboxes.length;
+                var checked = $table.find('.humata-doc-checkbox:checked').length;
+
+                if (checked === 0) {
+                    $selectAll.prop('checked', false);
+                    $selectAll.prop('indeterminate', false);
+                } else if (checked === total) {
+                    $selectAll.prop('checked', true);
+                    $selectAll.prop('indeterminate', false);
+                } else {
+                    $selectAll.prop('checked', false);
+                    $selectAll.prop('indeterminate', true);
+                }
+            }
+
+            // Select all / deselect all.
+            $selectAll.on('change', function() {
+                var isChecked = $(this).prop('checked');
+                $checkboxes.prop('checked', isChecked);
+                lastCheckedIndex = null;
+                updateSelectCount();
+            });
+
+            // Individual checkbox with SHIFT range selection.
+            $checkboxes.on('click', function(e) {
+                var $this = $(this);
+                var currentIndex = parseInt($this.closest('tr').attr('data-index'), 10);
+
+                if (e.shiftKey && lastCheckedIndex !== null) {
+                    var start = Math.min(lastCheckedIndex, currentIndex);
+                    var end = Math.max(lastCheckedIndex, currentIndex);
+                    var newState = $this.prop('checked');
+
+                    $table.find('tbody tr').each(function() {
+                        var idx = parseInt($(this).attr('data-index'), 10);
+                        if (idx >= start && idx <= end) {
+                            $(this).find('.humata-doc-checkbox').prop('checked', newState);
+                        }
+                    });
+                }
+
+                lastCheckedIndex = currentIndex;
+                updateSelectAllState();
+                updateSelectCount();
+            });
+
+            // Also update on any change (for non-click triggers).
+            $checkboxes.on('change', function() {
+                updateSelectAllState();
+                updateSelectCount();
+            });
+
+            // Initialize.
+            updateSelectCount();
+            updateSelectAllState();
+        })();
     });
 })(jQuery);
 

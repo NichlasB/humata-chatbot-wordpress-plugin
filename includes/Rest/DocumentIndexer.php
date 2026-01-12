@@ -46,10 +46,11 @@ class Humata_Chatbot_Rest_Document_Indexer {
 	 * Reads a .txt file, parses it into sections, and indexes into FTS5.
 	 *
 	 * @since 1.0.0
-	 * @param string $file_path Full path to the .txt file.
+	 * @param string   $file_path   Full path to the .txt file.
+	 * @param int|null $category_id Optional category ID to assign.
 	 * @return int|WP_Error Document ID on success, WP_Error on failure.
 	 */
-	public function index_document( $file_path ) {
+	public function index_document( $file_path, $category_id = null ) {
 		if ( ! file_exists( $file_path ) ) {
 			return new WP_Error(
 				'file_not_found',
@@ -119,8 +120,8 @@ class Humata_Chatbot_Rest_Document_Indexer {
 
 			// Insert document metadata.
 			$stmt = $db->prepare( "
-				INSERT INTO documents_meta (filename, upload_date, file_size, file_path, section_count)
-				VALUES (:filename, :upload_date, :file_size, :file_path, :section_count)
+				INSERT INTO documents_meta (filename, upload_date, file_size, file_path, section_count, category_id)
+				VALUES (:filename, :upload_date, :file_size, :file_path, :section_count, :category_id)
 			" );
 
 			$stmt->bindValue( ':filename', $filename, SQLITE3_TEXT );
@@ -128,6 +129,13 @@ class Humata_Chatbot_Rest_Document_Indexer {
 			$stmt->bindValue( ':file_size', $file_size, SQLITE3_INTEGER );
 			$stmt->bindValue( ':file_path', $file_path, SQLITE3_TEXT );
 			$stmt->bindValue( ':section_count', count( $sections ), SQLITE3_INTEGER );
+
+			if ( null !== $category_id && $category_id > 0 ) {
+				$stmt->bindValue( ':category_id', (int) $category_id, SQLITE3_INTEGER );
+			} else {
+				$stmt->bindValue( ':category_id', null, SQLITE3_NULL );
+			}
+
 			$stmt->execute();
 
 			$doc_id = $db->lastInsertRowID();
@@ -548,26 +556,50 @@ class Humata_Chatbot_Rest_Document_Indexer {
 	 * Get list of all indexed documents.
 	 *
 	 * @since 1.0.0
-	 * @param int $per_page Items per page. 0 for all.
-	 * @param int $page     Page number (1-indexed).
+	 * @param int      $per_page    Items per page. 0 for all.
+	 * @param int      $page        Page number (1-indexed).
+	 * @param int|null $category_id Optional category filter. Use 0 for uncategorized, null for all.
 	 * @return array|WP_Error Array with 'documents', 'total', 'pages' or WP_Error.
 	 */
-	public function get_document_list( $per_page = 0, $page = 1 ) {
+	public function get_document_list( $per_page = 0, $page = 1, $category_id = null ) {
 		$db = $this->database->get_connection();
 		if ( is_wp_error( $db ) ) {
 			return $db;
 		}
 
 		try {
+			// Build WHERE clause for category filter.
+			$where_clause = '';
+			if ( null !== $category_id ) {
+				if ( 0 === $category_id ) {
+					// Uncategorized documents.
+					$where_clause = 'WHERE d.category_id IS NULL';
+				} else {
+					// Specific category.
+					$where_clause = 'WHERE d.category_id = ' . absint( $category_id );
+				}
+			}
+
 			// Get total count.
-			$count_result = $db->querySingle( 'SELECT COUNT(*) FROM documents_meta' );
+			$count_sql    = "SELECT COUNT(*) FROM documents_meta d {$where_clause}";
+			$count_result = $db->querySingle( $count_sql );
 			$total        = (int) $count_result;
 
-			// Build query with optional pagination.
+			// Build query with optional pagination and category info.
 			$sql = "
-				SELECT id, filename, upload_date, file_size, file_path, section_count
-				FROM documents_meta
-				ORDER BY upload_date DESC
+				SELECT 
+					d.id, 
+					d.filename, 
+					d.upload_date, 
+					d.file_size, 
+					d.file_path, 
+					d.section_count,
+					d.category_id,
+					c.name as category_name
+				FROM documents_meta d
+				LEFT JOIN document_categories c ON d.category_id = c.id
+				{$where_clause}
+				ORDER BY d.upload_date DESC
 			";
 
 			if ( $per_page > 0 ) {
@@ -586,6 +618,8 @@ class Humata_Chatbot_Rest_Document_Indexer {
 					'file_size'     => (int) $row['file_size'],
 					'file_path'     => $row['file_path'],
 					'section_count' => (int) $row['section_count'],
+					'category_id'   => $row['category_id'] ? (int) $row['category_id'] : null,
+					'category_name' => $row['category_name'] ? $row['category_name'] : null,
 					'file_exists'   => file_exists( $row['file_path'] ),
 				);
 			}
@@ -632,9 +666,18 @@ class Humata_Chatbot_Rest_Document_Indexer {
 
 		try {
 			$stmt = $db->prepare( "
-				SELECT id, filename, upload_date, file_size, file_path, section_count
-				FROM documents_meta
-				WHERE id = :doc_id
+				SELECT 
+					d.id, 
+					d.filename, 
+					d.upload_date, 
+					d.file_size, 
+					d.file_path, 
+					d.section_count,
+					d.category_id,
+					c.name as category_name
+				FROM documents_meta d
+				LEFT JOIN document_categories c ON d.category_id = c.id
+				WHERE d.id = :doc_id
 			" );
 			$stmt->bindValue( ':doc_id', $doc_id, SQLITE3_INTEGER );
 			$result = $stmt->execute();
@@ -651,6 +694,8 @@ class Humata_Chatbot_Rest_Document_Indexer {
 				'file_size'     => (int) $row['file_size'],
 				'file_path'     => $row['file_path'],
 				'section_count' => (int) $row['section_count'],
+				'category_id'   => $row['category_id'] ? (int) $row['category_id'] : null,
+				'category_name' => $row['category_name'] ? $row['category_name'] : null,
 				'file_exists'   => file_exists( $row['file_path'] ),
 			);
 		} catch ( Exception $e ) {
@@ -658,6 +703,62 @@ class Humata_Chatbot_Rest_Document_Indexer {
 			return new WP_Error(
 				'get_error',
 				__( 'Failed to retrieve document.', 'humata-chatbot' )
+			);
+		}
+	}
+
+	/**
+	 * Update a document's category.
+	 *
+	 * @since 1.1.0
+	 * @param int      $doc_id      Document ID.
+	 * @param int|null $category_id Category ID, or null to uncategorize.
+	 * @return bool|WP_Error True on success, WP_Error on failure.
+	 */
+	public function update_document_category( $doc_id, $category_id ) {
+		$doc_id = absint( $doc_id );
+
+		if ( $doc_id <= 0 ) {
+			return new WP_Error(
+				'invalid_doc_id',
+				__( 'Invalid document ID.', 'humata-chatbot' )
+			);
+		}
+
+		$db = $this->database->get_connection();
+		if ( is_wp_error( $db ) ) {
+			return $db;
+		}
+
+		try {
+			$stmt = $db->prepare( '
+				UPDATE documents_meta
+				SET category_id = :category_id
+				WHERE id = :doc_id
+			' );
+
+			if ( null !== $category_id && $category_id > 0 ) {
+				$stmt->bindValue( ':category_id', (int) $category_id, SQLITE3_INTEGER );
+			} else {
+				$stmt->bindValue( ':category_id', null, SQLITE3_NULL );
+			}
+
+			$stmt->bindValue( ':doc_id', $doc_id, SQLITE3_INTEGER );
+			$stmt->execute();
+
+			if ( 0 === $db->changes() ) {
+				return new WP_Error(
+					'not_found',
+					__( 'Document not found.', 'humata-chatbot' )
+				);
+			}
+
+			return true;
+		} catch ( Exception $e ) {
+			error_log( '[Humata Chatbot] Update document category error: ' . $e->getMessage() );
+			return new WP_Error(
+				'update_error',
+				__( 'Failed to update document category.', 'humata-chatbot' )
 			);
 		}
 	}
