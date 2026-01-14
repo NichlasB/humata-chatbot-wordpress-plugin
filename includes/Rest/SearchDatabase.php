@@ -42,7 +42,7 @@ class Humata_Chatbot_Rest_Search_Database {
 	 * @since 1.0.0
 	 * @var string
 	 */
-	const SCHEMA_VERSION = '1.1';
+	const SCHEMA_VERSION = '1.2';
 
 	/**
 	 * Constructor.
@@ -269,6 +269,55 @@ class Humata_Chatbot_Rest_Search_Database {
 				)
 			" );
 
+			// Create message_logs table for analytics.
+			$db->exec( "
+				CREATE TABLE IF NOT EXISTS message_logs (
+					id INTEGER PRIMARY KEY AUTOINCREMENT,
+					session_id TEXT NOT NULL,
+					user_message TEXT NOT NULL,
+					bot_response TEXT,
+					created_at TEXT DEFAULT (datetime('now')),
+					client_ip_hash TEXT,
+					page_url TEXT,
+					referer TEXT,
+					provider_used TEXT,
+					response_time_ms INTEGER,
+					is_processed INTEGER DEFAULT 0
+				)
+			" );
+
+			// Create indexes for message_logs.
+			$db->exec( 'CREATE INDEX IF NOT EXISTS idx_message_logs_created ON message_logs(created_at)' );
+			$db->exec( 'CREATE INDEX IF NOT EXISTS idx_message_logs_session ON message_logs(session_id)' );
+			$db->exec( 'CREATE INDEX IF NOT EXISTS idx_message_logs_processed ON message_logs(is_processed)' );
+
+			// Create message_insights table for AI-generated analysis.
+			$db->exec( "
+				CREATE TABLE IF NOT EXISTS message_insights (
+					id INTEGER PRIMARY KEY AUTOINCREMENT,
+					message_log_id INTEGER NOT NULL,
+					summary TEXT,
+					intent TEXT,
+					sentiment TEXT,
+					topics TEXT,
+					unanswered_questions TEXT,
+					raw_analysis TEXT,
+					created_at TEXT DEFAULT (datetime('now')),
+					provider_used TEXT,
+					FOREIGN KEY (message_log_id) REFERENCES message_logs(id) ON DELETE CASCADE
+				)
+			" );
+
+			// Create FTS5 virtual table for searching messages.
+			$db->exec( "
+				CREATE VIRTUAL TABLE IF NOT EXISTS message_logs_fts USING fts5(
+					message_log_id UNINDEXED,
+					user_message,
+					bot_response,
+					tokenize='porter unicode61'
+				)
+			" );
+
 			// Store schema version.
 			$this->set_db_version( self::SCHEMA_VERSION );
 
@@ -299,6 +348,9 @@ class Humata_Chatbot_Rest_Search_Database {
 			$db->exec( 'DROP TABLE IF EXISTS documents_fts' );
 			$db->exec( 'DROP TABLE IF EXISTS documents_meta' );
 			$db->exec( 'DROP TABLE IF EXISTS document_categories' );
+			$db->exec( 'DROP TABLE IF EXISTS message_logs_fts' );
+			$db->exec( 'DROP TABLE IF EXISTS message_insights' );
+			$db->exec( 'DROP TABLE IF EXISTS message_logs' );
 
 			return true;
 		} catch ( Exception $e ) {
@@ -321,6 +373,8 @@ class Humata_Chatbot_Rest_Search_Database {
 			'document_count'  => 0,
 			'section_count'   => 0,
 			'category_count'  => 0,
+			'message_count'   => 0,
+			'insight_count'   => 0,
 			'db_file_size'    => 0,
 			'db_exists'       => false,
 		);
@@ -350,6 +404,14 @@ class Humata_Chatbot_Rest_Search_Database {
 			// Count categories.
 			$result = $db->querySingle( 'SELECT COUNT(*) FROM document_categories' );
 			$stats['category_count'] = (int) $result;
+
+			// Count messages.
+			$result = $db->querySingle( 'SELECT COUNT(*) FROM message_logs' );
+			$stats['message_count'] = (int) $result;
+
+			// Count insights.
+			$result = $db->querySingle( 'SELECT COUNT(*) FROM message_insights' );
+			$stats['insight_count'] = (int) $result;
 
 			return $stats;
 		} catch ( Exception $e ) {
@@ -457,6 +519,58 @@ class Humata_Chatbot_Rest_Search_Database {
 				if ( ! $has_category ) {
 					$db->exec( 'ALTER TABLE documents_meta ADD COLUMN category_id INTEGER DEFAULT NULL' );
 				}
+			}
+
+			// 1.1 → 1.2: Add message analytics tables.
+			if ( version_compare( $from_version, '1.2', '<' ) ) {
+				// Create message_logs table.
+				$db->exec( "
+					CREATE TABLE IF NOT EXISTS message_logs (
+						id INTEGER PRIMARY KEY AUTOINCREMENT,
+						session_id TEXT NOT NULL,
+						user_message TEXT NOT NULL,
+						bot_response TEXT,
+						created_at TEXT DEFAULT (datetime('now')),
+						client_ip_hash TEXT,
+						page_url TEXT,
+						referer TEXT,
+						provider_used TEXT,
+						response_time_ms INTEGER,
+						is_processed INTEGER DEFAULT 0
+					)
+				" );
+
+				// Create indexes for message_logs.
+				$db->exec( 'CREATE INDEX IF NOT EXISTS idx_message_logs_created ON message_logs(created_at)' );
+				$db->exec( 'CREATE INDEX IF NOT EXISTS idx_message_logs_session ON message_logs(session_id)' );
+				$db->exec( 'CREATE INDEX IF NOT EXISTS idx_message_logs_processed ON message_logs(is_processed)' );
+
+				// Create message_insights table.
+				$db->exec( "
+					CREATE TABLE IF NOT EXISTS message_insights (
+						id INTEGER PRIMARY KEY AUTOINCREMENT,
+						message_log_id INTEGER NOT NULL,
+						summary TEXT,
+						intent TEXT,
+						sentiment TEXT,
+						topics TEXT,
+						unanswered_questions TEXT,
+						raw_analysis TEXT,
+						created_at TEXT DEFAULT (datetime('now')),
+						provider_used TEXT,
+						FOREIGN KEY (message_log_id) REFERENCES message_logs(id) ON DELETE CASCADE
+					)
+				" );
+
+				// Create FTS5 virtual table for searching messages.
+				$db->exec( "
+					CREATE VIRTUAL TABLE IF NOT EXISTS message_logs_fts USING fts5(
+						message_log_id UNINDEXED,
+						user_message,
+						bot_response,
+						tokenize='porter unicode61'
+					)
+				" );
 			}
 
 			// Update version.

@@ -23,6 +23,7 @@ require_once __DIR__ . '/admin-tabs/tabs/class-tab-pages.php';
 require_once __DIR__ . '/admin-tabs/tabs/class-tab-usage.php';
 require_once __DIR__ . '/admin-tabs/tabs/class-tab-documents.php';
 require_once __DIR__ . '/admin-tabs/tabs/class-tab-suggested-questions.php';
+require_once __DIR__ . '/admin-tabs/tabs/class-tab-analytics.php';
 // Admin settings schema/helpers.
 require_once __DIR__ . '/Admin/Settings/Schema.php';
 // Admin AJAX handlers.
@@ -131,9 +132,22 @@ class Humata_Chatbot_Admin_Settings {
         add_action( 'wp_ajax_humata_test_ask', array( $this, 'ajax_test_ask' ) );
         add_action( 'wp_ajax_humata_fetch_titles', array( $this, 'ajax_fetch_titles' ) );
         add_action( 'wp_ajax_humata_clear_cache', array( $this, 'ajax_clear_cache' ) );
+        add_action( 'wp_ajax_humata_get_session_messages', array( $this, 'ajax_get_session_messages' ) );
 
         // Initialize documents tab early for admin_init form handling.
         $this->init_documents_tab();
+
+        // Initialize analytics tab early for admin_init form handling.
+        $this->init_analytics_tab();
+
+        // Register WP-Cron hooks for message analytics.
+        add_action( 'humata_process_message_analysis', array( $this, 'cron_process_message_analysis' ) );
+        add_action( 'humata_cleanup_old_messages', array( $this, 'cron_cleanup_old_messages' ) );
+
+        // Schedule daily cleanup if not already scheduled.
+        if ( ! wp_next_scheduled( 'humata_cleanup_old_messages' ) ) {
+            wp_schedule_event( time(), 'daily', 'humata_cleanup_old_messages' );
+        }
     }
 
     /**
@@ -147,6 +161,60 @@ class Humata_Chatbot_Admin_Settings {
         if ( method_exists( $documents_tab, 'init' ) ) {
             $documents_tab->init();
         }
+    }
+
+    /**
+     * Initialize the analytics tab for early form handling.
+     *
+     * @since 1.0.0
+     * @return void
+     */
+    private function init_analytics_tab() {
+        $analytics_tab = new Humata_Chatbot_Settings_Tab_Analytics( $this );
+        if ( method_exists( $analytics_tab, 'init' ) ) {
+            $analytics_tab->init();
+        }
+    }
+
+    /**
+     * WP-Cron handler: process a single message for AI analysis.
+     *
+     * @since 1.0.0
+     * @param int $message_id The message ID to process.
+     * @return void
+     */
+    public function cron_process_message_analysis( $message_id ) {
+        require_once HUMATA_CHATBOT_PATH . 'includes/Rest/SearchDatabase.php';
+        require_once HUMATA_CHATBOT_PATH . 'includes/Rest/MessageLogger.php';
+        require_once HUMATA_CHATBOT_PATH . 'includes/Rest/MessageAnalyzer.php';
+
+        $database = new Humata_Chatbot_Rest_Search_Database();
+        $logger   = new Humata_Chatbot_Rest_Message_Logger( $database );
+        $analyzer = new Humata_Chatbot_Rest_Message_Analyzer( $logger );
+
+        $analyzer->analyze_message( $message_id );
+    }
+
+    /**
+     * WP-Cron handler: cleanup old messages based on retention settings.
+     *
+     * @since 1.0.0
+     * @return void
+     */
+    public function cron_cleanup_old_messages() {
+        $retention_days = (int) get_option( 'humata_analytics_retention_days', 90 );
+
+        // 0 means keep forever.
+        if ( $retention_days <= 0 ) {
+            return;
+        }
+
+        if ( ! class_exists( 'Humata_Chatbot_Message_Logger' ) ) {
+            require_once HUMATA_CHATBOT_PATH . 'includes/Rest/MessageLogger.php';
+        }
+
+        $logger = new Humata_Chatbot_Message_Logger();
+        $logger->cleanup_old_messages( $retention_days );
     }
 
     /**
@@ -261,6 +329,7 @@ class Humata_Chatbot_Admin_Settings {
             'usage'         => new Humata_Chatbot_Settings_Tab_Usage( $this ),
             'documents'           => new Humata_Chatbot_Settings_Tab_Documents( $this ),
             'suggested_questions' => new Humata_Chatbot_Settings_Tab_Suggested_Questions( $this ),
+            'analytics'           => new Humata_Chatbot_Settings_Tab_Analytics( $this ),
         );
 
         return $this->tab_modules;

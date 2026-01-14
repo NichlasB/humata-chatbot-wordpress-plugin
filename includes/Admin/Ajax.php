@@ -343,7 +343,60 @@ trait Humata_Chatbot_Admin_Ajax_Trait {
 
         wp_send_json_success( array( 'message' => __( 'Cache cleared.', 'humata-chatbot' ) ) );
     }
+
+    /**
+     * AJAX handler for getting session messages.
+     *
+     * @since 1.2.0
+     * @return void
+     */
+    public function ajax_get_session_messages() {
+        if ( ! check_ajax_referer( 'humata_admin_nonce', 'nonce', false ) ) {
+            wp_send_json_error( array( 'message' => __( 'Security check failed.', 'humata-chatbot' ) ) );
+        }
+
+        if ( ! current_user_can( 'manage_options' ) ) {
+            wp_send_json_error( array( 'message' => __( 'Permission denied.', 'humata-chatbot' ) ) );
+        }
+
+        $session_id = isset( $_POST['session_id'] ) ? sanitize_text_field( wp_unslash( $_POST['session_id'] ) ) : '';
+
+        if ( empty( $session_id ) ) {
+            wp_send_json_error( array( 'message' => __( 'Session ID is required.', 'humata-chatbot' ) ) );
+        }
+
+        require_once HUMATA_CHATBOT_PATH . 'includes/Rest/SearchDatabase.php';
+        require_once HUMATA_CHATBOT_PATH . 'includes/Rest/MessageLogger.php';
+
+        $database = new Humata_Chatbot_Rest_Search_Database();
+        $logger   = new Humata_Chatbot_Rest_Message_Logger( $database );
+
+        $messages = $logger->get_session_messages( $session_id );
+
+        if ( is_wp_error( $messages ) ) {
+            wp_send_json_error( array( 'message' => $messages->get_error_message() ) );
+        }
+
+        if ( empty( $messages ) ) {
+            wp_send_json_error( array( 'message' => __( 'No messages found for this session.', 'humata-chatbot' ) ) );
+        }
+
+        $html = '<div class="humata-session-messages-list">';
+        foreach ( $messages as $msg ) {
+            $html .= '<div class="humata-session-message" style="margin-bottom: 15px; padding: 10px; background: #fff; border: 1px solid #ddd; border-radius: 4px;">';
+            $html .= '<p style="margin: 0 0 5px 0; color: #666; font-size: 12px;">' . esc_html( wp_date( 'M j, g:i a', strtotime( $msg['created_at'] ) ) ) . '</p>';
+            $html .= '<p style="margin: 0 0 10px 0;"><strong>' . esc_html__( 'User:', 'humata-chatbot' ) . '</strong> ' . esc_html( $msg['user_message'] ) . '</p>';
+            if ( ! empty( $msg['bot_response'] ) ) {
+                $html .= '<p style="margin: 0;"><strong>' . esc_html__( 'Bot:', 'humata-chatbot' ) . '</strong> ' . esc_html( wp_trim_words( $msg['bot_response'], 50 ) ) . '</p>';
+            }
+            $html .= '</div>';
+        }
+        $html .= '</div>';
+
+        wp_send_json_success( array( 'html' => $html ) );
+    }
 }
+
 
 
 

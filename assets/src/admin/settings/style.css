@@ -647,3 +647,571 @@
     overflow-wrap: break-word;
 }
 
+/* ============================================
+   Message Analytics Tab Styles
+   ============================================ */
+
+/* Analytics Tab - Wider containers (matching Documents tab) */
+.humata-analytics-tab .card {
+    max-width: 1200px;
+}
+
+.humata-analytics-tab .wp-list-table {
+    table-layout: auto;
+}
+
+.humata-analytics-tab .wp-list-table th,
+.humata-analytics-tab .wp-list-table td {
+    padding: 10px 12px;
+    vertical-align: middle;
+}
+
+/* Checkbox column */
+.humata-analytics-tab .check-column {
+    width: 2.2em;
+    padding: 10px 0 10px 10px;
+    vertical-align: middle;
+}
+
+.humata-analytics-tab .check-column input[type="checkbox"] {
+    margin: 0;
+    vertical-align: middle;
+}
+
+/* Stats boxes */
+.humata-analytics-stats {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 16px;
+    margin-bottom: 20px;
+}
+
+.humata-stat-box {
+    background: #fff;
+    border: 1px solid #c3c4c7;
+    border-radius: 4px;
+    padding: 16px 20px;
+    min-width: 140px;
+    box-shadow: 0 1px 1px rgba(0, 0, 0, 0.04);
+}
+
+.humata-stat-box__label {
+    font-size: 12px;
+    color: #646970;
+    text-transform: uppercase;
+    letter-spacing: 0.5px;
+    margin-bottom: 4px;
+}
+
+.humata-stat-box__value {
+    font-size: 28px;
+    font-weight: 600;
+    color: #1d2327;
+    line-height: 1.2;
+}
+
+/* Analytics settings form */
+.humata-analytics-settings {
+    max-width: 800px;
+}
+
+.humata-analytics-settings .form-table th {
+    width: 220px;
+    padding-top: 15px;
+}
+
+/* Messages table */
+.humata-messages-table-wrapper {
+    max-width: 1200px;
+    overflow-x: auto;
+}
+
+.humata-messages-table {
+    width: 100%;
+    border-collapse: collapse;
+}
+
+.humata-messages-table th,
+.humata-messages-table td {
+    padding: 10px 12px;
+    border-bottom: 1px solid #c3c4c7;
+    text-align: left;
+    vertical-align: top;
+}
+
+.humata-messages-table th {
+    background: #f6f7f7;
+    font-weight: 600;
+    white-space: nowrap;
+}
+
+.humata-messages-table tbody tr:hover {
+    background: #f6f7f7;
+}
+
+.humata-messages-table .column-checkbox {
+    width: 2.2em;
+    padding: 10px 0 10px 10px;
+}
+
+.humata-messages-table .column-date {
+    width: 140px;
+    white-space: nowrap;
+}
+
+.humata-messages-table .column-message {
+    min-width: 200px;
+}
+
+.humata-messages-table .column-status {
+    width: 100px;
+}
+
+.humata-messages-table .column-actions {
+    width: 100px;
+    white-space: nowrap;
+}
+
+/* Message preview truncation */
+.humata-message-preview {
+    max-width: 300px;
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+}
+
+/* Message detail row (expandable) */
+.humata-message-detail {
+    background: #f9f9f9;
+}
+
+.humata-message-detail td {
+    padding: 0;
+}
+
+.humata-message-detail-content {
+    padding: 16px 20px;
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 20px;
+}
+
+.humata-message-detail-full {
+    grid-column: 1 / -1;
+}
+
+.humata-message-detail-section {
+    background: #fff;
+    border: 1px solid #dcdcde;
+    border-radius: 4px;
+    padding: 12px 16px;
+}
+
+.humata-message-detail-section h4 {
+    margin: 0 0 8px 0;
+    font-size: 13px;
+    color: #1d2327;
+    font-weight: 600;
+}
+
+.humata-message-detail-section p,
+.humata-message-detail-section pre {
+    margin: 0;
+    font-size: 13px;
+    color: #3c434a;
+    line-height: 1.5;
+}
+
+.humata-message-detail-section pre {
+    white-space: pre-wrap;
+    word-wrap: break-word;
+    background: #f6f7f7;
+    padding: 8px 10px;
+    border-radius: 3px;
+    font-family: Consolas, Monaco, monospace;
+    font-size: 12px;
+}
+
+/* Processing status badges */
+.humata-status-badge {
+    display: inline-block;
+    padding: 3px 8px;
+    border-radius: 10px;
+    font-size: 11px;
+    font-weight: 500;
+    line-height: 1.3;
+}
+
+.humata-status-badge--pending {
+    background: #fef8e8;
+    color: #8b6914;
+    border: 1px solid #f0c33c;
+}
+
+.humata-status-badge--processed {
+    background: #edfaef;
+    color: #1d6f42;
+    border: 1px solid #7ec88b;
+}
+
+.humata-status-badge--failed {
+    background: #fcf0f1;
+    color: #8a2424;
+    border: 1px solid #e8a1a1;
+}
+
+/* Sentiment indicators */
+.humata-sentiment {
+    display: inline-flex;
+    align-items: center;
+    gap: 6px;
+    padding: 4px 10px;
+    border-radius: 12px;
+    font-size: 12px;
+    font-weight: 500;
+}
+
+.humata-sentiment--positive {
+    background: #edfaef;
+    color: #1d6f42;
+}
+
+.humata-sentiment--negative {
+    background: #fcf0f1;
+    color: #8a2424;
+}
+
+.humata-sentiment--neutral {
+    background: #f0f0f1;
+    color: #50575e;
+}
+
+.humata-sentiment--mixed {
+    background: #fef8e8;
+    color: #8b6914;
+}
+
+.humata-sentiment__icon {
+    font-size: 14px;
+}
+
+/* Intent badges */
+.humata-intent-badge {
+    display: inline-block;
+    padding: 3px 10px;
+    background: #e7f3ff;
+    color: #0a4b78;
+    border-radius: 12px;
+    font-size: 11px;
+    font-weight: 500;
+    text-transform: capitalize;
+}
+
+/* Topic tags */
+.humata-topics {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 6px;
+    margin-top: 6px;
+}
+
+.humata-topic-tag {
+    display: inline-block;
+    padding: 2px 8px;
+    background: #f6f7f7;
+    border: 1px solid #c3c4c7;
+    border-radius: 3px;
+    font-size: 11px;
+    color: #3c434a;
+}
+
+/* Unanswered questions list */
+.humata-unanswered-list {
+    margin: 8px 0 0 0;
+    padding-left: 18px;
+}
+
+.humata-unanswered-list li {
+    font-size: 12px;
+    color: #8a2424;
+    margin-bottom: 4px;
+}
+
+/* Sessions view */
+.humata-sessions-table {
+    width: 100%;
+    border-collapse: collapse;
+}
+
+.humata-sessions-table th,
+.humata-sessions-table td {
+    padding: 10px 12px;
+    border-bottom: 1px solid #c3c4c7;
+    text-align: left;
+    vertical-align: top;
+}
+
+.humata-sessions-table th {
+    background: #f6f7f7;
+    font-weight: 600;
+}
+
+.humata-session-row {
+    cursor: pointer;
+}
+
+.humata-session-row:hover {
+    background: #f6f7f7;
+}
+
+.humata-session-messages {
+    background: #fafafa;
+}
+
+.humata-session-messages td {
+    padding: 0;
+}
+
+.humata-session-messages-list {
+    padding: 12px 16px;
+    border-left: 3px solid #2271b1;
+    margin: 8px 12px;
+    background: #fff;
+}
+
+.humata-session-message-item {
+    padding: 8px 0;
+    border-bottom: 1px dashed #dcdcde;
+}
+
+.humata-session-message-item:last-child {
+    border-bottom: none;
+}
+
+.humata-session-message-time {
+    font-size: 11px;
+    color: #646970;
+    margin-bottom: 4px;
+}
+
+.humata-session-message-user {
+    background: #e7f3ff;
+    padding: 6px 10px;
+    border-radius: 4px;
+    margin-bottom: 6px;
+    font-size: 13px;
+}
+
+.humata-session-message-bot {
+    background: #f0f0f1;
+    padding: 6px 10px;
+    border-radius: 4px;
+    font-size: 13px;
+    color: #3c434a;
+}
+
+/* View toggle buttons */
+.humata-view-toggle {
+    display: inline-flex;
+    border: 1px solid #c3c4c7;
+    border-radius: 4px;
+    overflow: hidden;
+    margin-bottom: 16px;
+}
+
+.humata-view-toggle__btn {
+    padding: 6px 14px;
+    background: #fff;
+    border: none;
+    cursor: pointer;
+    font-size: 13px;
+    color: #50575e;
+    border-right: 1px solid #c3c4c7;
+    transition: background 0.15s, color 0.15s;
+}
+
+.humata-view-toggle__btn:last-child {
+    border-right: none;
+}
+
+.humata-view-toggle__btn:hover {
+    background: #f6f7f7;
+}
+
+.humata-view-toggle__btn.active {
+    background: #2271b1;
+    color: #fff;
+}
+
+/* Bulk actions */
+.humata-analytics-bulk-actions {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    padding: 10px 0;
+    flex-wrap: wrap;
+}
+
+.humata-analytics-bulk-actions .button {
+    margin: 0;
+}
+
+.humata-analytics-selected-count {
+    color: #646970;
+    font-size: 13px;
+}
+
+/* Pagination */
+.humata-analytics-pagination {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    margin-top: 16px;
+    padding-top: 16px;
+    border-top: 1px solid #c3c4c7;
+}
+
+.humata-analytics-pagination .page-numbers {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    min-width: 32px;
+    height: 32px;
+    padding: 0 8px;
+    background: #f6f7f7;
+    border: 1px solid #c3c4c7;
+    border-radius: 3px;
+    text-decoration: none;
+    color: #50575e;
+    font-size: 13px;
+}
+
+.humata-analytics-pagination .page-numbers:hover {
+    background: #f0f0f1;
+    border-color: #8c8f94;
+    color: #1d2327;
+}
+
+.humata-analytics-pagination .page-numbers.current {
+    background: #2271b1;
+    border-color: #2271b1;
+    color: #fff;
+}
+
+.humata-analytics-pagination .page-numbers.dots {
+    background: transparent;
+    border: none;
+    cursor: default;
+}
+
+.humata-analytics-page-info {
+    color: #646970;
+    font-size: 13px;
+    margin-left: auto;
+}
+
+/* Export section */
+.humata-analytics-export {
+    margin-top: 24px;
+    padding: 16px;
+    background: #f6f7f7;
+    border: 1px solid #c3c4c7;
+    border-radius: 4px;
+    max-width: 600px;
+}
+
+.humata-analytics-export h4 {
+    margin: 0 0 12px 0;
+    font-size: 14px;
+    color: #1d2327;
+}
+
+.humata-analytics-export .button {
+    margin-right: 10px;
+}
+
+/* Detail expand button */
+.humata-expand-btn {
+    background: none;
+    border: none;
+    cursor: pointer;
+    padding: 4px;
+    color: #2271b1;
+    font-size: 16px;
+    line-height: 1;
+}
+
+.humata-expand-btn:hover {
+    color: #135e96;
+}
+
+.humata-expand-btn .dashicons {
+    transition: transform 0.2s;
+}
+
+.humata-expand-btn.expanded .dashicons {
+    transform: rotate(180deg);
+}
+
+/* Insights panel in detail view */
+.humata-insights-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+    gap: 12px;
+    margin-top: 12px;
+}
+
+.humata-insight-item {
+    padding: 10px 12px;
+    background: #f9f9f9;
+    border-radius: 4px;
+}
+
+.humata-insight-item__label {
+    font-size: 11px;
+    color: #646970;
+    text-transform: uppercase;
+    letter-spacing: 0.5px;
+    margin-bottom: 4px;
+}
+
+.humata-insight-item__value {
+    font-size: 13px;
+    color: #1d2327;
+}
+
+/* Clear all confirmation */
+.humata-clear-all-warning {
+    background: #fcf0f1;
+    border: 1px solid #e8a1a1;
+    border-radius: 4px;
+    padding: 12px 16px;
+    margin-bottom: 16px;
+    color: #8a2424;
+}
+
+.humata-clear-all-warning strong {
+    display: block;
+    margin-bottom: 6px;
+}
+
+/* No messages state */
+.humata-no-messages {
+    text-align: center;
+    padding: 40px 20px;
+    color: #646970;
+}
+
+.humata-no-messages .dashicons {
+    font-size: 48px;
+    width: 48px;
+    height: 48px;
+    margin-bottom: 12px;
+    color: #c3c4c7;
+}
+
+.humata-no-messages p {
+    margin: 0;
+    font-size: 14px;
+}
+

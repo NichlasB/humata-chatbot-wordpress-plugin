@@ -19,6 +19,8 @@ require_once __DIR__ . '/Rest/KeyRotator.php';
 require_once __DIR__ . '/Rest/Clients/StraicoClient.php';
 require_once __DIR__ . '/Rest/Clients/AnthropicClient.php';
 require_once __DIR__ . '/Rest/Clients/OpenRouterClient.php';
+require_once __DIR__ . '/Rest/MessageLogger.php';
+require_once __DIR__ . '/Rest/MessageAnalyzer.php';
 
 /**
  * Class Humata_Chatbot_REST_API
@@ -245,6 +247,9 @@ class Humata_Chatbot_REST_API {
      * @return WP_REST_Response|WP_Error Response object or error.
      */
     public function handle_ask_request( $request ) {
+        // Track request start time for analytics.
+        $request_start_time = microtime( true );
+
         // Apply progressive delays if enabled (returns 429 if throttled).
         $ip = Humata_Chatbot_Rest_Client_Ip::get_client_ip();
         $delay_result = $this->bot_protection->apply_progressive_delay( $ip );
@@ -256,7 +261,7 @@ class Humata_Chatbot_REST_API {
         $search_provider = get_option( 'humata_search_provider', 'humata' );
 
         if ( 'local' === $search_provider ) {
-            return $this->handle_local_search_request( $request );
+            return $this->handle_local_search_request( $request, $request_start_time );
         }
 
         // Continue with Humata API flow.
@@ -558,6 +563,13 @@ class Humata_Chatbot_REST_API {
         // Generate follow-up questions if enabled.
         $followup_questions = $this->generate_followup_questions( $message, $answer );
 
+        // Log message for analytics.
+        $provider_label = 'humata';
+        if ( ! empty( $second_llm_provider ) && 'none' !== $second_llm_provider ) {
+            $provider_label = 'humata+' . $second_llm_provider;
+        }
+        $this->maybe_log_message( $conversation_id, $message, $answer, $provider_label, $request_start_time );
+
         // Return the response
         return rest_ensure_response(
             array(
@@ -576,10 +588,11 @@ class Humata_Chatbot_REST_API {
      * Supports two-stage LLM processing with independent provider configurations.
      *
      * @since 1.0.0
-     * @param WP_REST_Request $request Request object.
+     * @param WP_REST_Request $request            Request object.
+     * @param float           $request_start_time Request start time for analytics.
      * @return WP_REST_Response|WP_Error Response object or error.
      */
-    private function handle_local_search_request( $request ) {
+    private function handle_local_search_request( $request, $request_start_time = 0 ) {
         // Load local search classes.
         require_once __DIR__ . '/Rest/SearchDatabase.php';
         require_once __DIR__ . '/Rest/SearchEngine.php';
@@ -885,11 +898,21 @@ class Humata_Chatbot_REST_API {
         // Generate follow-up questions if enabled.
         $followup_questions = $this->generate_followup_questions( $message, $answer );
 
+        // Build conversation ID and log message for analytics.
+        // Use conversation ID from frontend if provided, otherwise generate new one.
+        $frontend_conversation_id = $request->get_param( 'conversationId' );
+        $conversation_id          = ! empty( $frontend_conversation_id ) ? $frontend_conversation_id : 'local-' . wp_generate_uuid4();
+        $provider_label  = 'local:' . $first_llm_provider;
+        if ( isset( $second_llm_provider ) && ! empty( $second_llm_provider ) && 'none' !== $second_llm_provider ) {
+            $provider_label .= '+' . $second_llm_provider;
+        }
+        $this->maybe_log_message( $conversation_id, $message, $answer, $provider_label, $request_start_time );
+
         return rest_ensure_response(
             array(
                 'success'           => true,
                 'answer'            => $answer,
-                'conversationId'    => 'local-' . wp_generate_uuid4(),
+                'conversationId'    => $conversation_id,
                 'followUpQuestions' => $followup_questions,
             )
         );
@@ -1092,6 +1115,62 @@ class Humata_Chatbot_REST_API {
         }
 
         return $questions;
+    }
+
+    /**
+     * Log a chat message for analytics (if enabled).
+     *
+     * @since 1.2.0
+     * @param string $session_id     Session/conversation ID.
+     * @param string $user_message   The user's message.
+     * @param string $bot_response   The bot's response.
+     * @param string $provider_used  AI provider used.
+     * @param int    $start_time     Request start time (microtime).
+     * @return void
+     */
+    private function maybe_log_message( $session_id, $user_message, $bot_response, $provider_used, $start_time = 0 ) {
+        // Check if logging is enabled.
+        if ( ! get_option( 'humata_analytics_enabled', false ) ) {
+            return;
+        }
+
+        require_once __DIR__ . '/Rest/SearchDatabase.php';
+
+        $database = new Humata_Chatbot_Rest_Search_Database();
+        $logger   = new Humata_Chatbot_Rest_Message_Logger( $database );
+
+        if ( ! $logger->is_enabled() ) {
+            return;
+        }
+
+        // Calculate response time.
+        $response_time_ms = 0;
+        if ( $start_time > 0 ) {
+            $response_time_ms = (int) ( ( microtime( true ) - $start_time ) * 1000 );
+        }
+
+        // Get client info.
+        $client_ip = Humata_Chatbot_Rest_Client_Ip::get_client_ip();
+        $page_url  = isset( $_SERVER['HTTP_REFERER'] ) ? esc_url_raw( wp_unslash( $_SERVER['HTTP_REFERER'] ) ) : '';
+        $referer   = isset( $_SERVER['HTTP_ORIGIN'] ) ? esc_url_raw( wp_unslash( $_SERVER['HTTP_ORIGIN'] ) ) : '';
+
+        // Log the message.
+        $message_id = $logger->log_message( array(
+            'session_id'       => $session_id,
+            'user_message'     => $user_message,
+            'bot_response'     => $bot_response,
+            'client_ip'        => $client_ip,
+            'page_url'         => $page_url,
+            'referer'          => $referer,
+            'provider_used'    => $provider_used,
+            'response_time_ms' => $response_time_ms,
+        ) );
+
+        // Schedule AI analysis if enabled and message was logged successfully.
+        if ( ! is_wp_error( $message_id ) && get_option( 'humata_analytics_processing_enabled', false ) ) {
+            $analyzer = new Humata_Chatbot_Rest_Message_Analyzer( $logger );
+            $analyzer->schedule_analysis( $message_id );
+        }
     }
 
     /**

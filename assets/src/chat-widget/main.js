@@ -2870,7 +2870,8 @@ import {
                 headers: headers,
                 body: JSON.stringify({
                     message: message,
-                    history: history
+                    history: history,
+                    conversationId: conversationId || null
                 })
             });
 
@@ -2895,7 +2896,8 @@ import {
                         headers: headers,
                         body: JSON.stringify({
                             message: message,
-                            history: history
+                            history: history,
+                            conversationId: conversationId || null
                         })
                     });
                 }
@@ -2928,6 +2930,12 @@ import {
             }
 
             if (data.success && data.answer) {
+                // Store conversation ID for session tracking
+                if (data.conversationId) {
+                    conversationId = data.conversationId;
+                    localStorage.setItem(CONVERSATION_KEY, conversationId);
+                }
+
                 const botMessageEl = addMessage(data.answer, 'bot');
                 // Append intent-based resource links if keywords matched
                 if (botMessageEl && lastUserMessageForIntents) {
