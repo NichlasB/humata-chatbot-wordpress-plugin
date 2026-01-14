@@ -23,6 +23,48 @@ define( 'HUMATA_CHATBOT_URL', plugin_dir_url( __FILE__ ) );
 define( 'HUMATA_CHATBOT_BASENAME', plugin_basename( __FILE__ ) );
 define( 'HUMATA_DEFAULT_OPENROUTER_MODEL', 'mistralai/mistral-medium-3.1' );
 
+/**
+ * Register font MIME types for WordPress media uploads.
+ *
+ * @since 1.0.0
+ * @param array $mimes Existing MIME types.
+ * @return array Modified MIME types.
+ */
+function humata_register_font_mime_types( $mimes ) {
+	$mimes['woff2'] = 'font/woff2';
+	$mimes['woff']  = 'font/woff';
+	$mimes['ttf']   = 'font/ttf';
+	$mimes['otf']   = 'font/otf';
+	return $mimes;
+}
+add_filter( 'upload_mimes', 'humata_register_font_mime_types' );
+
+/**
+ * Fix MIME type detection for font files.
+ *
+ * @since 1.0.0
+ * @param array  $data     File data.
+ * @param string $file     Full path to the file.
+ * @param string $filename The name of the file.
+ * @param array  $mimes    Allowed MIME types.
+ * @return array Modified file data.
+ */
+function humata_fix_font_mime_type( $data, $file, $filename, $mimes ) {
+	$ext = strtolower( pathinfo( $filename, PATHINFO_EXTENSION ) );
+	$font_types = array(
+		'woff2' => 'font/woff2',
+		'woff'  => 'font/woff',
+		'ttf'   => 'font/ttf',
+		'otf'   => 'font/otf',
+	);
+	if ( isset( $font_types[ $ext ] ) ) {
+		$data['ext']  = $ext;
+		$data['type'] = $font_types[ $ext ];
+	}
+	return $data;
+}
+add_filter( 'wp_check_filetype_and_ext', 'humata_fix_font_mime_type', 10, 4 );
+
 // Load helpers and classes
 require_once HUMATA_CHATBOT_PATH . 'includes/Helpers.php';
 require_once HUMATA_CHATBOT_PATH . 'includes/class-admin-settings.php';
@@ -117,6 +159,10 @@ function humata_chatbot_activate() {
         'topic_scope'         => '',
         'custom_instructions' => '',
     ) );
+
+    // Typography (disabled by default).
+    require_once HUMATA_CHATBOT_PATH . 'includes/Admin/Settings/Sanitize/Typography.php';
+    add_option( 'humata_typography', Humata_Chatbot_Admin_Settings_Sanitize_Typography_Trait::get_default_typography_option() );
 
     // Add rewrite rules for dedicated page
     humata_chatbot_add_rewrite_rules();

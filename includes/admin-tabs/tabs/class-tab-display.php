@@ -143,6 +143,22 @@ class Humata_Chatbot_Settings_Tab_Display extends Humata_Chatbot_Settings_Tab_Ba
             $page_id,
             'humata_avatar_section'
         );
+
+        // Typography Section.
+        add_settings_section(
+            'humata_typography_section',
+            __( 'Typography', 'humata-chatbot' ),
+            array( $this->admin, 'render_typography_section' ),
+            $page_id
+        );
+
+        add_settings_field(
+            'humata_typography',
+            __( 'Custom Fonts', 'humata-chatbot' ),
+            array( $this->admin, 'render_typography_field' ),
+            $page_id,
+            'humata_typography_section'
+        );
     }
 }
 

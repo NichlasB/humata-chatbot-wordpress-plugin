@@ -62,6 +62,7 @@ final class Humata_Chatbot_Admin_Settings_Schema {
                 'humata_chat_location',
                 'humata_chat_page_slug',
                 'humata_chat_theme',
+                'humata_allow_seo_indexing',
                 'humata_logo_url',
                 'humata_logo_url_dark',
                 'humata_medical_disclaimer_text',
@@ -70,6 +71,7 @@ final class Humata_Chatbot_Admin_Settings_Schema {
                 'humata_user_avatar_url',
                 'humata_bot_avatar_url',
                 'humata_avatar_size',
+                'humata_typography',
             ),
             'security'      => array(
                 'humata_max_prompt_chars',

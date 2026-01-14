@@ -24,8 +24,16 @@ require_once __DIR__ . '/admin-tabs/tabs/class-tab-usage.php';
 require_once __DIR__ . '/admin-tabs/tabs/class-tab-documents.php';
 require_once __DIR__ . '/admin-tabs/tabs/class-tab-suggested-questions.php';
 require_once __DIR__ . '/admin-tabs/tabs/class-tab-analytics.php';
+require_once __DIR__ . '/admin-tabs/tabs/class-tab-import-export.php';
 // Admin settings schema/helpers.
 require_once __DIR__ . '/Admin/Settings/Schema.php';
+// Import/Export services.
+require_once __DIR__ . '/Admin/Settings/ExportImport/Download.php';
+require_once __DIR__ . '/Admin/Settings/ExportImport/ZipPackage.php';
+require_once __DIR__ . '/Admin/Settings/ExportImport/Options.php';
+require_once __DIR__ . '/Admin/Settings/ExportImport/LocalData.php';
+require_once __DIR__ . '/Admin/Settings/ExportImport/Exporter.php';
+require_once __DIR__ . '/Admin/Settings/ExportImport/Importer.php';
 // Admin AJAX handlers.
 require_once __DIR__ . '/Admin/Ajax.php';
 // Settings registration.
@@ -43,6 +51,7 @@ require_once __DIR__ . '/Admin/Settings/Sanitize/SuggestedQuestions.php';
 require_once __DIR__ . '/Admin/Settings/Sanitize/FollowUpQuestions.php';
 require_once __DIR__ . '/Admin/Settings/Sanitize/ApiKeyPool.php';
 require_once __DIR__ . '/Admin/Settings/Sanitize/BotProtection.php';
+require_once __DIR__ . '/Admin/Settings/Sanitize/Typography.php';
 // Render helpers.
 require_once __DIR__ . '/Admin/Render/Sections.php';
 require_once __DIR__ . '/Admin/Render/Providers.php';
@@ -56,6 +65,7 @@ require_once __DIR__ . '/Admin/Render/TriggerPages.php';
 require_once __DIR__ . '/Admin/Render/SuggestedQuestions.php';
 require_once __DIR__ . '/Admin/Render/FollowUpQuestions.php';
 require_once __DIR__ . '/Admin/Render/BotProtection.php';
+require_once __DIR__ . '/Admin/Render/Typography.php';
 
 /**
  * Class Humata_Chatbot_Admin_Settings
@@ -88,6 +98,8 @@ class Humata_Chatbot_Admin_Settings {
     use Humata_Chatbot_Admin_Settings_Sanitize_Api_Key_Pool_Trait;
     use Humata_Chatbot_Admin_Settings_Sanitize_Bot_Protection_Trait;
     use Humata_Chatbot_Admin_Settings_Render_Bot_Protection_Trait;
+    use Humata_Chatbot_Admin_Settings_Sanitize_Typography_Trait;
+    use Humata_Chatbot_Admin_Settings_Render_Typography_Trait;
 
     /**
      * Humata API base URL.
@@ -140,6 +152,9 @@ class Humata_Chatbot_Admin_Settings {
         // Initialize analytics tab early for admin_init form handling.
         $this->init_analytics_tab();
 
+        // Initialize import/export tab early for admin_init form handling.
+        $this->init_import_export_tab();
+
         // Register WP-Cron hooks for message analytics.
         add_action( 'humata_process_message_analysis', array( $this, 'cron_process_message_analysis' ) );
         add_action( 'humata_cleanup_old_messages', array( $this, 'cron_cleanup_old_messages' ) );
@@ -173,6 +188,19 @@ class Humata_Chatbot_Admin_Settings {
         $analytics_tab = new Humata_Chatbot_Settings_Tab_Analytics( $this );
         if ( method_exists( $analytics_tab, 'init' ) ) {
             $analytics_tab->init();
+        }
+    }
+
+    /**
+     * Initialize the import/export tab for early form handling.
+     *
+     * @since 1.3.0
+     * @return void
+     */
+    private function init_import_export_tab() {
+        $tab = new Humata_Chatbot_Settings_Tab_Import_Export( $this );
+        if ( method_exists( $tab, 'init' ) ) {
+            $tab->init();
         }
     }
 
@@ -330,6 +358,7 @@ class Humata_Chatbot_Admin_Settings {
             'documents'           => new Humata_Chatbot_Settings_Tab_Documents( $this ),
             'suggested_questions' => new Humata_Chatbot_Settings_Tab_Suggested_Questions( $this ),
             'analytics'           => new Humata_Chatbot_Settings_Tab_Analytics( $this ),
+            'import_export'       => new Humata_Chatbot_Settings_Tab_Import_Export( $this ),
         );
 
         return $this->tab_modules;
@@ -485,6 +514,7 @@ class Humata_Chatbot_Admin_Settings {
             'humata_chat_location',
             'humata_chat_page_slug',
             'humata_chat_theme',
+            'humata_allow_seo_indexing',
             'humata_logo_url',
             'humata_logo_url_dark',
             'humata_system_prompt',
@@ -544,6 +574,7 @@ class Humata_Chatbot_Admin_Settings {
             'humata_trigger_pages',
             'humata_suggested_questions',
             'humata_followup_questions',
+            'humata_typography',
         );
 
         if ( ! in_array( (string) $option, $plugin_options, true ) ) {

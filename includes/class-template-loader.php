@@ -115,6 +115,9 @@ class Humata_Chatbot_Template_Loader {
         }
 
         $this->enqueue_floating_help_assets();
+
+        // Output custom font CSS if typography is configured.
+        add_action( 'wp_head', array( $this, 'output_custom_font_css' ), 5 );
     }
 
     /**
@@ -908,5 +911,96 @@ class Humata_Chatbot_Template_Loader {
         </div>
         <?php
         return ob_get_clean();
+    }
+
+    /**
+     * Generate and output custom font CSS.
+     *
+     * @since 1.0.0
+     * @return void
+     */
+    public function output_custom_font_css() {
+        $typography = get_option( 'humata_typography', array() );
+
+        if ( empty( $typography ) ) {
+            return;
+        }
+
+        $css = '';
+
+        foreach ( array( 'heading_font', 'body_font' ) as $slot ) {
+            $font = isset( $typography[ $slot ] ) ? $typography[ $slot ] : array();
+
+            if ( empty( $font['enabled'] ) || empty( $font['family_name'] ) ) {
+                continue;
+            }
+
+            $family = esc_attr( $font['family_name'] );
+            $type   = isset( $font['font_type'] ) ? $font['font_type'] : 'variable';
+
+            if ( 'variable' === $type && ! empty( $font['variable_url'] ) ) {
+                // Variable font @font-face.
+                $ext    = strtolower( pathinfo( $font['variable_url'], PATHINFO_EXTENSION ) );
+                $format = 'woff2' === $ext ? 'woff2-variations' : 'truetype-variations';
+
+                $css .= sprintf(
+                    "@font-face {\n    font-family: '%s';\n    src: url('%s') format('%s');\n    font-weight: 100 900;\n    font-style: normal;\n    font-display: swap;\n}\n",
+                    $family,
+                    esc_url( $font['variable_url'] ),
+                    $format
+                );
+            } elseif ( 'static' === $type && ! empty( $font['static_weights'] ) ) {
+                // Static fonts - one @font-face per weight.
+                foreach ( $font['static_weights'] as $weight_entry ) {
+                    if ( empty( $weight_entry['url'] ) || empty( $weight_entry['weight'] ) ) {
+                        continue;
+                    }
+                    $ext    = strtolower( pathinfo( $weight_entry['url'], PATHINFO_EXTENSION ) );
+                    $format = 'woff2' === $ext ? 'woff2' : ( 'woff' === $ext ? 'woff' : 'truetype' );
+
+                    $css .= sprintf(
+                        "@font-face {\n    font-family: '%s';\n    src: url('%s') format('%s');\n    font-weight: %s;\n    font-style: normal;\n    font-display: swap;\n}\n",
+                        $family,
+                        esc_url( $weight_entry['url'] ),
+                        $format,
+                        esc_attr( $weight_entry['weight'] )
+                    );
+                }
+            }
+        }
+
+        // CSS variable overrides.
+        $heading_font = isset( $typography['heading_font'] ) ? $typography['heading_font'] : array();
+        $body_font    = isset( $typography['body_font'] ) ? $typography['body_font'] : array();
+
+        if ( ! empty( $heading_font['enabled'] ) && ! empty( $heading_font['family_name'] ) ) {
+            // Chat widget heading font.
+            $css .= sprintf(
+                ":root { --humata-heading-font-family: '%s', var(--humata-font-family); }\n",
+                esc_attr( $heading_font['family_name'] )
+            );
+            // Floating help heading font.
+            $css .= sprintf(
+                ":root { --humata-help-heading-font: '%s', var(--humata-help-font); }\n",
+                esc_attr( $heading_font['family_name'] )
+            );
+        }
+
+        if ( ! empty( $body_font['enabled'] ) && ! empty( $body_font['family_name'] ) ) {
+            // Chat widget body font.
+            $css .= sprintf(
+                ":root { --humata-body-font-family: '%s', var(--humata-font-family); }\n",
+                esc_attr( $body_font['family_name'] )
+            );
+            // Floating help body font.
+            $css .= sprintf(
+                ":root { --humata-help-body-font: '%s', var(--humata-help-font); }\n",
+                esc_attr( $body_font['family_name'] )
+            );
+        }
+
+        if ( '' !== $css ) {
+            echo '<style id="humata-custom-fonts">' . "\n" . $css . '</style>' . "\n";
+        }
     }
 }

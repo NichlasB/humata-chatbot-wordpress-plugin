@@ -90,6 +90,7 @@ delete_option( 'humata_logo_url_dark' );
 delete_option( 'humata_user_avatar_url' );
 delete_option( 'humata_bot_avatar_url' );
 delete_option( 'humata_avatar_size' );
+delete_option( 'humata_typography' );
 delete_option( 'humata_trigger_pages' );
 delete_option( 'humata_suggested_questions' );
 delete_option( 'humata_followup_questions' );

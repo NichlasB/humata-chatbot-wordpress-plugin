@@ -125,6 +125,11 @@ class Humata_Chatbot_Settings_Tabs {
                 'page_id'  => 'humata-chatbot-tab-analytics',
                 'has_form' => false,
             ),
+            'import_export'       => array(
+                'label'    => __( 'Import/Export', 'humata-chatbot' ),
+                'page_id'  => 'humata-chatbot-tab-import-export',
+                'has_form' => false,
+            ),
         );
 
         /**

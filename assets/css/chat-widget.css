@@ -46,6 +46,10 @@
     --humata-scrollbar-thumb-hover: #9ca3af;
 
     --humata-font-family: ui-sans-serif, system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif;
+
+    /* Typography - defaults to main font-family, overridden by custom fonts */
+    --humata-heading-font-family: var(--humata-font-family);
+    --humata-body-font-family: var(--humata-font-family);
 }
 
 /* CSS Variables - Dark Mode */
@@ -502,6 +506,7 @@
 .humata-message-content h5,
 .humata-message-content h6 {
     margin: 20px 0 12px 0;
+    font-family: var(--humata-heading-font-family);
     font-weight: 650;
     line-height: 1.25;
     color: var(--humata-text-primary);
@@ -522,6 +527,16 @@
 .humata-message-content h4 { font-size: 1.08em; }
 .humata-message-content h5 { font-size: 1.02em; }
 .humata-message-content h6 { font-size: 0.96em; color: var(--humata-text-secondary); }
+
+/* Body text elements use body font family */
+.humata-message-content p,
+.humata-message-content ul,
+.humata-message-content ol,
+.humata-message-content li,
+.humata-message-content a,
+.humata-message-content blockquote {
+    font-family: var(--humata-body-font-family);
+}
 
 .humata-message-content strong {
     font-weight: 600;
@@ -723,6 +738,7 @@
     transition: all 0.2s ease;
     position: relative;
     z-index: 10;
+    font-family: var(--humata-body-font-family);
 }
 
 .humata-input-wrapper:focus-within {
@@ -1320,7 +1336,7 @@
     border: 1px solid var(--humata-border-color);
     border-radius: 12px;
     color: var(--humata-text-primary);
-    font-family: var(--humata-font-family);
+    font-family: var(--humata-body-font-family);
     font-size: 14px;
     line-height: 1.4;
     text-align: left;
@@ -1421,7 +1437,7 @@ span.humata-followup-questions-label::after {
     border: 1px solid var(--humata-border-color);
     border-radius: 20px;
     color: var(--humata-text-primary);
-    font-family: var(--humata-font-family);
+    font-family: var(--humata-body-font-family);
     font-size: 13px;
     line-height: 1.3;
     text-align: left;

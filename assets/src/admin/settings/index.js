@@ -1815,6 +1815,117 @@
             updateSelectCount();
             updateSelectAllState();
         })();
+
+        // ------------------------------------------
+        // Typography Font Upload Handlers
+        // ------------------------------------------
+        (function() {
+            // Toggle font fields visibility based on enabled checkbox.
+            $(document).on('change', '.humata-font-enabled-toggle', function() {
+                var $card = $(this).closest('.humata-typography-card');
+                var $fields = $card.find('.humata-typography-card__fields');
+                if ($(this).is(':checked')) {
+                    $fields.show();
+                } else {
+                    $fields.hide();
+                }
+            });
+
+            // Toggle variable/static font type.
+            $(document).on('change', '.humata-font-type-radio', function() {
+                var $card = $(this).closest('.humata-typography-card');
+                var $variableDiv = $card.find('.humata-typography-card__variable');
+                var $staticDiv = $card.find('.humata-typography-card__static');
+
+                if ($(this).val() === 'variable') {
+                    $variableDiv.show();
+                    $staticDiv.hide();
+                } else {
+                    $variableDiv.hide();
+                    $staticDiv.show();
+                }
+            });
+
+            // Upload font file.
+            $(document).on('click', '.humata-upload-font', function(e) {
+                e.preventDefault();
+                var $btn = $(this);
+                var $uploader = $btn.closest('.humata-font-uploader');
+                var $urlInput = $uploader.find('.humata-font-url-input');
+                var $filenameSpan = $uploader.find('.humata-font-filename');
+                var $removeBtn = $uploader.find('.humata-remove-font');
+
+                var frame = wp.media({
+                    title: 'Select Font File',
+                    button: { text: 'Use this font' },
+                    multiple: false,
+                    library: { type: ['font/woff2', 'font/woff', 'font/ttf', 'font/otf'] }
+                });
+
+                frame.on('select', function() {
+                    var attachment = frame.state().get('selection').first().toJSON();
+                    $urlInput.val(attachment.url);
+                    var filename = attachment.filename || attachment.url.split('/').pop();
+                    $filenameSpan.text(filename);
+                    $removeBtn.show();
+                });
+
+                frame.open();
+            });
+
+            // Remove font file.
+            $(document).on('click', '.humata-remove-font', function(e) {
+                e.preventDefault();
+                var $uploader = $(this).closest('.humata-font-uploader');
+                var $urlInput = $uploader.find('.humata-font-url-input');
+                var $filenameSpan = $uploader.find('.humata-font-filename');
+
+                $urlInput.val('');
+                $filenameSpan.text('');
+                $(this).hide();
+            });
+
+            // Add weight row.
+            $(document).on('click', '.humata-add-weight', function(e) {
+                e.preventDefault();
+                var $staticDiv = $(this).closest('.humata-typography-card__static');
+                var $weightsContainer = $staticDiv.find('.humata-static-weights');
+                var prefix = $weightsContainer.data('prefix');
+                var existingRows = $weightsContainer.find('.humata-static-weight-row').length;
+                var newIndex = existingRows;
+
+                var html = '' +
+                    '<div class="humata-static-weight-row">' +
+                        '<select name="' + prefix + '[static_weights][' + newIndex + '][weight]">' +
+                            '<option value="100">100 (Thin)</option>' +
+                            '<option value="200">200 (Extra Light)</option>' +
+                            '<option value="300">300 (Light)</option>' +
+                            '<option value="400" selected>400 (Regular)</option>' +
+                            '<option value="500">500 (Medium)</option>' +
+                            '<option value="600">600 (Semi Bold)</option>' +
+                            '<option value="700">700 (Bold)</option>' +
+                            '<option value="800">800 (Extra Bold)</option>' +
+                            '<option value="900">900 (Black)</option>' +
+                        '</select>' +
+                        '<div class="humata-font-uploader">' +
+                            '<input type="hidden" name="' + prefix + '[static_weights][' + newIndex + '][url]" value="" class="humata-font-url-input" />' +
+                            '<button type="button" class="button humata-upload-font">Select File</button>' +
+                            '<button type="button" class="button humata-remove-font" style="display:none;">Remove</button>' +
+                            '<span class="humata-font-filename"></span>' +
+                        '</div>' +
+                        '<button type="button" class="button humata-remove-weight-row" title="Remove weight">&times;</button>' +
+                    '</div>';
+
+                $weightsContainer.append(html);
+            });
+
+            // Remove weight row.
+            $(document).on('click', '.humata-remove-weight-row', function(e) {
+                e.preventDefault();
+                var $row = $(this).closest('.humata-static-weight-row');
+                $row.remove();
+            });
+        })();
     });
 })(jQuery);
 

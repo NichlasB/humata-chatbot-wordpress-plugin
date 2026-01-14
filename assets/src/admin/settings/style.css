@@ -1215,3 +1215,105 @@
     font-size: 14px;
 }
 
+/* ============================================
+   Typography Settings Styles
+   ============================================ */
+
+/* Typography Cards */
+.humata-typography-card {
+    background: #fff;
+    border: 1px solid #c3c4c7;
+    border-radius: 4px;
+    padding: 16px;
+    margin-bottom: 16px;
+    max-width: 700px;
+}
+
+.humata-typography-card__title {
+    margin: 0 0 12px 0;
+    padding-bottom: 8px;
+    border-bottom: 1px solid #dcdcde;
+    font-size: 14px;
+    font-weight: 600;
+    color: #1d2327;
+}
+
+.humata-typography-card__row {
+    margin-bottom: 12px;
+}
+
+.humata-typography-card__row:last-child {
+    margin-bottom: 0;
+}
+
+.humata-typography-card__row label {
+    display: inline-block;
+    margin-right: 16px;
+}
+
+.humata-typography-card__label {
+    display: block;
+    margin-bottom: 6px;
+    font-weight: 500;
+    color: #1d2327;
+}
+
+.humata-typography-card__fields {
+    margin-top: 16px;
+    padding-top: 12px;
+    border-top: 1px solid #dcdcde;
+}
+
+/* Font Uploader */
+.humata-font-uploader {
+    display: inline-flex;
+    align-items: center;
+    gap: 8px;
+    flex-wrap: wrap;
+}
+
+.humata-font-filename {
+    color: #646970;
+    font-style: italic;
+    max-width: 200px;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+}
+
+/* Static Weight Rows */
+.humata-static-weights {
+    margin-bottom: 12px;
+}
+
+.humata-static-weight-row {
+    display: flex;
+    align-items: center;
+    gap: 12px;
+    margin-bottom: 8px;
+    padding: 8px;
+    background: #f6f7f7;
+    border-radius: 4px;
+}
+
+.humata-static-weight-row:last-child {
+    margin-bottom: 0;
+}
+
+.humata-static-weight-row select {
+    min-width: 160px;
+}
+
+.humata-remove-weight-row {
+    color: #a00 !important;
+    font-size: 18px !important;
+    line-height: 1 !important;
+    padding: 4px 8px !important;
+    min-height: auto !important;
+}
+
+.humata-remove-weight-row:hover {
+    color: #dc3232 !important;
+    border-color: #dc3232 !important;
+}
+

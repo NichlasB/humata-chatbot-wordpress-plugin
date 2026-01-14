@@ -15,6 +15,10 @@
     --humata-help-radius: 16px;
     --humata-help-accent: #2e5f28;
     --humata-help-font: ui-sans-serif, system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Arial, sans-serif;
+
+    /* Typography - defaults to main font */
+    --humata-help-heading-font: var(--humata-help-font);
+    --humata-help-body-font: var(--humata-help-font);
 }
 
 @media (prefers-color-scheme: dark) {
@@ -196,7 +200,7 @@
     padding: 0;
     cursor: pointer;
     text-align: left;
-    font-family: inherit;
+    font-family: var(--humata-help-body-font);
 }
 
 .humata-floating-help__link:hover {
@@ -322,6 +326,7 @@ body.humata-help-modal-open {
     line-height: 1.2;
     color: var(--humata-help-text);
     opacity: 1;
+    font-family: var(--humata-help-heading-font);
 }
 
 .humata-help-modal__close {
@@ -388,6 +393,7 @@ body.humata-help-modal-open {
     line-height: 1.25;
     color: var(--humata-help-text) !important;
     opacity: 1;
+    font-family: var(--humata-help-heading-font);
 }
 
 .humata-help-modal__content h2:first-child,
@@ -402,6 +408,7 @@ body.humata-help-modal-open {
     margin: 0 0 10px 0;
     color: var(--humata-help-text);
     opacity: 0.92;
+    font-family: var(--humata-help-body-font);
 }
 
 .humata-help-modal__content p:last-child {
@@ -419,12 +426,14 @@ body.humata-help-modal-open {
 .humata-help-modal__content ol {
     margin: 0 0 12px 18px;
     padding: 0;
+    font-family: var(--humata-help-body-font);
 }
 
 .humata-help-modal__content li {
     margin: 0 0 8px 0;
     color: var(--humata-help-text);
     opacity: 0.92;
+    font-family: var(--humata-help-body-font);
 }
 
 .humata-help-modal__content strong,
@@ -477,6 +486,7 @@ body.humata-help-modal-open {
     overflow-wrap: anywhere;
     word-break: break-word;
     text-align: left;
+    font-family: var(--humata-help-heading-font);
 }
 
 .humata-help-faq__question::-webkit-details-marker {
@@ -492,6 +502,7 @@ body.humata-help-modal-open {
     padding: 0 14px 14px 14px;
     color: var(--humata-help-text);
     opacity: 0.92;
+    font-family: var(--humata-help-body-font);
 }
 
 /* Hide floating help when mobile keyboard is open */

@@ -534,6 +534,17 @@ trait Humata_Chatbot_Admin_Settings_Register_Trait {
             )
         );
 
+        // Typography settings.
+        register_setting(
+            'humata_chatbot_settings',
+            'humata_typography',
+            array(
+                'type'              => 'array',
+                'sanitize_callback' => array( $this, 'sanitize_typography' ),
+                'default'           => self::get_default_typography_option(),
+            )
+        );
+
         // Bot Protection settings.
         register_setting(
             'humata_chatbot_settings',
@@ -707,6 +718,7 @@ trait Humata_Chatbot_Admin_Settings_Register_Trait {
         }
     }
 }
+
 
 
 
