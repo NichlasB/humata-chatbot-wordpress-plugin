@@ -116,8 +116,8 @@ class Humata_Chatbot_Template_Loader {
 
         $this->enqueue_floating_help_assets();
 
-        // Output custom font CSS if typography is configured.
-        add_action( 'wp_head', array( $this, 'output_custom_font_css' ), 5 );
+        // Output custom font CSS after stylesheets to override CSS variable defaults.
+        add_action( 'wp_head', array( $this, 'output_custom_font_css' ), 100 );
     }
 
     /**
@@ -941,7 +941,7 @@ class Humata_Chatbot_Template_Loader {
             if ( 'variable' === $type && ! empty( $font['variable_url'] ) ) {
                 // Variable font @font-face.
                 $ext    = strtolower( pathinfo( $font['variable_url'], PATHINFO_EXTENSION ) );
-                $format = 'woff2' === $ext ? 'woff2-variations' : 'truetype-variations';
+                $format = 'woff2' === $ext ? 'woff2' : ( 'woff' === $ext ? 'woff' : 'truetype' );
 
                 $css .= sprintf(
                     "@font-face {\n    font-family: '%s';\n    src: url('%s') format('%s');\n    font-weight: 100 900;\n    font-style: normal;\n    font-display: swap;\n}\n",
