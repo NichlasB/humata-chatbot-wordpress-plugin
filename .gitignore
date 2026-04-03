@@ -56,3 +56,7 @@ coverage/
 *.bak
 *.tmp
 *.temp
+
+# Local-only workflow files
+deploy.sh
+session-context.tmp.md
